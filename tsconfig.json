@@ -1,0 +1,11 @@
+{
+  "extends": "./tsconfig.build.json",
+
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "nunjucks/*": ["packages/core/src/*"],
+      "@nunjucks/*": ["packages/*/src"]
+    }
+  }
+}

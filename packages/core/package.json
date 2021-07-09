@@ -1,0 +1,33 @@
+{
+  "name": "nunjucks",
+  "version": "4.0.0-alpha.1",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "import": "./dist/index.min.mjs",
+      "require": "./dist/index.min.js"
+    }
+  },
+  "main": "./dist/index.min.js",
+  "module": "./dist/index.min.mjs",
+  "browser": "./dist/browser.min.js",
+  "source": "./src/index.ts",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist/",
+    "src/"
+  ],
+  "scripts": {
+    "build": "yarn run clean && yarn run compile",
+    "clean": "rimraf -rf ./dist",
+    "compile": "tsc -p tsconfig.build.json",
+    "prepublishOnly": "yarn run build",
+    "test": "yarn run build"
+  },
+  "dependencies": {
+  },
+  "devDependencies": {
+    "rimraf": "~3.0.2",
+    "typescript": "^4.3.5"
+  }
+}
