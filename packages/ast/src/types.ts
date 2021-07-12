@@ -4,6 +4,8 @@ const hasOwn = Op.hasOwnProperty;
 
 type Deep = boolean | ((type: Type<any>, value: any) => void);
 
+export type Omit<T, K> = Pick<T, Exclude<keyof T, K>>;
+
 // A type is an object with a .check method that takes a value and returns
 // true or false according to whether the value matches the type.
 export type Type<T> =
@@ -69,22 +71,6 @@ class IdentityType<T> extends BaseType<T> {
       deep(this, value);
     }
     return result;
-  }
-}
-
-export class AnyType extends BaseType<any> {
-  readonly kind: "AnyType" = "AnyType";
-
-  constructor(public readonly value: any) {
-    super();
-  }
-
-  toString() {
-    return "[any]";
-  }
-
-  check(value: any): value is any {
-    return true;
   }
 }
 
@@ -155,6 +141,8 @@ export abstract class Def<T = any> {
   public ownFields: { [name: string]: Field<any> } = Object.create(null);
 
   public isAbstract = false;
+
+  public aliasNames: string[] = [];
 
   // Includes own typeName. Populated during finalization.
   public allSupertypes: { [name: string]: Def<any> } = Object.create(null);
@@ -245,6 +233,32 @@ export abstract class Def<T = any> {
       // names is very small, and indexOf is a native Array method.
       if (bases.indexOf(baseName) < 0) {
         bases.push(baseName);
+      }
+    });
+
+    return this; // For chaining.
+  }
+
+  aliases(...supertypeNames: string[]): this {
+    const aliases = this.aliasNames;
+
+    if (this.finalized) {
+      if (supertypeNames.length !== aliases.length) {
+        throw new Error("");
+      }
+      for (let i = 0; i < supertypeNames.length; i++) {
+        if (supertypeNames[i] !== aliases[i]) {
+          throw new Error("");
+        }
+      }
+      return this;
+    }
+
+    supertypeNames.forEach((baseName) => {
+      // This indexOf lookup may be O(n), but the typical number of base
+      // names is very small, and indexOf is a native Array method.
+      if (aliases.indexOf(baseName) < 0) {
+        aliases.push(baseName);
       }
     });
 
@@ -346,8 +360,7 @@ export const Type = {
       value instanceof IdentityType ||
       value instanceof ObjectType ||
       value instanceof OrType ||
-      value instanceof PredicateType ||
-      value instanceof AnyType
+      value instanceof PredicateType
     ) {
       return value;
     }
@@ -480,6 +493,8 @@ export const builtInTypes = {
   null: isNull,
   undefined: isUndefined,
 } as const;
+
+export const AnyType = new PredicateType<any>("any", () => true);
 
 // In order to return the same Def instance every time Type.def is called
 // with a particular name, those instances need to be stored in a cache.
@@ -745,6 +760,21 @@ class DefImpl<T = any> extends Def<T> {
         }
       });
 
+      this.aliasNames.forEach((name) => {
+        const def = defCache[name];
+        if (def instanceof Def) {
+          def.finalize();
+          extend(allSupertypes, def.allSupertypes);
+        } else {
+          const message =
+            "unknown supertype name " +
+            JSON.stringify(name) +
+            " for subtype " +
+            JSON.stringify(this.typeName);
+          throw new Error(message);
+        }
+      });
+
       // TODO Warn if fields are overridden with incompatible types.
       extend(allFields, this.ownFields);
       allSupertypes[this.typeName] = this;
@@ -757,7 +787,7 @@ class DefImpl<T = any> extends Def<T> {
       }
 
       // Types are exported only once they have been finalized.
-      Object.defineProperty(namedTypes, this.typeName, {
+      Object.defineProperty(types, this.typeName, {
         enumerable: true,
         value: this.type,
       });
@@ -766,10 +796,6 @@ class DefImpl<T = any> extends Def<T> {
 
       // A linearization of the inheritance hierarchy.
       populateSupertypeList(this.typeName, this.supertypeList);
-
-      if (this.buildable && this.supertypeList.lastIndexOf("Expression") >= 0) {
-        wrapExpressionBuilderWithStatement(this.typeName);
-      }
     }
   }
 }
@@ -863,12 +889,7 @@ export function getBuilderName(typeName: string): string {
   });
 }
 
-export function getStatementBuilderName(typeName: string): string {
-  typeName = getBuilderName(typeName);
-  return typeName.replace(/(Expression)?$/, "Statement");
-}
-
-export const namedTypes = {} as import("./gen/namedTypes").NamedTypes;
+export const types = {} as import("./gen/types").NunjucksTypes;
 
 // Like Object.keys, but aware of what fields each AST type should have.
 export function getFieldNames(object: any): string[] {
@@ -926,30 +947,6 @@ export function someField(
   return getFieldNames(object).some(function (this: any, name: string) {
     return callback.call(this, name, getFieldValue(object, name));
   }, context);
-}
-
-// Adds an additional builder for Expression subtypes
-// that wraps the built Expression in an ExpressionStatements.
-function wrapExpressionBuilderWithStatement(typeName: string): void {
-  const wrapperName = getStatementBuilderName(typeName);
-
-  // skip if the builder already exists
-  if (builders[wrapperName]) return;
-
-  // the builder function to wrap with builders.ExpressionStatement
-  const wrapped = builders[getBuilderName(typeName)];
-
-  // skip if there is nothing to wrap
-  if (!wrapped) return;
-
-  const builder: Builder = function (...args: Parameters<typeof wrapped>) {
-    return builders.expressionStatement(wrapped.apply(builders, args));
-  };
-  builder.from = function (...args: Parameters<typeof wrapped.from>) {
-    return builders.expressionStatement(wrapped.from.apply(builders, args));
-  };
-
-  builders[wrapperName] = builder;
 }
 
 function populateSupertypeList(typeName: any, list: any) {
