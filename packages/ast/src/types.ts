@@ -787,7 +787,7 @@ class DefImpl<T = any> extends Def<T> {
       }
 
       // Types are exported only once they have been finalized.
-      Object.defineProperty(types, this.typeName, {
+      Object.defineProperty(njkTypes, this.typeName, {
         enumerable: true,
         value: this.type,
       });
@@ -889,7 +889,7 @@ export function getBuilderName(typeName: string): string {
   });
 }
 
-export const types = {} as import("./gen/types").NunjucksTypes;
+export const njkTypes = {} as import("./gen/types").NunjucksTypes;
 
 // Like Object.keys, but aware of what fields each AST type should have.
 export function getFieldNames(object: any): string[] {

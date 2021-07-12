@@ -2,7 +2,7 @@ import fs from "fs";
 import path from "path";
 import * as prettier from "prettier";
 import "../src/def";
-import { Type, builders, types as t, getBuilderName } from "../src/types";
+import { Type, builders, njkTypes as t, getBuilderName } from "../src/types";
 import { builders as b } from "ast-types";
 import { Linter } from "eslint";
 
@@ -36,7 +36,7 @@ function booleanLiteral(value) {
   return node;
 }
 
-const TYPES_ID = b.identifier("types");
+const TYPES_ID = b.identifier("t");
 const TYPES_IMPORT = b.importDeclaration(
   [b.importNamespaceSpecifier(TYPES_ID)],
   stringLiteral("./types"),
@@ -204,7 +204,7 @@ const out = [
         const typeDef = Type.def(typeName);
 
         const returnType = b.tsTypeAnnotation(
-          b.tsTypeReference(b.identifier(typeName))
+          getTSTypeAnnotation(typeDef.type)
         );
 
         const buildParamAllowsUndefined: { [buildParam: string]: boolean } = {};
@@ -313,8 +313,8 @@ const out = [
     file: "visitor.ts",
     ast: moduleWithBody([
       b.importDeclaration(
-        [b.importSpecifier(b.identifier("NodePath"))],
-        stringLiteral("../node-path")
+        [b.importSpecifier(b.identifier("Path"))],
+        stringLiteral("../path")
       ),
       b.importDeclaration(
         [b.importSpecifier(b.identifier("Context"))],
@@ -325,9 +325,49 @@ const out = [
         b.tsInterfaceDeclaration.from({
           id: b.identifier("Visitor"),
           typeParameters: b.tsTypeParameterDeclaration([
-            b.tsTypeParameter("M", undefined, b.tsTypeLiteral([])),
+            b.tsTypeParameter(
+              "M",
+              void 0,
+              b.tsTypeReference(
+                b.identifier("Record"),
+                b.tsTypeParameterInstantiation([
+                  b.tsStringKeyword(),
+                  b.tsAnyKeyword(),
+                ])
+              )
+            ),
           ]),
           body: b.tsInterfaceBody([
+            b.tsMethodSignature.from({
+              key: b.identifier("reset"),
+              parameters: [
+                b.identifier.from({
+                  name: "this",
+                  typeAnnotation: b.tsTypeAnnotation(
+                    b.tsTypeReference(
+                      b.identifier("Context"),
+                      b.tsTypeParameterInstantiation([
+                        b.tsTypeReference(b.identifier("M")),
+                      ])
+                    )
+                  ),
+                }),
+                b.identifier.from({
+                  name: "path",
+                  typeAnnotation: b.tsTypeAnnotation(
+                    b.tsTypeReference(b.identifier("Path"))
+                  ),
+                }),
+                b.identifier.from({
+                  name: "state",
+                  typeAnnotation: b.tsTypeAnnotation(
+                    b.tsTypeReference(b.identifier("M"))
+                  ),
+                }),
+              ],
+              typeAnnotation: b.tsTypeAnnotation(b.tsAnyKeyword()),
+              optional: true,
+            }),
             ...Object.keys(t).map((typeName) => {
               return b.tsMethodSignature.from({
                 key: b.identifier(`visit${typeName}`),
@@ -335,23 +375,31 @@ const out = [
                   b.identifier.from({
                     name: "this",
                     typeAnnotation: b.tsTypeAnnotation(
-                      b.tsIntersectionType([
-                        b.tsTypeReference(b.identifier("Context")),
-                        b.tsTypeReference(b.identifier("M")),
-                      ])
+                      b.tsTypeReference(
+                        b.identifier("Context"),
+                        b.tsTypeParameterInstantiation([
+                          b.tsTypeReference(b.identifier("M")),
+                        ])
+                      )
                     ),
                   }),
                   b.identifier.from({
                     name: "path",
                     typeAnnotation: b.tsTypeAnnotation(
                       b.tsTypeReference(
-                        b.identifier("NodePath"),
+                        b.identifier("Path"),
                         b.tsTypeParameterInstantiation([
                           b.tsTypeReference(
                             b.tsQualifiedName(TYPES_ID, b.identifier(typeName))
                           ),
                         ])
                       )
+                    ),
+                  }),
+                  b.identifier.from({
+                    name: "state",
+                    typeAnnotation: b.tsTypeAnnotation(
+                      b.tsTypeReference(b.identifier("M"))
                     ),
                   }),
                 ],

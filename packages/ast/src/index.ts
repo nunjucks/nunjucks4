@@ -1,8 +1,8 @@
 // Node = t.TypeVar(Node, bound=Node)
 // import deepcopy from "lodash.deepcopy";
-import { types as njkTypes } from "./gen/types";
-import { types } from "./types";
+import { types } from "./gen/types";
 import {
+  njkTypes,
   Type,
   Field,
   ASTNode,
@@ -27,10 +27,10 @@ import {
 import { Path } from "./path";
 import { PathVisitor } from "./path-visitor";
 
-Object.assign(njkTypes, types);
+Object.assign(types, njkTypes);
 
-export { njkTypes as types };
 export {
+  types,
   Path,
   PathVisitor,
   Type,
@@ -53,6 +53,8 @@ export {
   someField,
   finalize,
 };
+
+export const visit = PathVisitor.visit;
 
 // type Node = any;
 //

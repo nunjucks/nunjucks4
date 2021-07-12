@@ -8,7 +8,7 @@
       "require": "./dist/index.min.js"
     }
   },
-  "main": "./dist/index.min.js",
+  "main": "./src/index.ts",
   "module": "./dist/index.min.mjs",
   "browser": "./dist/browser.min.js",
   "source": "./src/index.ts",
