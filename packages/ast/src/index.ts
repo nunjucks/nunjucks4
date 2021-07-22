@@ -56,6 +56,11 @@ export {
 
 export const visit = PathVisitor.visit;
 
+export function canAssign(node: types.Node): boolean {
+  const typeDef = Type.def(node.type);
+  return typeDef.isAssignable(node);
+}
+
 // type Node = any;
 //
 // type BinOp = (a: any, b: any) => any;

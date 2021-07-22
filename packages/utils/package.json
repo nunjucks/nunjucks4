@@ -2,13 +2,13 @@
   "name": "@nunjucks/utils",
   "version": "4.0.0-alpha.1",
   "sideEffects": false,
-  "exports": {
+  "exportsz": {
     ".": {
       "import": "./dist/index.min.mjs",
       "require": "./dist/index.min.js"
     }
   },
-  "main": "./dist/index.min.js",
+  "main": "./src/index.ts",
   "module": "./dist/index.min.mjs",
   "browser": "./dist/browser.min.js",
   "source": "./src/index.ts",

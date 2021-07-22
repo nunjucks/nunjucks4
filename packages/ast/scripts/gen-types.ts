@@ -36,7 +36,7 @@ function booleanLiteral(value) {
   return node;
 }
 
-const TYPES_ID = b.identifier("t");
+const TYPES_ID = b.identifier("types");
 const TYPES_IMPORT = b.importDeclaration(
   [b.importNamespaceSpecifier(TYPES_ID)],
   stringLiteral("./types"),
@@ -115,12 +115,13 @@ const out = [
                             )
                           );
                         } else if (field.defaultFn) {
+                          const defaultVal = field.defaultFn();
                           return b.tsPropertySignature(
                             b.identifier(field.name),
                             b.tsTypeAnnotation(
                               getTSTypeAnnotation(field.type, false)
                             ),
-                            true // optional
+                            !defaultVal // optional
                           );
                         }
 
@@ -136,19 +137,6 @@ const out = [
                 );
               })
               .filter(Boolean),
-
-            b.exportNamedDeclaration(
-              b.tsTypeAliasDeclaration(
-                b.identifier("ASTNode"),
-                b.tsUnionType(
-                  Object.keys(t)
-                    .filter((typeName) => Type.def(typeName).buildable)
-                    .map((typeName) =>
-                      b.tsTypeReference(b.identifier(typeName))
-                    )
-                )
-              )
-            ),
 
             ...Object.keys(t).map((typeName) =>
               b.exportNamedDeclaration(

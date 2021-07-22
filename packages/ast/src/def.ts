@@ -7,19 +7,14 @@ def("Position").field("line", geq(1)).field("column", geq(0));
 
 def("SourceLocation")
   .field("start", def("Position"))
-  .field("end", def("Position"))
+  .field("end", or(def("Position"), null), defaults["null"])
   .field("source", or(String, null), defaults["null"]);
-
-def("Printable").field(
-  "loc",
-  or(def("SourceLocation"), null),
-  defaults["null"],
-  true
-);
 
 def("Node").abstract();
 
-def("BaseNode").field("type", String);
+def("BaseNode")
+  .field("type", String)
+  .field("loc", or(def("SourceLocation"), null), defaults["null"], true);
 
 def("Stmt").abstract().bases("BaseNode");
 
@@ -45,16 +40,31 @@ def("Extends")
   .build("template")
   .field("template", def("Expr"));
 
-def("For")
+def("Loop").abstract();
+
+def("ForBase")
   .bases("BaseNode")
-  .aliases("Node", "Stmt")
-  .build("target", "iter", "body", "else_", "test", "recursive")
   .field("target", def("Node"))
   .field("iter", def("Node"))
   .field("body", [def("Node")])
   .field("else_", [def("Node")])
   .field("test", or(def("Node"), null), defaults["null"])
   .field("recursive", Boolean, defaults["false"]);
+
+def("For")
+  .bases("ForBase")
+  .aliases("Node", "Stmt", "Loop")
+  .build("target", "iter", "body", "else_", "test", "recursive");
+
+def("AsyncEach")
+  .bases("ForBase")
+  .aliases("Node", "Stmt", "Loop")
+  .build("target", "iter", "body", "else_", "test", "recursive");
+
+def("AsyncAll")
+  .bases("ForBase")
+  .aliases("Node", "Stmt", "Loop")
+  .build("target", "iter", "body", "else_", "test", "recursive");
 
 def("If")
   .bases("BaseNode")
@@ -121,7 +131,7 @@ def("Pair")
 
 def("FilterTestBase")
   .bases("BaseNode")
-  .field("node", def("Expr"))
+  .field("node", or(def("Expr"), null))
   .field("name", String)
   .field("args", [def("Expr")])
   .field("kwargs", [def("Pair")])
@@ -131,13 +141,13 @@ def("FilterTestBase")
 def("Filter")
   .bases("FilterTestBase")
   .aliases("Node", "Expr")
-  .build("node", "name", "args", "kwargs", "dynArgs", "dynKwargs")
-  .field("node", or(def("Expr"), null));
+  .build("node", "name", "args", "kwargs", "dynArgs", "dynKwargs");
 
 def("Test")
   .bases("FilterTestBase")
   .aliases("Node", "Expr")
-  .build("node", "name", "args", "kwargs", "dynArgs", "dynKwargs");
+  .build("node", "name", "args", "kwargs", "dynArgs", "dynKwargs")
+  .field("node", def("Expr"));
 
 def("FilterBlock")
   .bases("BaseNode")
@@ -170,6 +180,14 @@ def("Include")
   .field("template", def("Expr"))
   .field("withContext", Boolean)
   .field("ignoreMissing", Boolean);
+
+def("Import")
+  .bases("BaseNode")
+  .aliases("Node", "Stmt")
+  .build("template", "target", "withContext")
+  .field("template", def("Expr"))
+  .field("target", String)
+  .field("withContext", Boolean);
 
 def("FromImport")
   .bases("BaseNode")
@@ -208,9 +226,13 @@ def("BinExprBase")
   .field("right", def("Expr"))
   .field("operator", String);
 
-def("UnaryExpr").abstract().bases("BaseNode"); // TODO
+def("UnaryExpr").abstract().bases("BaseNode");
 
-def("UnaryExprBase").bases("BaseNode").field("operator", String); // TODO
+// TODO as_const
+def("UnaryExprBase")
+  .bases("BaseNode")
+  .field("node", def("Expr"))
+  .field("operator", String);
 
 def("NSRef")
   .bases("BaseNode")
@@ -309,77 +331,35 @@ def("Operand")
   .field("op", String)
   .field("expr", def("Expr"));
 
-def("Mul")
-  .bases("BinExprBase")
-  .aliases("Node", "BinExpr", "Expr")
-  .build("left", "right", "operator")
-  .field("operator", "*");
+function defBinExpr(typeName: string, operator: string): void {
+  def(typeName)
+    .bases("BinExprBase")
+    .aliases("Node", "BinExpr", "Expr")
+    .build("left", "right")
+    .field("operator", operator, () => operator);
+}
 
-def("Div")
-  .bases("BinExprBase")
-  .aliases("Node", "BinExpr", "Expr")
-  .build("left", "right", "operator")
-  .field("operator", "/");
+defBinExpr("Mul", "*");
+defBinExpr("Div", "/");
+defBinExpr("FloorDiv", "//");
+defBinExpr("Add", "+");
+defBinExpr("Sub", "-");
+defBinExpr("Mod", "%");
+defBinExpr("Pow", "**");
+defBinExpr("And", "and");
+defBinExpr("Or", "or");
 
-def("FloorDiv")
-  .bases("BinExprBase")
-  .aliases("Node", "BinExpr", "Expr")
-  .build("left", "right", "operator")
-  .field("operator", "//");
+function defUnaryExpr(typeName: string, operator: string): void {
+  def(typeName)
+    .bases("UnaryExprBase")
+    .aliases("Node", "UnaryExpr", "Expr")
+    .build("node")
+    .field("operator", operator, () => operator);
+}
 
-def("Add")
-  .bases("BinExprBase")
-  .aliases("Node", "BinExpr", "Expr")
-  .build("left", "right", "operator")
-  .field("operator", "+");
-
-def("Sub")
-  .bases("BinExprBase")
-  .aliases("Node", "BinExpr", "Expr")
-  .build("left", "right", "operator")
-  .field("operator", "-");
-
-def("Mod")
-  .bases("BinExprBase")
-  .aliases("Node", "BinExpr", "Expr")
-  .build("left", "right", "operator")
-  .field("operator", "%");
-
-def("Pow")
-  .bases("BinExprBase")
-  .aliases("Node", "BinExpr", "Expr")
-  .build("left", "right", "operator")
-  .field("operator", "**");
-
-def("And")
-  .bases("BinExprBase")
-  .aliases("Node", "BinExpr", "Expr")
-  .build("left", "right", "operator")
-  .field("operator", "and");
-
-def("Or")
-  .bases("BinExprBase")
-  .aliases("Node", "BinExpr", "Expr")
-  .build("left", "right", "operator")
-  .field("operator", "or");
-
-def("Not")
-  .bases("UnaryExprBase")
-  .aliases("Node", "UnaryExpr", "Expr")
-  .build("operator")
-  .field("operator", "not");
-
-def("Neg")
-  .bases("UnaryExprBase")
-  .aliases("Node", "UnaryExpr", "Expr")
-  .build("operator")
-  .field("operator", "-");
-
-def("Pos")
-  .bases("UnaryExprBase")
-  .aliases("Node", "UnaryExpr", "Expr")
-  .build("operator")
-  .field("operator", "+");
+defUnaryExpr("Not", "not");
+defUnaryExpr("Neg", "-");
+defUnaryExpr("Pos", "+");
 
 def("EnvironmentAttribute")
   .bases("BaseNode")
@@ -400,9 +380,17 @@ def("ImportedName")
   .build("importname")
   .field("importname", String);
 
-def("InternalName").bases("BaseNode").aliases("Node", "Expr").build("name").field("name", String);
+def("InternalName")
+  .bases("BaseNode")
+  .aliases("Node", "Expr")
+  .build("name")
+  .field("name", String);
 
-def("MarkSafe").bases("BaseNode").aliases("Node", "Expr").build("expr").field("expr", def("Expr"));
+def("MarkSafe")
+  .bases("BaseNode")
+  .aliases("Node", "Expr")
+  .build("expr")
+  .field("expr", def("Expr"));
 
 def("MarkSafeIfAutoescape")
   .bases("BaseNode")
@@ -412,7 +400,10 @@ def("MarkSafeIfAutoescape")
 
 def("ContextReference").bases("BaseNode").aliases("Node", "Expr").build();
 
-def("DerivedContextReference").bases("BaseNode").aliases("Node", "Expr").build();
+def("DerivedContextReference")
+  .bases("BaseNode")
+  .aliases("Node", "Expr")
+  .build();
 
 def("Continue").bases("BaseNode").aliases("Node", "Stmt").build();
 

@@ -6,6 +6,8 @@ export namespace types {
     | Output
     | Extends
     | For
+    | AsyncEach
+    | AsyncAll
     | If
     | Name
     | Macro
@@ -19,6 +21,7 @@ export namespace types {
     | With
     | Block
     | Include
+    | Import
     | FromImport
     | ExprStmt
     | Assign
@@ -66,6 +69,8 @@ export namespace types {
     | Output
     | Extends
     | For
+    | AsyncEach
+    | AsyncAll
     | If
     | Macro
     | CallBlock
@@ -73,6 +78,7 @@ export namespace types {
     | With
     | Block
     | Include
+    | Import
     | FromImport
     | ExprStmt
     | Assign
@@ -83,6 +89,7 @@ export namespace types {
     | OverlayScope
     | EvalContextModifier
     | ScopedEvalContextModifier;
+  export type Loop = For | AsyncEach | AsyncAll;
   export type Expr =
     | Name
     | Call
@@ -130,14 +137,12 @@ export namespace types {
   }
   export interface SourceLocation {
     start: Position;
-    end: Position;
+    end?: Position | null;
     source?: string | null;
-  }
-  export interface Printable {
-    loc?: SourceLocation | null;
   }
   export interface BaseNode {
     type: string;
+    loc?: SourceLocation | null;
   }
   export interface Template extends BaseNode {
     type: "Template";
@@ -151,14 +156,22 @@ export namespace types {
     type: "Extends";
     template: Expr;
   }
-  export interface For extends BaseNode {
-    type: "For";
+  export interface ForBase extends BaseNode {
     target: Node;
     iter: Node;
     body: Node[];
     else_: Node[];
     test?: Node | null;
     recursive?: boolean;
+  }
+  export interface For extends ForBase {
+    type: "For";
+  }
+  export interface AsyncEach extends ForBase {
+    type: "AsyncEach";
+  }
+  export interface AsyncAll extends ForBase {
+    type: "AsyncAll";
   }
   export interface If extends BaseNode {
     type: "If";
@@ -205,7 +218,7 @@ export namespace types {
     value: Expr;
   }
   export interface FilterTestBase extends BaseNode {
-    node: Expr;
+    node: Expr | null;
     name: string;
     args: Expr[];
     kwargs: Pair[];
@@ -214,10 +227,10 @@ export namespace types {
   }
   export interface Filter extends FilterTestBase {
     type: "Filter";
-    node: Expr | null;
   }
   export interface Test extends FilterTestBase {
     type: "Test";
+    node: Expr;
   }
   export interface FilterBlock extends BaseNode {
     type: "FilterBlock";
@@ -242,6 +255,12 @@ export namespace types {
     template: Expr;
     withContext: boolean;
     ignoreMissing: boolean;
+  }
+  export interface Import extends BaseNode {
+    type: "Import";
+    template: Expr;
+    target: string;
+    withContext: boolean;
   }
   export interface FromImport extends BaseNode {
     type: "FromImport";
@@ -270,6 +289,7 @@ export namespace types {
     operator: string;
   }
   export interface UnaryExprBase extends BaseNode {
+    node: Expr;
     operator: string;
   }
   export interface NSRef extends BaseNode {
@@ -439,70 +459,8 @@ export namespace types {
     options: Keyword[];
     body: Node[];
   }
-  export type ASTNode =
-    | Template
-    | Output
-    | Extends
-    | For
-    | If
-    | Name
-    | Macro
-    | Keyword
-    | Call
-    | CallBlock
-    | Pair
-    | Filter
-    | Test
-    | FilterBlock
-    | With
-    | Block
-    | Include
-    | FromImport
-    | ExprStmt
-    | Assign
-    | AssignBlock
-    | NSRef
-    | Const
-    | TemplateData
-    | Tuple
-    | List
-    | Dict
-    | CondExpr
-    | Getitem
-    | Getattr
-    | Slice
-    | Concat
-    | Compare
-    | Operand
-    | Mul
-    | Div
-    | FloorDiv
-    | Add
-    | Sub
-    | Mod
-    | Pow
-    | And
-    | Or
-    | Not
-    | Neg
-    | Pos
-    | EnvironmentAttribute
-    | ExtensionAttribute
-    | ImportedName
-    | InternalName
-    | MarkSafe
-    | MarkSafeIfAutoescape
-    | ContextReference
-    | DerivedContextReference
-    | Continue
-    | Break
-    | Scope
-    | OverlayScope
-    | EvalContextModifier
-    | ScopedEvalContextModifier;
   export let Position: Type<Position>;
   export let SourceLocation: Type<SourceLocation>;
-  export let Printable: Type<Printable>;
   export let Node: Type<Node>;
   export let BaseNode: Type<BaseNode>;
   export let Stmt: Type<Stmt>;
@@ -511,7 +469,11 @@ export namespace types {
   export let Template: Type<Template>;
   export let Output: Type<Output>;
   export let Extends: Type<Extends>;
+  export let Loop: Type<Loop>;
+  export let ForBase: Type<ForBase>;
   export let For: Type<For>;
+  export let AsyncEach: Type<AsyncEach>;
+  export let AsyncAll: Type<AsyncAll>;
   export let If: Type<If>;
   export let Name: Type<Name>;
   export let Macro: Type<Macro>;
@@ -526,6 +488,7 @@ export namespace types {
   export let With: Type<With>;
   export let Block: Type<Block>;
   export let Include: Type<Include>;
+  export let Import: Type<Import>;
   export let FromImport: Type<FromImport>;
   export let ExprStmt: Type<ExprStmt>;
   export let Assign: Type<Assign>;
@@ -576,78 +539,82 @@ export namespace types {
   export let ScopedEvalContextModifier: Type<ScopedEvalContextModifier>;
 }
 export interface NunjucksTypes {
-  Position: Type<t.Position>;
-  SourceLocation: Type<t.SourceLocation>;
-  Printable: Type<t.Printable>;
-  Node: Type<t.Node>;
-  BaseNode: Type<t.BaseNode>;
-  Stmt: Type<t.Stmt>;
-  Helper: Type<t.Helper>;
-  Expr: Type<t.Expr>;
-  Template: Type<t.Template>;
-  Output: Type<t.Output>;
-  Extends: Type<t.Extends>;
-  For: Type<t.For>;
-  If: Type<t.If>;
-  Name: Type<t.Name>;
-  Macro: Type<t.Macro>;
-  Keyword: Type<t.Keyword>;
-  Call: Type<t.Call>;
-  CallBlock: Type<t.CallBlock>;
-  Pair: Type<t.Pair>;
-  FilterTestBase: Type<t.FilterTestBase>;
-  Filter: Type<t.Filter>;
-  Test: Type<t.Test>;
-  FilterBlock: Type<t.FilterBlock>;
-  With: Type<t.With>;
-  Block: Type<t.Block>;
-  Include: Type<t.Include>;
-  FromImport: Type<t.FromImport>;
-  ExprStmt: Type<t.ExprStmt>;
-  Assign: Type<t.Assign>;
-  AssignBlock: Type<t.AssignBlock>;
-  BinExpr: Type<t.BinExpr>;
-  BinExprBase: Type<t.BinExprBase>;
-  UnaryExpr: Type<t.UnaryExpr>;
-  UnaryExprBase: Type<t.UnaryExprBase>;
-  NSRef: Type<t.NSRef>;
-  Literal: Type<t.Literal>;
-  Const: Type<t.Const>;
-  TemplateData: Type<t.TemplateData>;
-  Tuple: Type<t.Tuple>;
-  List: Type<t.List>;
-  Dict: Type<t.Dict>;
-  CondExpr: Type<t.CondExpr>;
-  Getitem: Type<t.Getitem>;
-  Getattr: Type<t.Getattr>;
-  Slice: Type<t.Slice>;
-  Concat: Type<t.Concat>;
-  Compare: Type<t.Compare>;
-  Operand: Type<t.Operand>;
-  Mul: Type<t.Mul>;
-  Div: Type<t.Div>;
-  FloorDiv: Type<t.FloorDiv>;
-  Add: Type<t.Add>;
-  Sub: Type<t.Sub>;
-  Mod: Type<t.Mod>;
-  Pow: Type<t.Pow>;
-  And: Type<t.And>;
-  Or: Type<t.Or>;
-  Not: Type<t.Not>;
-  Neg: Type<t.Neg>;
-  Pos: Type<t.Pos>;
-  EnvironmentAttribute: Type<t.EnvironmentAttribute>;
-  ExtensionAttribute: Type<t.ExtensionAttribute>;
-  ImportedName: Type<t.ImportedName>;
-  InternalName: Type<t.InternalName>;
-  MarkSafe: Type<t.MarkSafe>;
-  MarkSafeIfAutoescape: Type<t.MarkSafeIfAutoescape>;
-  ContextReference: Type<t.ContextReference>;
-  DerivedContextReference: Type<t.DerivedContextReference>;
-  Continue: Type<t.Continue>;
-  Break: Type<t.Break>;
-  Scope: Type<t.Scope>;
-  OverlayScope: Type<t.OverlayScope>;
-  EvalContextModifier: Type<t.EvalContextModifier>;
-  ScopedEvalContextModifier: Type<t.ScopedEvalContextModifier>;
+  Position: Type<types.Position>;
+  SourceLocation: Type<types.SourceLocation>;
+  Node: Type<types.Node>;
+  BaseNode: Type<types.BaseNode>;
+  Stmt: Type<types.Stmt>;
+  Helper: Type<types.Helper>;
+  Expr: Type<types.Expr>;
+  Template: Type<types.Template>;
+  Output: Type<types.Output>;
+  Extends: Type<types.Extends>;
+  Loop: Type<types.Loop>;
+  ForBase: Type<types.ForBase>;
+  For: Type<types.For>;
+  AsyncEach: Type<types.AsyncEach>;
+  AsyncAll: Type<types.AsyncAll>;
+  If: Type<types.If>;
+  Name: Type<types.Name>;
+  Macro: Type<types.Macro>;
+  Keyword: Type<types.Keyword>;
+  Call: Type<types.Call>;
+  CallBlock: Type<types.CallBlock>;
+  Pair: Type<types.Pair>;
+  FilterTestBase: Type<types.FilterTestBase>;
+  Filter: Type<types.Filter>;
+  Test: Type<types.Test>;
+  FilterBlock: Type<types.FilterBlock>;
+  With: Type<types.With>;
+  Block: Type<types.Block>;
+  Include: Type<types.Include>;
+  Import: Type<types.Import>;
+  FromImport: Type<types.FromImport>;
+  ExprStmt: Type<types.ExprStmt>;
+  Assign: Type<types.Assign>;
+  AssignBlock: Type<types.AssignBlock>;
+  BinExpr: Type<types.BinExpr>;
+  BinExprBase: Type<types.BinExprBase>;
+  UnaryExpr: Type<types.UnaryExpr>;
+  UnaryExprBase: Type<types.UnaryExprBase>;
+  NSRef: Type<types.NSRef>;
+  Literal: Type<types.Literal>;
+  Const: Type<types.Const>;
+  TemplateData: Type<types.TemplateData>;
+  Tuple: Type<types.Tuple>;
+  List: Type<types.List>;
+  Dict: Type<types.Dict>;
+  CondExpr: Type<types.CondExpr>;
+  Getitem: Type<types.Getitem>;
+  Getattr: Type<types.Getattr>;
+  Slice: Type<types.Slice>;
+  Concat: Type<types.Concat>;
+  Compare: Type<types.Compare>;
+  Operand: Type<types.Operand>;
+  Mul: Type<types.Mul>;
+  Div: Type<types.Div>;
+  FloorDiv: Type<types.FloorDiv>;
+  Add: Type<types.Add>;
+  Sub: Type<types.Sub>;
+  Mod: Type<types.Mod>;
+  Pow: Type<types.Pow>;
+  And: Type<types.And>;
+  Or: Type<types.Or>;
+  Not: Type<types.Not>;
+  Neg: Type<types.Neg>;
+  Pos: Type<types.Pos>;
+  EnvironmentAttribute: Type<types.EnvironmentAttribute>;
+  ExtensionAttribute: Type<types.ExtensionAttribute>;
+  ImportedName: Type<types.ImportedName>;
+  InternalName: Type<types.InternalName>;
+  MarkSafe: Type<types.MarkSafe>;
+  MarkSafeIfAutoescape: Type<types.MarkSafeIfAutoescape>;
+  ContextReference: Type<types.ContextReference>;
+  DerivedContextReference: Type<types.DerivedContextReference>;
+  Continue: Type<types.Continue>;
+  Break: Type<types.Break>;
+  Scope: Type<types.Scope>;
+  OverlayScope: Type<types.OverlayScope>;
+  EvalContextModifier: Type<types.EvalContextModifier>;
+  ScopedEvalContextModifier: Type<types.ScopedEvalContextModifier>;
 }
