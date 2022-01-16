@@ -921,14 +921,14 @@ export class Parser {
         name += `.${this.expect(lexer.TOKEN_NAME).value}`;
       }
       let args: t.Expr[] = [];
-      let kwargs: t.Keyword[] = [];
+      let kwargs: t.Pair[] = [];
       let dynArgs: t.Expr | null = null;
       let dynKwargs: t.Expr | null = null;
 
       if (this.peekToken().type === lexer.TOKEN_LPAREN) {
         const callArgs = this.parseCallArgs();
         args = callArgs.args;
-        kwargs = callArgs.kwargs;
+        kwargs = callArgs.kwargs.map((k) => b.Pair(k.key, k.value));
         dynArgs = callArgs.dynArgs;
         dynKwargs = callArgs.dynKwargs;
       }
@@ -940,7 +940,7 @@ export class Parser {
         dynArgs,
         dynKwargs,
         loc: this.tokToLoc(token, this.current),
-      });
+      }) as T;
       startInline = false;
     }
     return node;
@@ -966,14 +966,14 @@ export class Parser {
     }
     const name = nameParts.join(".");
     let args: t.Expr[] = [];
-    let kwargs: t.Keyword[] = [];
+    let kwargs: t.Pair[] = [];
     let dynArgs: t.Expr | null = null;
     let dynKwargs: t.Expr | null = null;
     const peek = this.peekToken();
     if (peek.type === lexer.TOKEN_LPAREN) {
       const callArgs = this.parseCallArgs();
       args = callArgs.args;
-      kwargs = callArgs.kwargs;
+      kwargs = callArgs.kwargs.map((t) => b.Pair(t.key, t.value));
       dynArgs = callArgs.dynArgs;
       dynKwargs = callArgs.dynKwargs;
     } else if (
@@ -1099,11 +1099,13 @@ export class Parser {
   parseAutoescape(): t.Scope {
     const startTok = this.nextToken();
     const peek = this.peekToken();
-    const options: t.Keyword[] = b.keyword.from({
-      key: "autoescape",
-      value: this.parseExpression(),
-      loc: this.tokToLoc(peek, this.current),
-    });
+    const options: t.Keyword[] = [
+      b.keyword.from({
+        key: "autoescape",
+        value: this.parseExpression(),
+        loc: this.tokToLoc(peek, this.current),
+      }),
+    ];
     const body = this.parseStatements(["name:endautoescape"], {
       dropNeedle: true,
     });
@@ -1318,6 +1320,7 @@ export class Parser {
   parseFilterBlock(): t.FilterBlock {
     const token = this.nextToken();
     const filter = this.parseFilter(null, { startInline: true });
+    t.Filter.assert(filter);
     const body = this.parseStatements(["name:endfilter"], { dropNeedle: true });
     return b.filterBlock.from({
       filter,
@@ -1459,7 +1462,7 @@ export class Parser {
 
   subparse(endTokens?: string[]): t.Node[] {
     const body: t.Node[] = [];
-    let dataBuffer: t.Node[] = [];
+    let dataBuffer: t.Expr[] = [];
     const addData = dataBuffer.push.bind(dataBuffer);
     if (endTokens && endTokens.length) {
       this._endTokenStack.push(endTokens);

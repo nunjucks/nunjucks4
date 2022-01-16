@@ -1,6 +1,6 @@
 // Node = t.TypeVar(Node, bound=Node)
 // import deepcopy from "lodash.deepcopy";
-import { types } from "./gen/types";
+import * as types from "./gen/types";
 import {
   njkTypes,
   Type,
@@ -24,8 +24,8 @@ import {
   finalize,
 } from "./types";
 
-import { Path } from "./path";
-import { PathVisitor } from "./path-visitor";
+import { NodePath as Path } from "./node-path";
+import { PathVisitor } from "./node-path-visitor";
 
 Object.assign(types, njkTypes);
 
