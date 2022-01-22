@@ -16,11 +16,17 @@ def("BaseNode")
   .field("type", String)
   .field("loc", or(def("SourceLocation"), null), defaults["null"], true);
 
-def("Stmt").abstract().bases("BaseNode");
+def("Stmt").abstract().aliases("Node").bases("BaseNode");
 
-def("Helper").abstract().bases("BaseNode");
+def("Helper").abstract().aliases("Node").bases("BaseNode");
 
-def("Expr").abstract().bases("BaseNode");
+def("Expr").abstract().aliases("Node").bases("BaseNode");
+
+def("Orphan")
+  .bases("BaseNode")
+  .aliases("Node")
+  .build("root")
+  .field("root", def("Node"));
 
 def("Template")
   .bases("BaseNode")
@@ -40,7 +46,7 @@ def("Extends")
   .build("template")
   .field("template", def("Expr"));
 
-def("Loop").abstract();
+def("Loop").abstract().aliases("Node").bases("BaseNode");
 
 def("ForBase")
   .bases("BaseNode")
@@ -218,7 +224,7 @@ def("AssignBlock")
   .field("filter", or(def("Filter"), null), defaults["null"])
   .field("body", [def("Node")]);
 
-def("BinExpr").abstract().bases("BaseNode");
+def("BinExpr").abstract().bases("BaseNode").aliases("Node");
 
 def("BinExprBase")
   .bases("BaseNode")
@@ -226,7 +232,7 @@ def("BinExprBase")
   .field("right", def("Expr"))
   .field("operator", String);
 
-def("UnaryExpr").abstract().bases("BaseNode");
+def("UnaryExpr").abstract().bases("BaseNode").aliases("Node");
 
 // TODO as_const
 def("UnaryExprBase")
@@ -242,7 +248,7 @@ def("NSRef")
   .field("attr", String)
   .canAssign(() => true);
 
-def("Literal").abstract().bases("BaseNode");
+def("Literal").abstract().bases("BaseNode").aliases("Node");
 
 // TODO: from_untrusted
 def("Const")

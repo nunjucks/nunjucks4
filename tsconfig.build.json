@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+    "outDir": "dist",
     "target": "es5",
     "allowJs": true,
     "noImplicitAny": true,
@@ -8,7 +9,7 @@
     "downlevelIteration": true,
     "strictNullChecks": true,
     "forceConsistentCasingInFileNames": true,
-    "noEmit": false,
+    "noEmit": true,
     "esModuleInterop": true,
     "module": "commonjs",
     "moduleResolution": "node",
@@ -21,5 +22,5 @@
     "sourceMap": true,
     "types": ["node"]
   },
-  "exclude": ["node_modules", "dist"]
+  "exclude": ["node_modules", "dist", "./dist/**/*"]
 }

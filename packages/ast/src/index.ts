@@ -24,8 +24,8 @@ import {
   finalize,
 } from "./types";
 
-import { NodePath as Path } from "./node-path";
-import { PathVisitor } from "./node-path-visitor";
+import { Path } from "./path";
+import { PathVisitor } from "./path-visitor";
 
 Object.assign(types, njkTypes);
 

@@ -5,7 +5,8 @@
     "baseUrl": ".",
     "paths": {
       "nunjucks/*": ["packages/core/src/*"],
-      "@nunjucks/*": ["packages/*/src"]
+      "@nunjucks/*": ["packages/*/src"],
+      "@nunjucks/ast": ["packages/ast/src/index"]
     }
   }
 }

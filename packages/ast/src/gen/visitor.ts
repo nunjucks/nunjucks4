@@ -4,22 +4,15 @@ import { Context } from "../path-visitor";
 import type * as types from "./types";
 export interface Visitor<M = Record<string, any>> {
   reset?(this: Context<M>, path: Path, state: M): any;
-  visitPosition?(this: Context<M>, path: Path<types.Position>, state: M): any;
-  visitSourceLocation?(
-    this: Context<M>,
-    path: Path<types.SourceLocation>,
-    state: M
-  ): any;
   visitNode?(this: Context<M>, path: Path<types.Node>, state: M): any;
-  visitBaseNode?(this: Context<M>, path: Path<types.BaseNode>, state: M): any;
   visitStmt?(this: Context<M>, path: Path<types.Stmt>, state: M): any;
   visitHelper?(this: Context<M>, path: Path<types.Helper>, state: M): any;
   visitExpr?(this: Context<M>, path: Path<types.Expr>, state: M): any;
+  visitOrphan?(this: Context<M>, path: Path<types.Orphan>, state: M): any;
   visitTemplate?(this: Context<M>, path: Path<types.Template>, state: M): any;
   visitOutput?(this: Context<M>, path: Path<types.Output>, state: M): any;
   visitExtends?(this: Context<M>, path: Path<types.Extends>, state: M): any;
   visitLoop?(this: Context<M>, path: Path<types.Loop>, state: M): any;
-  visitForBase?(this: Context<M>, path: Path<types.ForBase>, state: M): any;
   visitFor?(this: Context<M>, path: Path<types.For>, state: M): any;
   visitAsyncEach?(this: Context<M>, path: Path<types.AsyncEach>, state: M): any;
   visitAsyncAll?(this: Context<M>, path: Path<types.AsyncAll>, state: M): any;
@@ -30,11 +23,6 @@ export interface Visitor<M = Record<string, any>> {
   visitCall?(this: Context<M>, path: Path<types.Call>, state: M): any;
   visitCallBlock?(this: Context<M>, path: Path<types.CallBlock>, state: M): any;
   visitPair?(this: Context<M>, path: Path<types.Pair>, state: M): any;
-  visitFilterTestBase?(
-    this: Context<M>,
-    path: Path<types.FilterTestBase>,
-    state: M
-  ): any;
   visitFilter?(this: Context<M>, path: Path<types.Filter>, state: M): any;
   visitTest?(this: Context<M>, path: Path<types.Test>, state: M): any;
   visitFilterBlock?(
@@ -59,17 +47,7 @@ export interface Visitor<M = Record<string, any>> {
     state: M
   ): any;
   visitBinExpr?(this: Context<M>, path: Path<types.BinExpr>, state: M): any;
-  visitBinExprBase?(
-    this: Context<M>,
-    path: Path<types.BinExprBase>,
-    state: M
-  ): any;
   visitUnaryExpr?(this: Context<M>, path: Path<types.UnaryExpr>, state: M): any;
-  visitUnaryExprBase?(
-    this: Context<M>,
-    path: Path<types.UnaryExprBase>,
-    state: M
-  ): any;
   visitNSRef?(this: Context<M>, path: Path<types.NSRef>, state: M): any;
   visitLiteral?(this: Context<M>, path: Path<types.Literal>, state: M): any;
   visitConst?(this: Context<M>, path: Path<types.Const>, state: M): any;

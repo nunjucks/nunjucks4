@@ -1,12 +1,13 @@
-import type { Omit } from "./types";
 import {
   builtInTypes,
   getFieldNames,
   getFieldValue,
   computeSupertypeLookupTable,
+  Omit,
+  // ASTNode,
 } from "./types";
-import { types } from "./index";
-import { Path } from "./path";
+import * as n from "./gen/types";
+import { NodePath } from "./node-path";
 
 const hasOwn = Object.prototype.hasOwnProperty;
 
@@ -14,18 +15,13 @@ export interface PathVisitor<S = Record<string, any>> {
   _reusableContextStack: any;
   state: S;
   _methodNameTable: any;
-  _shouldVisitComments: any;
   Context: any;
   _visiting: any;
-  _changeReported: boolean;
+  _changeReported: any;
   _abortRequested: boolean;
-  visit<T = S>(
-    nodeOrPath: types.Node | Path,
-    state?: T
-  ): any;
-  reset(path: Path, state?: S): void;
-  visitWithoutReset(path: Path, state?: S): any;
-  // AbortRequest: typeof AbortRequest;
+  visit<T = S>(nodeOrPath: n.Node | NodePath, state?: T): any;
+  reset(path: NodePath, state?: S): void;
+  visitWithoutReset(path: NodePath, state?: S): any;
   abort(): void;
   visitor: any;
   acquireContext(path: any): any;
@@ -39,7 +35,7 @@ export interface PathVisitorStatics {
     methods?: import("./gen/visitor").Visitor<S>
   ): Visitor<S>;
   visit<S = Record<string, any>>(
-    node: types.Node | Path,
+    node: n.Node | NodePath,
     methods?: import("./gen/visitor").Visitor<S>
   ): any;
 }
@@ -48,14 +44,14 @@ export interface PathVisitorConstructor<S> extends PathVisitorStatics {
   new (): PathVisitor<S>;
 }
 
-export type Visitor<S> = PathVisitor<S>;
+export type Visitor<S = Record<string, any>> = PathVisitor<S>;
 
 export interface VisitorConstructor<S> extends PathVisitorStatics {
   new (): Visitor<S>;
 }
 
 export interface VisitorMethods<S> {
-  [visitorMethod: string]: (path: Path, state?: S) => any;
+  [visitorMethod: string]: (path: NodePath, state?: S) => any;
 }
 
 export interface SharedContextMethods<S> {
@@ -71,7 +67,7 @@ export interface SharedContextMethods<S> {
   abort(): void;
 }
 
-export interface Context<S>
+export interface Context<S = Record<string, any>>
   extends Omit<PathVisitor<S>, "visit" | "reset" | "reportChanged" | "abort">,
     SharedContextMethods<S> {}
 
@@ -84,7 +80,9 @@ const assertIsFunction: typeof isFunction["assert"] =
 function computeMethodNameTable(visitor: any) {
   const typeNames = Object.create(null);
 
-  for (const methodName in visitor) {
+  let methodName;
+
+  for (methodName in visitor) {
     if (/^visit[A-Z]/.test(methodName)) {
       typeNames[methodName.slice("visit".length)] = true;
     }
@@ -97,12 +95,12 @@ function computeMethodNameTable(visitor: any) {
   const typeNameCount = typeNameKeys.length;
   for (let i = 0; i < typeNameCount; ++i) {
     const typeName = typeNameKeys[i];
-    const methodName = "visit" + supertypeTable[typeName];
+    methodName = "visit" + supertypeTable[typeName];
     if (isFunction.check(visitor[methodName])) {
       methodNameTable[typeName] = methodName;
     }
   }
-
+  console.log(methodNameTable);
   return methodNameTable;
 }
 
@@ -129,11 +127,8 @@ export class PathVisitor<S = Record<string, any>> {
     this._reusableContextStack = [];
 
     this._methodNameTable = computeMethodNameTable(this);
-    this._shouldVisitComments =
-      hasOwn.call(this._methodNameTable, "Block") ||
-      hasOwn.call(this._methodNameTable, "Line");
 
-    this.Context = makeContextConstructor<S>(this);
+    this.Context = makeContextConstructor(this);
 
     // State reset every time PathVisitor.prototype.visit is called.
     this._visiting = false;
@@ -146,7 +141,7 @@ export class PathVisitor<S = Record<string, any>> {
   }
 
   static fromMethodsObject<M = Record<string, any>>(
-    methods?: import("./gen/visitor").Visitor<M>
+    methods: import("./gen/visitor").Visitor<M>
   ): Visitor<M> {
     if (methods instanceof PathVisitor) {
       return methods;
@@ -177,17 +172,17 @@ export class PathVisitor<S = Record<string, any>> {
   }
 
   static visit<M = Record<string, any>>(
-    nodeOrPath: types.Node | Path,
+    nodeOrPath: n.Node | NodePath,
     methods: import("./gen/visitor").Visitor<M>,
     state?: M
   ): any {
-    return PathVisitor.fromMethodsObject<M>(methods).visit(nodeOrPath, state || {});
+    return PathVisitor.fromMethodsObject<M>(methods).visit(
+      nodeOrPath,
+      state || {}
+    );
   }
 
-  visit(
-    nodeOrPath: types.Node | Path,
-    state?: S
-  ): any {
+  visit(nodeOrPath: n.Node | NodePath, state?: S): any {
     if (this._visiting) {
       throw new Error(
         "Recursively calling visitor.visit(path) resets visitor state. " +
@@ -204,10 +199,10 @@ export class PathVisitor<S = Record<string, any>> {
     this._changeReported = false;
     this._abortRequested = false;
 
-    let path: Path;
+    let path: NodePath;
 
-    if (!(nodeOrPath instanceof Path)) {
-      path = new Path({ root: nodeOrPath }, "root").get("root");
+    if (!(nodeOrPath instanceof NodePath)) {
+      path = new NodePath({ root: nodeOrPath }).get("root");
     } else {
       path = nodeOrPath;
     }
@@ -221,6 +216,14 @@ export class PathVisitor<S = Record<string, any>> {
     } catch (e) {
       if (e instanceof this.AbortRequest) {
         if (this._abortRequested) {
+          // If this.visitWithoutReset threw an exception and
+          // this._abortRequested was set to true, return the root of
+          // the AST instead of letting the exception propagate, so that
+          // client code does not have to provide a try-catch block to
+          // intercept the AbortRequest exception.  Other kinds of
+          // exceptions will propagate without being intercepted and
+          // rethrown by a catch block, so their stacks will accurately
+          // reflect the original throwing context.
           root = path.value;
         }
       } else {
@@ -247,11 +250,12 @@ export class PathVisitor<S = Record<string, any>> {
     throw request;
   }
 
-  reset(path: Path, state: S) {
+  // eslint-disable-next-line
+  reset(path: NodePath, state: S): void {
     // Empty stub; may be reassigned or overridden by subclasses.
   }
 
-  visitWithoutReset(path: Path, state?: S) {
+  visitWithoutReset(path: NodePath, state?: S): any {
     if (this instanceof this.Context) {
       // Since this.Context.prototype === this, there's a chance we
       // might accidentally call context.visitWithoutReset. If that
@@ -259,7 +263,7 @@ export class PathVisitor<S = Record<string, any>> {
       return this.visitor.visitWithoutReset(path, state || this.state);
     }
 
-    if (!(path instanceof Path)) {
+    if (!(path instanceof NodePath)) {
       throw new Error("");
     }
 
@@ -273,6 +277,7 @@ export class PathVisitor<S = Record<string, any>> {
 
     if (methodName) {
       const context = this.acquireContext(path);
+      context.state = this.state;
       try {
         return context.invokeVisitorMethod(methodName);
       } finally {
@@ -285,7 +290,7 @@ export class PathVisitor<S = Record<string, any>> {
     }
   }
 
-  acquireContext(path: Path): Context<S> {
+  acquireContext(path: NodePath): Context<S> {
     if (this._reusableContextStack.length === 0) {
       return new this.Context(path);
     }
@@ -309,8 +314,12 @@ export class PathVisitor<S = Record<string, any>> {
   }
 }
 
-function visitChildren<S = Record<string, any>>(path: any, visitor: any, state?: S) {
-  if (!(path instanceof Path)) {
+function visitChildren<S = Record<string, any>>(
+  path: NodePath,
+  visitor: PathVisitor<S>,
+  state?: S
+): any {
+  if (!(path instanceof NodePath)) {
     throw new Error("");
   }
   if (!(visitor instanceof PathVisitor)) {
@@ -321,22 +330,10 @@ function visitChildren<S = Record<string, any>>(path: any, visitor: any, state?:
 
   if (isArray.check(value)) {
     path.each((p) => visitor.visitWithoutReset(p, state));
-    // path.each(visitor.visitWithoutReset, visitor);
   } else if (!isObject.check(value)) {
     // No children to visit.
   } else {
     const childNames = getFieldNames(value);
-
-    // The .comments field of the Node type is hidden, so we only
-    // visit it if the visitor defines visitBlock or visitLine, and
-    // value.comments is defined.
-    if (
-      visitor._shouldVisitComments &&
-      value.comments &&
-      childNames.indexOf("comments") < 0
-    ) {
-      childNames.push("comments");
-    }
 
     const childCount = childNames.length;
     const childPaths = [];
@@ -358,14 +355,14 @@ function visitChildren<S = Record<string, any>>(path: any, visitor: any, state?:
 }
 
 function makeContextConstructor<S>(visitor: PathVisitor<S>): typeof Context {
-  function Context(this: Context<S>, path: Path) {
+  function Context(this: Context<S>, path: NodePath) {
     if (!(this instanceof Context)) {
       throw new Error("");
     }
     if (!(this instanceof PathVisitor)) {
       throw new Error("");
     }
-    if (!(path instanceof Path)) {
+    if (!(path instanceof NodePath)) {
       throw new Error("");
     }
 
@@ -378,6 +375,7 @@ function makeContextConstructor<S>(visitor: PathVisitor<S>): typeof Context {
 
     this.currentPath = path;
     this.needToCallTraverse = true;
+    this.state = {} as S;
 
     Object.seal(this);
   }
@@ -399,13 +397,14 @@ function makeContextConstructor<S>(visitor: PathVisitor<S>): typeof Context {
 // Every PathVisitor has a different this.Context constructor and
 // this.Context.prototype object, but those prototypes can all use the
 // same reset, invokeVisitorMethod, and traverse function objects.
-const sharedContextProtoMethods: SharedContextMethods<any> = Object.create(null);
+const sharedContextProtoMethods: SharedContextMethods<any> =
+  Object.create(null);
 
 sharedContextProtoMethods.reset = function reset(path, state?: any) {
   if (!(this instanceof this.Context)) {
     throw new Error("");
   }
-  if (!(path instanceof Path)) {
+  if (!(path instanceof NodePath)) {
     throw new Error("");
   }
 
@@ -419,14 +418,11 @@ sharedContextProtoMethods.reset = function reset(path, state?: any) {
 sharedContextProtoMethods.invokeVisitorMethod = function invokeVisitorMethod(
   methodName
 ) {
-  if (!(this instanceof this.Context)) {
-    throw new Error("");
-  }
-  if (!(this.currentPath instanceof Path)) {
-    throw new Error("");
-  }
-
-  const result = this.visitor[methodName].call(this, this.currentPath, this.state);
+  const result = this.visitor[methodName].call(
+    this,
+    this.currentPath,
+    this.state
+  );
 
   if (result === false) {
     // Visitor methods return false to indicate that they have handled
@@ -455,17 +451,11 @@ sharedContextProtoMethods.invokeVisitorMethod = function invokeVisitorMethod(
   return path && path.value;
 };
 
-sharedContextProtoMethods.traverse = function traverse(path, newVisitor, state) {
-  if (!(this instanceof this.Context)) {
-    throw new Error("");
-  }
-  if (!(path instanceof Path)) {
-    throw new Error("");
-  }
-  if (!(this.currentPath instanceof Path)) {
-    throw new Error("");
-  }
-
+sharedContextProtoMethods.traverse = function traverse(
+  path,
+  newVisitor,
+  state
+) {
   this.needToCallTraverse = false;
 
   return visitChildren(
@@ -476,16 +466,6 @@ sharedContextProtoMethods.traverse = function traverse(path, newVisitor, state) 
 };
 
 sharedContextProtoMethods.visit = function visit(path, newVisitor, state) {
-  if (!(this instanceof this.Context)) {
-    throw new Error("");
-  }
-  if (!(path instanceof Path)) {
-    throw new Error("");
-  }
-  if (!(this.currentPath instanceof Path)) {
-    throw new Error("");
-  }
-
   this.needToCallTraverse = false;
 
   return PathVisitor.fromMethodsObject(
@@ -493,11 +473,11 @@ sharedContextProtoMethods.visit = function visit(path, newVisitor, state) {
   ).visitWithoutReset(path, state || this.state);
 };
 
-sharedContextProtoMethods.reportChanged = function reportChanged(): void {
+sharedContextProtoMethods.reportChanged = function reportChanged() {
   this.visitor.reportChanged();
 };
 
-sharedContextProtoMethods.abort = function abort(): void {
+sharedContextProtoMethods.abort = function abort() {
   this.needToCallTraverse = false;
   this.visitor.abort();
 };

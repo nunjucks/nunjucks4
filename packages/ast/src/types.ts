@@ -54,7 +54,7 @@ class ArrayType<T> extends BaseType<T> {
   }
 }
 
-class IdentityType<T> extends BaseType<T> {
+export class IdentityType<T> extends BaseType<T> {
   readonly kind: "IdentityType" = "IdentityType";
 
   constructor(public readonly value: T) {
@@ -973,6 +973,7 @@ function populateSupertypeList(typeName: any, list: any) {
 
     // Enqueue the base names of this type.
     list.push(...d.baseNames);
+    list.push(...d.aliasNames);
   }
 
   // Compaction loop to remove array holes.
@@ -1006,3 +1007,5 @@ export function finalize(): void {
     defCache[name].finalize();
   });
 }
+
+export type { ArrayType, OrType, PredicateType };

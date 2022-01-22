@@ -334,45 +334,54 @@ const out = [
               typeAnnotation: b.tsTypeAnnotation(b.tsAnyKeyword()),
               optional: true,
             }),
-            ...Object.keys(t).map((typeName) => {
-              return b.tsMethodSignature.from({
-                key: b.identifier(`visit${typeName}`),
-                parameters: [
-                  b.identifier.from({
-                    name: "this",
-                    typeAnnotation: b.tsTypeAnnotation(
-                      b.tsTypeReference(
-                        b.identifier("Context"),
-                        b.tsTypeParameterInstantiation([
-                          b.tsTypeReference(b.identifier("M")),
-                        ])
-                      )
-                    ),
-                  }),
-                  b.identifier.from({
-                    name: "path",
-                    typeAnnotation: b.tsTypeAnnotation(
-                      b.tsTypeReference(
-                        b.identifier("Path"),
-                        b.tsTypeParameterInstantiation([
-                          b.tsTypeReference(
-                            b.tsQualifiedName(TYPES_ID, b.identifier(typeName))
-                          ),
-                        ])
-                      )
-                    ),
-                  }),
-                  b.identifier.from({
-                    name: "state",
-                    typeAnnotation: b.tsTypeAnnotation(
-                      b.tsTypeReference(b.identifier("M"))
-                    ),
-                  }),
-                ],
-                optional: true,
-                typeAnnotation: b.tsTypeAnnotation(b.tsAnyKeyword()),
-              });
-            }),
+            ...Object.keys(t)
+              .filter(
+                (typeName) =>
+                  typeName === "Node" ||
+                  Type.def(typeName).aliasNames.indexOf("Node") > -1
+              )
+              .map((typeName) => {
+                return b.tsMethodSignature.from({
+                  key: b.identifier(`visit${typeName}`),
+                  parameters: [
+                    b.identifier.from({
+                      name: "this",
+                      typeAnnotation: b.tsTypeAnnotation(
+                        b.tsTypeReference(
+                          b.identifier("Context"),
+                          b.tsTypeParameterInstantiation([
+                            b.tsTypeReference(b.identifier("M")),
+                          ])
+                        )
+                      ),
+                    }),
+                    b.identifier.from({
+                      name: "path",
+                      typeAnnotation: b.tsTypeAnnotation(
+                        b.tsTypeReference(
+                          b.identifier("Path"),
+                          b.tsTypeParameterInstantiation([
+                            b.tsTypeReference(
+                              b.tsQualifiedName(
+                                TYPES_ID,
+                                b.identifier(typeName)
+                              )
+                            ),
+                          ])
+                        )
+                      ),
+                    }),
+                    b.identifier.from({
+                      name: "state",
+                      typeAnnotation: b.tsTypeAnnotation(
+                        b.tsTypeReference(b.identifier("M"))
+                      ),
+                    }),
+                  ],
+                  optional: true,
+                  typeAnnotation: b.tsTypeAnnotation(b.tsAnyKeyword()),
+                });
+              }),
           ]),
         })
       ),
@@ -409,6 +418,7 @@ function getSupertypeToSubtypes() {
 
 function getBuilderTypeNames() {
   return Object.keys(t).filter((typeName) => {
+    if (typeName === "Orphan") return;
     const typeDef = Type.def(typeName);
     const builderName = getBuilderName(typeName);
 

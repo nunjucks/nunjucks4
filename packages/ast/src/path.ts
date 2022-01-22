@@ -1,11 +1,10 @@
+import { builtInTypes, getFieldValue, getFieldNames, Type } from "./types";
+import * as n from "./gen/types";
 import "./def";
-import { builtInTypes, getFieldValue } from "./types";
-import { types } from "./index";
-
-// const Node = types.Node;
 
 const Op = Object.prototype;
 const hasOwn = Op.hasOwnProperty;
+
 const isArray = builtInTypes.array;
 const isNumber = builtInTypes.number;
 const isString = builtInTypes.string;
@@ -13,29 +12,101 @@ const isString = builtInTypes.string;
 const assertIsArray: typeof isArray["assert"] = isArray.assert.bind(isArray);
 const assertIsNumber: typeof isNumber["assert"] =
   isNumber.assert.bind(isNumber);
+
 const assertIsString: typeof isString["assert"] =
   isString.assert.bind(isString);
 
+export type PathName = string | number;
+export type ChildCache = Record<PathName, Path>;
+
+export type MapCallback<T, U, V> = (this: T, childPath: U) => V;
+export type EachCallback<T, U> = MapCallback<T, U, void>;
+
 export interface PathConstructor {
-  new <N extends types.Node = any, V = any>(
+  new <N extends n.Node = n.Node, V = any>(
     value: V,
     parentPath?: any,
-    name?: any
+    name?: PathName
   ): Path<N, V>;
 }
 
-type PathName = string | number;
-type ChildCache = Record<PathName, Path>;
+const PRECEDENCE: any = {};
+[
+  ["||"],
+  ["&&"],
+  ["|"],
+  ["^"],
+  ["&"],
+  ["==", "===", "!=", "!=="],
+  ["<", ">", "<=", ">=", "in", "instanceof"],
+  [">>", "<<", ">>>"],
+  ["+", "-"],
+  ["*", "/", "%"],
+].forEach(function (tier, i) {
+  tier.forEach(function (op) {
+    PRECEDENCE[op] = i;
+  });
+});
 
-export class Path<N extends types.Node = any, V = any> {
-  value: V;
-  parentPath: Path | null;
-  name: PathName;
+type PathGetRetTKNumber<V, N extends n.Node> = V extends n.Node
+  ? Path<V, V, number>
+  : Path<N, V, number>;
+type PathGetRetTK<
+  V,
+  N extends n.Node,
+  K extends PropertyKey
+> = K extends keyof N
+  ? V extends n.Node
+    ? Path<V, V, K>
+    : Path<N, V, K>
+  : never;
+type PathGetRetChildNodes<
+  V,
+  N extends n.Node,
+  K extends PropertyKey
+> = K extends keyof N
+  ? V extends n.Node
+    ? Path<V, V, K>
+    : V extends (infer L)[]
+    ? L extends n.Node
+      ? Path<L, L, number>
+      : never
+    : never
+  : never;
+
+type PathGetRet<T extends n.Node, K extends PropertyKey> = K extends keyof T
+  ? PathGetRetTK<T[K], T, K>
+  : never;
+type PathListGetRetTK<V extends any[], N extends n.Node> = V extends (infer L)[]
+  ? PathGetRetTKNumber<L, N>
+  : never;
+
+type EachChildCallback<C, V, N extends n.Node> = V extends any[]
+  ? (this: C, value: PathListGetRetTK<V, N>) => void
+  : V extends n.Node
+  ? <K extends keyof V>(
+      this: C,
+      value: PathGetRetChildNodes<V[K], N, K>
+    ) => void
+  : never;
+
+export class Path<
+  N extends n.Node = n.Node,
+  V = any,
+  K extends PropertyKey = PropertyKey
+> {
   __childCache: null | ChildCache;
+  parentPath: Path | null;
+  value: V;
+  name: K | null;
 
-  constructor(value: V, parentPath?: any, name?: any) {
+  parent: Path | null;
+  node: N;
+
+  // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
+  constructor(value: V, parentPath?: any, name?: K | null) {
     if (parentPath) {
-      if (!(parentPath instanceof Path)) {
+      if (!(parentPath instanceof this.constructor)) {
         throw new Error("");
       }
     } else {
@@ -52,46 +123,15 @@ export class Path<N extends types.Node = any, V = any> {
 
     // The name of the property of parentPath.value through which this
     // Path's value was reached.
-    this.name = name;
+    this.name = name !== null && name !== undefined ? name : null;
 
     // Calling path.get("child") multiple times always returns the same
     // child Path object, for both performance and consistency reasons.
     this.__childCache = null;
   }
-  // var Pp: Path = Path.prototype;
 
-  // The value of the first ancestor Path whose value is a Node.
-  get node(): N {
-    const value = this.value;
-    if (types.Node.check(value)) {
-      return value as unknown as N;
-    }
-    const pp = this.parentPath;
-    if (pp === null) {
-      throw new Error("");
-    }
-    return pp.node as N;
-  }
-
-  get parent(): Path | null {
-    const value = this.value;
-    let pp = this.parentPath;
-
-    if (!types.Node.check(value)) {
-      while (pp && !types.Node.check(pp.value)) {
-        pp = pp.parentPath;
-      }
-
-      if (pp) {
-        pp = pp.parentPath;
-      }
-    }
-
-    while (pp && !types.Node.check(pp.value)) {
-      pp = pp.parentPath;
-    }
-
-    return pp || null;
+  check<T extends n.Node>(nodeType: Type<T>): this is Path<T> {
+    return nodeType.check(this.node);
   }
 
   _getChildCache(): ChildCache {
@@ -100,8 +140,24 @@ export class Path<N extends types.Node = any, V = any> {
       (this.__childCache = Object.create(null) as ChildCache)
     );
   }
+  _getChildPath<T extends n.Node, K extends keyof T>(
+    this: Path<n.Node, T>,
+    name: K
+  ): PathGetRet<T, K> & { parent: Path<N, V>; parentPath: Path<N> };
+  _getChildPath<T extends any[]>(
+    this: Path<n.Node, T>,
+    name: number
+  ): PathListGetRetTK<T, N> & {
+    parent: Path<N, V>;
+    parentPath: Path<N>;
+  };
 
-  _getChildPath(name: PathName): Path {
+  _getChildPath(
+    name: PathName
+  ): Path & { parent: Path<N, V>; parentPath: Path<N> };
+  _getChildPath(
+    name: PathName
+  ): Path & { parent: Path<N, V>; parentPath: Path<N> } {
     const cache = this._getChildCache();
     const actualChildValue = this.getValueProperty(name);
     let childPath = cache[name];
@@ -110,48 +166,47 @@ export class Path<N extends types.Node = any, V = any> {
       // Ensure consistency between cache and reality.
       childPath.value !== actualChildValue
     ) {
-      const constructor = this.constructor as PathConstructor;
-      childPath = cache[name] = new constructor(actualChildValue, this, name);
+      childPath = cache[name] = new Path(actualChildValue, this, name);
     }
-    return childPath;
+    return childPath as Path & {
+      parent: Path<N, V>;
+      parentPath: Path<N>;
+    };
   }
 
-  // This method is designed to be overridden by subclasses that need to
-  // handle missing properties, etc.
-  getValueProperty(name: PathName): any {
-    if (types.Node.check(this.value)) {
-      assertIsString(name);
-      return getFieldValue(this.value, name);
-    } else {
-      if (hasOwn.call(this.value, name)) {
-        return (this.value as any)[name];
-      }
+  get<T extends n.Node, K extends keyof T>(
+    this: Path<n.Node, T>,
+    name: K
+  ): PathGetRet<T, K> & { parent: Path<N, V>; parentPath: Path<N> };
+  get<T extends any[]>(
+    this: Path<n.Node, T>,
+    name: number
+  ): PathListGetRetTK<T, N> & {
+    parent: Path<N, V>;
+    parentPath: Path<N>;
+  };
+  get(...names: PathName[]): Path & { parent: Path<N, V>; parentPath: Path<N> };
+  get(
+    name: PathName,
+    ...names: PathName[]
+  ): Path & { parent: Path; parentPath: Path } {
+    if (!names?.length) {
+      return this._getChildPath(name);
     }
-  }
-
-  get(...names: PathName[]): Path {
-    // eslint-disable-next-line @typescript-eslint/no-this-alias
-    let path: Path = this;
+    names.unshift(name);
+    let path: Path = this as unknown as Path;
 
     for (let i = 0; i < names.length; ++i) {
       path = path._getChildPath(names[i]);
     }
 
-    return path;
+    return path as Path & { parent: Path; parentPath: Path };
   }
 
-  each<M>(
-    callback: (this: M, value: Path, index: number) => void,
-    context: M
-  ): void;
-
-  each(callback: (this: Path, value: Path, index: number) => void): void;
-
-  each(
-    callback: (this: Path, value: Path, index: number) => void,
-    context?: any
-  ): void {
-    const childPaths = [];
+  each<T>(callback: EachCallback<T, Path>, context: T): void;
+  each(callback: EachCallback<this, Path>): void;
+  each<T = this>(callback: EachCallback<T, Path>, context?: T): void {
+    const childPaths: Path[] = [];
     assertIsArray(this.value);
     const len = this.value.length;
     let i;
@@ -169,37 +224,59 @@ export class Path<N extends types.Node = any, V = any> {
     // this way is much easier to reason about.
     for (i = 0; i < len; ++i) {
       if (hasOwn.call(childPaths, i)) {
-        callback.call(context || this, childPaths[i], i);
+        callback.call((context || this) as T, childPaths[i], i);
       }
     }
   }
 
-  map<U>(
-    callback: (this: Path, value: Path, index: number) => U,
-    context?: Path
-  ): U[] {
-    const result: U[] = [];
+  map<V, T = this>(callback: MapCallback<T, Path, V>, context?: T): V[] {
+    const result: V[] = [];
 
-    this.each(function mapCallback(this: Path, childPath: Path, index: number) {
-      result.push(callback.call(this, childPath, index));
-    }, context);
+    this.each<T>(function mapCallback(this: T, childPath: Path) {
+      result.push(callback.call(this, childPath));
+    }, (context || this) as T);
 
     return result;
   }
 
-  filter(
-    callback: (this: Path, value: Path, index: number) => boolean,
-    context?: Path
-  ) {
+  filter<T = this>(
+    callback: MapCallback<T, Path, boolean>,
+    context?: T
+  ): Path[] {
     const result: Path[] = [];
 
-    this.each(function (this: Path, childPath: Path, index: number) {
-      if (callback.call(this, childPath, index)) {
+    this.each<T>(function filterCallback(this: T, childPath: any) {
+      if (callback.call(this, childPath)) {
         result.push(childPath);
       }
-    }, context);
+    }, (context || this) as T);
 
     return result;
+  }
+
+  eachChild<T = this>(
+    callback: EachChildCallback<T, V, N>,
+    context: T = this as any
+  ): void {
+    const value = this.value;
+    if (Array.isArray(value)) {
+      for (let i = 0; i < value.length; i++) {
+        callback.call(context, this.get(i));
+      }
+    } else if (n.Node.check(value)) {
+      getFieldNames(value).forEach((name) => {
+        const child = this.get(name);
+        if (Array.isArray(child.value) && child.value.length) {
+          for (let i = 0; i < child.value.length; i++) {
+            if (n.Node.check(child.value[i])) {
+              callback.call(context, child.get(i));
+            }
+          }
+        } else if (n.Node.check(child.value)) {
+          callback.call(context, child);
+        }
+      });
+    }
   }
 
   // eslint-disable-next-line @typescript-eslint/no-empty-function
@@ -340,52 +417,92 @@ export class Path<N extends types.Node = any, V = any> {
 
   _repairRelationshipWithParent(): this {
     const pp = this.parentPath;
-    if (!pp) {
+    let { name } = this;
+    if (!pp || name === undefined || name === null) {
       // Orphan paths have no relationship to repair.
       return this;
     }
 
     const parentValue = pp.value;
-    const parentCache = pp._getChildCache();
+    const parentCache = pp._getChildCache() as any;
 
     // Make sure parentCache[path.name] is populated.
-    if (parentValue[this.name] === this.value) {
-      parentCache[this.name] = this;
+    if ((parentValue as any)[name] === this.value) {
+      parentCache[name] = this;
     } else if (isArray.check(parentValue)) {
       // Something caused this.name to become out of date, so attempt to
       // recover by searching for this.value in parentValue.
       const i = parentValue.indexOf(this.value);
       if (i >= 0) {
-        parentCache[(this.name = i)] = this;
+        this.name = name = i as unknown as K;
+        parentCache[name] = this;
       }
     } else {
       // If this.value disagrees with parentValue[this.name], and
       // this.name is not an array index, let this.value become the new
       // parentValue[this.name] and update parentCache accordingly.
-      parentValue[this.name] = this.value;
-      parentCache[this.name] = this;
+      (parentValue as any)[name] = this.value;
+      parentCache[name] = this;
     }
 
-    if (parentValue[this.name] !== this.value) {
+    if ((parentValue as any)[name] !== this.value) {
       throw new Error("");
     }
-    if (pp.get(this.name) !== this) {
+    if ((pp.get(name) as any) !== (this as any)) {
       throw new Error("");
     }
 
     return this;
   }
 
-  replace(...args: any[]): Path[] {
-    const results: Path[] = [];
-    const { name, parentPath: pp } = this;
+  _computeNode(): N {
+    const value = this.value;
+    if (n.Node.check(value)) {
+      return value as unknown as N;
+    }
+    const pp = this.parentPath;
     if (pp === null) {
+      throw new Error("");
+    }
+    return pp.node as N;
+  }
+
+  _computeParent(): Path | null {
+    const value = this.value;
+    let pp = this.parentPath;
+
+    if (!n.Node.check(value)) {
+      while (pp && !n.Node.check(pp.value)) {
+        pp = pp.parentPath;
+      }
+
+      if (pp) {
+        pp = pp.parentPath;
+      }
+    }
+
+    while (pp && !n.Node.check(pp.value)) {
+      pp = pp.parentPath;
+    }
+
+    return pp || null;
+  }
+
+  replace(...args: any[]): Path[] {
+    delete (this as any).node;
+    delete (this as any).parent;
+
+    const results: Path[] = [];
+    const pp = this.parentPath;
+    if (pp === null || this.name === null) {
       throw new Error("Cannot replace on orphaned Paths");
     }
     const parentValue = pp.value;
     const parentCache = pp._getChildCache();
 
     this._repairRelationshipWithParent();
+
+    const { name } = this;
 
     if (isArray.check(parentValue)) {
       const originalLength = parentValue.length;
@@ -400,17 +517,17 @@ export class Path<N extends types.Node = any, V = any> {
       const splicedOut = parentValue.splice(...spliceArgs);
 
       if (splicedOut[0] !== this.value) {
-        throw new Error("");
+        throw new Error("Node being replaced is misindexed with parent");
       }
       if (parentValue.length !== originalLength - 1 + args.length) {
-        throw new Error("");
+        throw new Error("Replaced list of nodes has incorrect length");
       }
 
       move();
 
       if (args.length === 0) {
         this.value = undefined as unknown as V;
-        delete parentCache[this.name];
+        delete parentCache[name];
         this.__childCache = null;
       } else {
         if (parentValue[name] !== args[0]) {
@@ -426,7 +543,7 @@ export class Path<N extends types.Node = any, V = any> {
           results.push(pp.get(name + i));
         }
 
-        if (results[0] !== this) {
+        if (results[0] !== (this as unknown as Path)) {
           throw new Error("");
         }
       }
@@ -434,10 +551,10 @@ export class Path<N extends types.Node = any, V = any> {
       if (this.value !== args[0]) {
         this.__childCache = null;
       }
-      this.value = parentValue[name] = args[0];
-      results.push(this);
+      this.value = (parentValue as any)[name] = args[0];
+      results.push(this as unknown as Path);
     } else if (args.length === 0) {
-      delete parentValue[this.name];
+      delete (parentValue as any)[name];
       this.value = undefined as unknown as V;
       this.__childCache = null;
 
@@ -449,4 +566,51 @@ export class Path<N extends types.Node = any, V = any> {
 
     return results;
   }
+
+  prune(): Path {
+    const remainingPath = this.parent;
+
+    if (remainingPath === null) {
+      throw new Error("Cannot prune an orphaned Path");
+    }
+
+    this.replace();
+
+    return remainingPath;
+  }
+
+  getValueProperty(name: PathName): any {
+    if (n.Node.check(this.value)) {
+      assertIsString(name);
+      return getFieldValue(this.value, name);
+    } else {
+      if (hasOwn.call(this.value, name)) {
+        return (this.value as any)[name];
+      }
+    }
+  }
 }
+
+Object.defineProperties(Path.prototype, {
+  node: {
+    get: function () {
+      Object.defineProperty(this, "node", {
+        configurable: true, // Enable deletion.
+        value: this._computeNode(),
+      });
+
+      return this.node;
+    },
+  },
+
+  parent: {
+    get: function () {
+      Object.defineProperty(this, "parent", {
+        configurable: true, // Enable deletion.
+        value: this._computeParent(),
+      });
+
+      return this.parent;
+    },
+  },
+});
