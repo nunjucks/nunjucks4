@@ -25,11 +25,11 @@ export type Node =
   | FromImport
   | ExprStmt
   | Assign
-  | AssignBlock
   | NSRef
+  | Tuple
+  | AssignBlock
   | Const
   | TemplateData
-  | Tuple
   | List
   | Dict
   | CondExpr
@@ -96,9 +96,9 @@ export type Expr =
   | Filter
   | Test
   | NSRef
+  | Tuple
   | Const
   | TemplateData
-  | Tuple
   | List
   | Dict
   | CondExpr
@@ -128,7 +128,7 @@ export type Expr =
   | ContextReference
   | DerivedContextReference;
 export type Helper = Keyword | Pair | Operand;
-export type Literal = Const | TemplateData | Tuple | List | Dict;
+export type Literal = Tuple | Const | TemplateData | List | Dict;
 export type BinExpr = Mul | Div | FloorDiv | Add | Sub | Mod | Pow | And | Or;
 export type UnaryExpr = Not | Neg | Pos;
 export interface Position {
@@ -278,8 +278,18 @@ export interface ExprStmt extends BaseNode {
 }
 export interface Assign extends BaseNode {
   type: "Assign";
-  target: Expr;
-  node: Node;
+  target: NSRef | Name | Tuple;
+  node: Expr;
+}
+export interface NSRef extends BaseNode {
+  type: "NSRef";
+  name: string;
+  attr: string;
+}
+export interface Tuple extends BaseNode {
+  type: "Tuple";
+  items: Expr[];
+  ctx: string;
 }
 export interface AssignBlock extends BaseNode {
   type: "AssignBlock";
@@ -296,11 +306,6 @@ export interface UnaryExprBase extends BaseNode {
   node: Expr;
   operator: string;
 }
-export interface NSRef extends BaseNode {
-  type: "NSRef";
-  name: string;
-  attr: string;
-}
 export interface Const extends BaseNode {
   type: "Const";
   value: any;
@@ -308,11 +313,6 @@ export interface Const extends BaseNode {
 export interface TemplateData extends BaseNode {
   type: "TemplateData";
   data: string;
-}
-export interface Tuple extends BaseNode {
-  type: "Tuple";
-  items: Expr[];
-  ctx: string;
 }
 export interface List extends BaseNode {
   type: "List";
@@ -497,16 +497,16 @@ export let Import: Type<Import>;
 export let FromImport: Type<FromImport>;
 export let ExprStmt: Type<ExprStmt>;
 export let Assign: Type<Assign>;
+export let NSRef: Type<NSRef>;
+export let Literal: Type<Literal>;
+export let Tuple: Type<Tuple>;
 export let AssignBlock: Type<AssignBlock>;
 export let BinExpr: Type<BinExpr>;
 export let BinExprBase: Type<BinExprBase>;
 export let UnaryExpr: Type<UnaryExpr>;
 export let UnaryExprBase: Type<UnaryExprBase>;
-export let NSRef: Type<NSRef>;
-export let Literal: Type<Literal>;
 export let Const: Type<Const>;
 export let TemplateData: Type<TemplateData>;
-export let Tuple: Type<Tuple>;
 export let List: Type<List>;
 export let Dict: Type<Dict>;
 export let CondExpr: Type<CondExpr>;
@@ -577,16 +577,16 @@ export interface NunjucksTypes {
   FromImport: Type<FromImport>;
   ExprStmt: Type<ExprStmt>;
   Assign: Type<Assign>;
+  NSRef: Type<NSRef>;
+  Literal: Type<Literal>;
+  Tuple: Type<Tuple>;
   AssignBlock: Type<AssignBlock>;
   BinExpr: Type<BinExpr>;
   BinExprBase: Type<BinExprBase>;
   UnaryExpr: Type<UnaryExpr>;
   UnaryExprBase: Type<UnaryExprBase>;
-  NSRef: Type<NSRef>;
-  Literal: Type<Literal>;
   Const: Type<Const>;
   TemplateData: Type<TemplateData>;
-  Tuple: Type<Tuple>;
   List: Type<List>;
   Dict: Type<Dict>;
   CondExpr: Type<CondExpr>;

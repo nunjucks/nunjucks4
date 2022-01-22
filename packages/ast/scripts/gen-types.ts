@@ -367,6 +367,12 @@ const out = [
                                 b.identifier(typeName)
                               )
                             ),
+                            b.tsTypeReference(
+                              b.tsQualifiedName(
+                                TYPES_ID,
+                                b.identifier(typeName)
+                              )
+                            ),
                           ])
                         )
                       ),

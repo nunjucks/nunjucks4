@@ -84,7 +84,7 @@ type PathListGetRetTK<V extends any[], N extends n.Node> = V extends (infer L)[]
 type EachChildCallback<C, V, N extends n.Node> = V extends any[]
   ? (this: C, value: PathListGetRetTK<V, N>) => void
   : V extends n.Node
-  ? <K extends keyof V>(
+  ? <K extends Exclude<keyof V, "type" | "loc">>(
       this: C,
       value: PathGetRetChildNodes<V[K], N, K>
     ) => void

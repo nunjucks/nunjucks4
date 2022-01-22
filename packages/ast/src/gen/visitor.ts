@@ -4,132 +4,315 @@ import { Context } from "../path-visitor";
 import type * as types from "./types";
 export interface Visitor<M = Record<string, any>> {
   reset?(this: Context<M>, path: Path, state: M): any;
-  visitNode?(this: Context<M>, path: Path<types.Node>, state: M): any;
-  visitStmt?(this: Context<M>, path: Path<types.Stmt>, state: M): any;
-  visitHelper?(this: Context<M>, path: Path<types.Helper>, state: M): any;
-  visitExpr?(this: Context<M>, path: Path<types.Expr>, state: M): any;
-  visitOrphan?(this: Context<M>, path: Path<types.Orphan>, state: M): any;
-  visitTemplate?(this: Context<M>, path: Path<types.Template>, state: M): any;
-  visitOutput?(this: Context<M>, path: Path<types.Output>, state: M): any;
-  visitExtends?(this: Context<M>, path: Path<types.Extends>, state: M): any;
-  visitLoop?(this: Context<M>, path: Path<types.Loop>, state: M): any;
-  visitFor?(this: Context<M>, path: Path<types.For>, state: M): any;
-  visitAsyncEach?(this: Context<M>, path: Path<types.AsyncEach>, state: M): any;
-  visitAsyncAll?(this: Context<M>, path: Path<types.AsyncAll>, state: M): any;
-  visitIf?(this: Context<M>, path: Path<types.If>, state: M): any;
-  visitName?(this: Context<M>, path: Path<types.Name>, state: M): any;
-  visitMacro?(this: Context<M>, path: Path<types.Macro>, state: M): any;
-  visitKeyword?(this: Context<M>, path: Path<types.Keyword>, state: M): any;
-  visitCall?(this: Context<M>, path: Path<types.Call>, state: M): any;
-  visitCallBlock?(this: Context<M>, path: Path<types.CallBlock>, state: M): any;
-  visitPair?(this: Context<M>, path: Path<types.Pair>, state: M): any;
-  visitFilter?(this: Context<M>, path: Path<types.Filter>, state: M): any;
-  visitTest?(this: Context<M>, path: Path<types.Test>, state: M): any;
+  visitNode?(
+    this: Context<M>,
+    path: Path<types.Node, types.Node>,
+    state: M
+  ): any;
+  visitStmt?(
+    this: Context<M>,
+    path: Path<types.Stmt, types.Stmt>,
+    state: M
+  ): any;
+  visitHelper?(
+    this: Context<M>,
+    path: Path<types.Helper, types.Helper>,
+    state: M
+  ): any;
+  visitExpr?(
+    this: Context<M>,
+    path: Path<types.Expr, types.Expr>,
+    state: M
+  ): any;
+  visitOrphan?(
+    this: Context<M>,
+    path: Path<types.Orphan, types.Orphan>,
+    state: M
+  ): any;
+  visitTemplate?(
+    this: Context<M>,
+    path: Path<types.Template, types.Template>,
+    state: M
+  ): any;
+  visitOutput?(
+    this: Context<M>,
+    path: Path<types.Output, types.Output>,
+    state: M
+  ): any;
+  visitExtends?(
+    this: Context<M>,
+    path: Path<types.Extends, types.Extends>,
+    state: M
+  ): any;
+  visitLoop?(
+    this: Context<M>,
+    path: Path<types.Loop, types.Loop>,
+    state: M
+  ): any;
+  visitFor?(this: Context<M>, path: Path<types.For, types.For>, state: M): any;
+  visitAsyncEach?(
+    this: Context<M>,
+    path: Path<types.AsyncEach, types.AsyncEach>,
+    state: M
+  ): any;
+  visitAsyncAll?(
+    this: Context<M>,
+    path: Path<types.AsyncAll, types.AsyncAll>,
+    state: M
+  ): any;
+  visitIf?(this: Context<M>, path: Path<types.If, types.If>, state: M): any;
+  visitName?(
+    this: Context<M>,
+    path: Path<types.Name, types.Name>,
+    state: M
+  ): any;
+  visitMacro?(
+    this: Context<M>,
+    path: Path<types.Macro, types.Macro>,
+    state: M
+  ): any;
+  visitKeyword?(
+    this: Context<M>,
+    path: Path<types.Keyword, types.Keyword>,
+    state: M
+  ): any;
+  visitCall?(
+    this: Context<M>,
+    path: Path<types.Call, types.Call>,
+    state: M
+  ): any;
+  visitCallBlock?(
+    this: Context<M>,
+    path: Path<types.CallBlock, types.CallBlock>,
+    state: M
+  ): any;
+  visitPair?(
+    this: Context<M>,
+    path: Path<types.Pair, types.Pair>,
+    state: M
+  ): any;
+  visitFilter?(
+    this: Context<M>,
+    path: Path<types.Filter, types.Filter>,
+    state: M
+  ): any;
+  visitTest?(
+    this: Context<M>,
+    path: Path<types.Test, types.Test>,
+    state: M
+  ): any;
   visitFilterBlock?(
     this: Context<M>,
-    path: Path<types.FilterBlock>,
+    path: Path<types.FilterBlock, types.FilterBlock>,
     state: M
   ): any;
-  visitWith?(this: Context<M>, path: Path<types.With>, state: M): any;
-  visitBlock?(this: Context<M>, path: Path<types.Block>, state: M): any;
-  visitInclude?(this: Context<M>, path: Path<types.Include>, state: M): any;
-  visitImport?(this: Context<M>, path: Path<types.Import>, state: M): any;
+  visitWith?(
+    this: Context<M>,
+    path: Path<types.With, types.With>,
+    state: M
+  ): any;
+  visitBlock?(
+    this: Context<M>,
+    path: Path<types.Block, types.Block>,
+    state: M
+  ): any;
+  visitInclude?(
+    this: Context<M>,
+    path: Path<types.Include, types.Include>,
+    state: M
+  ): any;
+  visitImport?(
+    this: Context<M>,
+    path: Path<types.Import, types.Import>,
+    state: M
+  ): any;
   visitFromImport?(
     this: Context<M>,
-    path: Path<types.FromImport>,
+    path: Path<types.FromImport, types.FromImport>,
     state: M
   ): any;
-  visitExprStmt?(this: Context<M>, path: Path<types.ExprStmt>, state: M): any;
-  visitAssign?(this: Context<M>, path: Path<types.Assign>, state: M): any;
+  visitExprStmt?(
+    this: Context<M>,
+    path: Path<types.ExprStmt, types.ExprStmt>,
+    state: M
+  ): any;
+  visitAssign?(
+    this: Context<M>,
+    path: Path<types.Assign, types.Assign>,
+    state: M
+  ): any;
+  visitNSRef?(
+    this: Context<M>,
+    path: Path<types.NSRef, types.NSRef>,
+    state: M
+  ): any;
+  visitLiteral?(
+    this: Context<M>,
+    path: Path<types.Literal, types.Literal>,
+    state: M
+  ): any;
+  visitTuple?(
+    this: Context<M>,
+    path: Path<types.Tuple, types.Tuple>,
+    state: M
+  ): any;
   visitAssignBlock?(
     this: Context<M>,
-    path: Path<types.AssignBlock>,
+    path: Path<types.AssignBlock, types.AssignBlock>,
     state: M
   ): any;
-  visitBinExpr?(this: Context<M>, path: Path<types.BinExpr>, state: M): any;
-  visitUnaryExpr?(this: Context<M>, path: Path<types.UnaryExpr>, state: M): any;
-  visitNSRef?(this: Context<M>, path: Path<types.NSRef>, state: M): any;
-  visitLiteral?(this: Context<M>, path: Path<types.Literal>, state: M): any;
-  visitConst?(this: Context<M>, path: Path<types.Const>, state: M): any;
+  visitBinExpr?(
+    this: Context<M>,
+    path: Path<types.BinExpr, types.BinExpr>,
+    state: M
+  ): any;
+  visitUnaryExpr?(
+    this: Context<M>,
+    path: Path<types.UnaryExpr, types.UnaryExpr>,
+    state: M
+  ): any;
+  visitConst?(
+    this: Context<M>,
+    path: Path<types.Const, types.Const>,
+    state: M
+  ): any;
   visitTemplateData?(
     this: Context<M>,
-    path: Path<types.TemplateData>,
+    path: Path<types.TemplateData, types.TemplateData>,
     state: M
   ): any;
-  visitTuple?(this: Context<M>, path: Path<types.Tuple>, state: M): any;
-  visitList?(this: Context<M>, path: Path<types.List>, state: M): any;
-  visitDict?(this: Context<M>, path: Path<types.Dict>, state: M): any;
-  visitCondExpr?(this: Context<M>, path: Path<types.CondExpr>, state: M): any;
-  visitGetitem?(this: Context<M>, path: Path<types.Getitem>, state: M): any;
-  visitGetattr?(this: Context<M>, path: Path<types.Getattr>, state: M): any;
-  visitSlice?(this: Context<M>, path: Path<types.Slice>, state: M): any;
-  visitConcat?(this: Context<M>, path: Path<types.Concat>, state: M): any;
-  visitCompare?(this: Context<M>, path: Path<types.Compare>, state: M): any;
-  visitOperand?(this: Context<M>, path: Path<types.Operand>, state: M): any;
-  visitMul?(this: Context<M>, path: Path<types.Mul>, state: M): any;
-  visitDiv?(this: Context<M>, path: Path<types.Div>, state: M): any;
-  visitFloorDiv?(this: Context<M>, path: Path<types.FloorDiv>, state: M): any;
-  visitAdd?(this: Context<M>, path: Path<types.Add>, state: M): any;
-  visitSub?(this: Context<M>, path: Path<types.Sub>, state: M): any;
-  visitMod?(this: Context<M>, path: Path<types.Mod>, state: M): any;
-  visitPow?(this: Context<M>, path: Path<types.Pow>, state: M): any;
-  visitAnd?(this: Context<M>, path: Path<types.And>, state: M): any;
-  visitOr?(this: Context<M>, path: Path<types.Or>, state: M): any;
-  visitNot?(this: Context<M>, path: Path<types.Not>, state: M): any;
-  visitNeg?(this: Context<M>, path: Path<types.Neg>, state: M): any;
-  visitPos?(this: Context<M>, path: Path<types.Pos>, state: M): any;
+  visitList?(
+    this: Context<M>,
+    path: Path<types.List, types.List>,
+    state: M
+  ): any;
+  visitDict?(
+    this: Context<M>,
+    path: Path<types.Dict, types.Dict>,
+    state: M
+  ): any;
+  visitCondExpr?(
+    this: Context<M>,
+    path: Path<types.CondExpr, types.CondExpr>,
+    state: M
+  ): any;
+  visitGetitem?(
+    this: Context<M>,
+    path: Path<types.Getitem, types.Getitem>,
+    state: M
+  ): any;
+  visitGetattr?(
+    this: Context<M>,
+    path: Path<types.Getattr, types.Getattr>,
+    state: M
+  ): any;
+  visitSlice?(
+    this: Context<M>,
+    path: Path<types.Slice, types.Slice>,
+    state: M
+  ): any;
+  visitConcat?(
+    this: Context<M>,
+    path: Path<types.Concat, types.Concat>,
+    state: M
+  ): any;
+  visitCompare?(
+    this: Context<M>,
+    path: Path<types.Compare, types.Compare>,
+    state: M
+  ): any;
+  visitOperand?(
+    this: Context<M>,
+    path: Path<types.Operand, types.Operand>,
+    state: M
+  ): any;
+  visitMul?(this: Context<M>, path: Path<types.Mul, types.Mul>, state: M): any;
+  visitDiv?(this: Context<M>, path: Path<types.Div, types.Div>, state: M): any;
+  visitFloorDiv?(
+    this: Context<M>,
+    path: Path<types.FloorDiv, types.FloorDiv>,
+    state: M
+  ): any;
+  visitAdd?(this: Context<M>, path: Path<types.Add, types.Add>, state: M): any;
+  visitSub?(this: Context<M>, path: Path<types.Sub, types.Sub>, state: M): any;
+  visitMod?(this: Context<M>, path: Path<types.Mod, types.Mod>, state: M): any;
+  visitPow?(this: Context<M>, path: Path<types.Pow, types.Pow>, state: M): any;
+  visitAnd?(this: Context<M>, path: Path<types.And, types.And>, state: M): any;
+  visitOr?(this: Context<M>, path: Path<types.Or, types.Or>, state: M): any;
+  visitNot?(this: Context<M>, path: Path<types.Not, types.Not>, state: M): any;
+  visitNeg?(this: Context<M>, path: Path<types.Neg, types.Neg>, state: M): any;
+  visitPos?(this: Context<M>, path: Path<types.Pos, types.Pos>, state: M): any;
   visitEnvironmentAttribute?(
     this: Context<M>,
-    path: Path<types.EnvironmentAttribute>,
+    path: Path<types.EnvironmentAttribute, types.EnvironmentAttribute>,
     state: M
   ): any;
   visitExtensionAttribute?(
     this: Context<M>,
-    path: Path<types.ExtensionAttribute>,
+    path: Path<types.ExtensionAttribute, types.ExtensionAttribute>,
     state: M
   ): any;
   visitImportedName?(
     this: Context<M>,
-    path: Path<types.ImportedName>,
+    path: Path<types.ImportedName, types.ImportedName>,
     state: M
   ): any;
   visitInternalName?(
     this: Context<M>,
-    path: Path<types.InternalName>,
+    path: Path<types.InternalName, types.InternalName>,
     state: M
   ): any;
-  visitMarkSafe?(this: Context<M>, path: Path<types.MarkSafe>, state: M): any;
+  visitMarkSafe?(
+    this: Context<M>,
+    path: Path<types.MarkSafe, types.MarkSafe>,
+    state: M
+  ): any;
   visitMarkSafeIfAutoescape?(
     this: Context<M>,
-    path: Path<types.MarkSafeIfAutoescape>,
+    path: Path<types.MarkSafeIfAutoescape, types.MarkSafeIfAutoescape>,
     state: M
   ): any;
   visitContextReference?(
     this: Context<M>,
-    path: Path<types.ContextReference>,
+    path: Path<types.ContextReference, types.ContextReference>,
     state: M
   ): any;
   visitDerivedContextReference?(
     this: Context<M>,
-    path: Path<types.DerivedContextReference>,
+    path: Path<types.DerivedContextReference, types.DerivedContextReference>,
     state: M
   ): any;
-  visitContinue?(this: Context<M>, path: Path<types.Continue>, state: M): any;
-  visitBreak?(this: Context<M>, path: Path<types.Break>, state: M): any;
-  visitScope?(this: Context<M>, path: Path<types.Scope>, state: M): any;
+  visitContinue?(
+    this: Context<M>,
+    path: Path<types.Continue, types.Continue>,
+    state: M
+  ): any;
+  visitBreak?(
+    this: Context<M>,
+    path: Path<types.Break, types.Break>,
+    state: M
+  ): any;
+  visitScope?(
+    this: Context<M>,
+    path: Path<types.Scope, types.Scope>,
+    state: M
+  ): any;
   visitOverlayScope?(
     this: Context<M>,
-    path: Path<types.OverlayScope>,
+    path: Path<types.OverlayScope, types.OverlayScope>,
     state: M
   ): any;
   visitEvalContextModifier?(
     this: Context<M>,
-    path: Path<types.EvalContextModifier>,
+    path: Path<types.EvalContextModifier, types.EvalContextModifier>,
     state: M
   ): any;
   visitScopedEvalContextModifier?(
     this: Context<M>,
-    path: Path<types.ScopedEvalContextModifier>,
+    path: Path<
+      types.ScopedEvalContextModifier,
+      types.ScopedEvalContextModifier
+    >,
     state: M
   ): any;
 }

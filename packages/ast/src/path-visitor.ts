@@ -7,7 +7,7 @@ import {
   // ASTNode,
 } from "./types";
 import * as n from "./gen/types";
-import { NodePath } from "./node-path";
+import { Path } from "./path";
 
 const hasOwn = Object.prototype.hasOwnProperty;
 
@@ -19,9 +19,9 @@ export interface PathVisitor<S = Record<string, any>> {
   _visiting: any;
   _changeReported: any;
   _abortRequested: boolean;
-  visit<T = S>(nodeOrPath: n.Node | NodePath, state?: T): any;
-  reset(path: NodePath, state?: S): void;
-  visitWithoutReset(path: NodePath, state?: S): any;
+  visit<T = S>(nodeOrPath: n.Node | Path, state?: T): any;
+  reset(path: Path, state?: S): void;
+  visitWithoutReset(path: Path, state?: S): any;
   abort(): void;
   visitor: any;
   acquireContext(path: any): any;
@@ -35,7 +35,7 @@ export interface PathVisitorStatics {
     methods?: import("./gen/visitor").Visitor<S>
   ): Visitor<S>;
   visit<S = Record<string, any>>(
-    node: n.Node | NodePath,
+    node: n.Node | Path,
     methods?: import("./gen/visitor").Visitor<S>
   ): any;
 }
@@ -51,7 +51,7 @@ export interface VisitorConstructor<S> extends PathVisitorStatics {
 }
 
 export interface VisitorMethods<S> {
-  [visitorMethod: string]: (path: NodePath, state?: S) => any;
+  [visitorMethod: string]: (path: Path, state?: S) => any;
 }
 
 export interface SharedContextMethods<S> {
@@ -172,7 +172,7 @@ export class PathVisitor<S = Record<string, any>> {
   }
 
   static visit<M = Record<string, any>>(
-    nodeOrPath: n.Node | NodePath,
+    nodeOrPath: n.Node | Path,
     methods: import("./gen/visitor").Visitor<M>,
     state?: M
   ): any {
@@ -182,7 +182,7 @@ export class PathVisitor<S = Record<string, any>> {
     );
   }
 
-  visit(nodeOrPath: n.Node | NodePath, state?: S): any {
+  visit(nodeOrPath: n.Node | Path, state?: S): any {
     if (this._visiting) {
       throw new Error(
         "Recursively calling visitor.visit(path) resets visitor state. " +
@@ -199,10 +199,10 @@ export class PathVisitor<S = Record<string, any>> {
     this._changeReported = false;
     this._abortRequested = false;
 
-    let path: NodePath;
+    let path: Path;
 
-    if (!(nodeOrPath instanceof NodePath)) {
-      path = new NodePath({ root: nodeOrPath }).get("root");
+    if (!(nodeOrPath instanceof Path)) {
+      path = new Path({ type: "Orphan", root: nodeOrPath }).get("root");
     } else {
       path = nodeOrPath;
     }
@@ -251,11 +251,11 @@ export class PathVisitor<S = Record<string, any>> {
   }
 
   // eslint-disable-next-line
-  reset(path: NodePath, state: S): void {
+  reset(path: Path, state: S): void {
     // Empty stub; may be reassigned or overridden by subclasses.
   }
 
-  visitWithoutReset(path: NodePath, state?: S): any {
+  visitWithoutReset(path: Path, state?: S): any {
     if (this instanceof this.Context) {
       // Since this.Context.prototype === this, there's a chance we
       // might accidentally call context.visitWithoutReset. If that
@@ -263,7 +263,7 @@ export class PathVisitor<S = Record<string, any>> {
       return this.visitor.visitWithoutReset(path, state || this.state);
     }
 
-    if (!(path instanceof NodePath)) {
+    if (!(path instanceof Path)) {
       throw new Error("");
     }
 
@@ -290,7 +290,7 @@ export class PathVisitor<S = Record<string, any>> {
     }
   }
 
-  acquireContext(path: NodePath): Context<S> {
+  acquireContext(path: Path): Context<S> {
     if (this._reusableContextStack.length === 0) {
       return new this.Context(path);
     }
@@ -315,11 +315,11 @@ export class PathVisitor<S = Record<string, any>> {
 }
 
 function visitChildren<S = Record<string, any>>(
-  path: NodePath,
+  path: Path,
   visitor: PathVisitor<S>,
   state?: S
 ): any {
-  if (!(path instanceof NodePath)) {
+  if (!(path instanceof Path)) {
     throw new Error("");
   }
   if (!(visitor instanceof PathVisitor)) {
@@ -355,14 +355,14 @@ function visitChildren<S = Record<string, any>>(
 }
 
 function makeContextConstructor<S>(visitor: PathVisitor<S>): typeof Context {
-  function Context(this: Context<S>, path: NodePath) {
+  function Context(this: Context<S>, path: Path) {
     if (!(this instanceof Context)) {
       throw new Error("");
     }
     if (!(this instanceof PathVisitor)) {
       throw new Error("");
     }
-    if (!(path instanceof NodePath)) {
+    if (!(path instanceof Path)) {
       throw new Error("");
     }
 
@@ -404,7 +404,7 @@ sharedContextProtoMethods.reset = function reset(path, state?: any) {
   if (!(this instanceof this.Context)) {
     throw new Error("");
   }
-  if (!(path instanceof NodePath)) {
+  if (!(path instanceof Path)) {
     throw new Error("");
   }
 

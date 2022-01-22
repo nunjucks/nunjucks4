@@ -213,8 +213,8 @@ def("Assign")
   .bases("BaseNode")
   .aliases("Node", "Stmt")
   .build("target", "node")
-  .field("target", def("Expr"))
-  .field("node", def("Node"));
+  .field("target", or(def("NSRef"), def("Name"), def("Tuple")))
+  .field("node", def("Expr"));
 
 def("AssignBlock")
   .bases("BaseNode")

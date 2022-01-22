@@ -277,12 +277,31 @@ export interface ExprStmtBuilder {
   }): types.ExprStmt;
 }
 export interface AssignBuilder {
-  (target: types.Expr, node: types.Node): types.Assign;
+  (
+    target: types.NSRef | types.Name | types.Tuple,
+    node: types.Expr
+  ): types.Assign;
   from(params: {
     loc?: types.SourceLocation | null;
-    node: types.Node;
-    target: types.Expr;
+    node: types.Expr;
+    target: types.NSRef | types.Name | types.Tuple;
   }): types.Assign;
+}
+export interface NSRefBuilder {
+  (name: string, attr: string): types.NSRef;
+  from(params: {
+    attr: string;
+    loc?: types.SourceLocation | null;
+    name: string;
+  }): types.NSRef;
+}
+export interface TupleBuilder {
+  (items: types.Expr[], ctx: string): types.Tuple;
+  from(params: {
+    ctx: string;
+    items: types.Expr[];
+    loc?: types.SourceLocation | null;
+  }): types.Tuple;
 }
 export interface AssignBlockBuilder {
   (
@@ -297,14 +316,6 @@ export interface AssignBlockBuilder {
     target: types.Expr;
   }): types.AssignBlock;
 }
-export interface NSRefBuilder {
-  (name: string, attr: string): types.NSRef;
-  from(params: {
-    attr: string;
-    loc?: types.SourceLocation | null;
-    name: string;
-  }): types.NSRef;
-}
 export interface ConstBuilder {
   (value: any): types.Const;
   from(params: { loc?: types.SourceLocation | null; value: any }): types.Const;
@@ -315,14 +326,6 @@ export interface TemplateDataBuilder {
     data: string;
     loc?: types.SourceLocation | null;
   }): types.TemplateData;
-}
-export interface TupleBuilder {
-  (items: types.Expr[], ctx: string): types.Tuple;
-  from(params: {
-    ctx: string;
-    items: types.Expr[];
-    loc?: types.SourceLocation | null;
-  }): types.Tuple;
 }
 export interface ListBuilder {
   (items: types.Expr[]): types.List;
@@ -628,11 +631,11 @@ export interface builders {
   fromImport: FromImportBuilder;
   exprStmt: ExprStmtBuilder;
   assign: AssignBuilder;
-  assignBlock: AssignBlockBuilder;
   nsRef: NSRefBuilder;
+  tuple: TupleBuilder;
+  assignBlock: AssignBlockBuilder;
   const: ConstBuilder;
   templateData: TemplateDataBuilder;
-  tuple: TupleBuilder;
   list: ListBuilder;
   dict: DictBuilder;
   condExpr: CondExprBuilder;
