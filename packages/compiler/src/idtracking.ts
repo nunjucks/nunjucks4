@@ -189,25 +189,32 @@ const rootVisitor = (
         throw new Error(`Cannot find symbols for ${path.node.type}`);
       },
       visitTemplate(path) {
-        this.traverse(path);
+        path.eachChild((child) => symVisitor.visit(child.node));
+        return false;
       },
       visitBlock(path) {
-        this.traverse(path);
+        path.eachChild((child) => symVisitor.visit(child.node));
+        return false;
       },
       visitMacro(path) {
-        this.traverse(path);
+        path.eachChild((child) => symVisitor.visit(child.node));
+        return false;
       },
       visitFilterBlock(path) {
-        this.traverse(path);
+        path.eachChild((child) => symVisitor.visit(child.node));
+        return false;
       },
       visitScope(path) {
-        this.traverse(path);
+        path.eachChild((child) => symVisitor.visit(child.node));
+        return false;
       },
       visitIf(path) {
-        this.traverse(path);
+        path.eachChild((child) => symVisitor.visit(child.node));
+        return false;
       },
       visitScopedEvalContextModifier(path) {
-        this.traverse(path);
+        path.eachChild((child) => symVisitor.visit(child.node));
+        return false;
       },
       visitAssignBlock(path) {
         for (let i = 0; i < path.node.body.length; i++) {
@@ -230,9 +237,10 @@ const rootVisitor = (
         return false;
       },
       visitFor(path, { forBranch }) {
+        console.log("forBranch = ", forBranch);
         const branchVisitor = new FrameSymbolVisitor(symbols);
         let branch: t.Node[] = [];
-        if (forBranch === "body") {
+        if (forBranch === "body" || forBranch === undefined) {
           branchVisitor.visit(path.get("target"), { storeAsParam: true });
           branch = path.node.body;
         } else if (forBranch === "else") {
@@ -265,12 +273,14 @@ type frameSymbolVisitorContext = {
 
 export class FrameSymbolVisitor {
   symbols: Symbols;
-  visitor: PathVisitor;
   constructor(symbols: Symbols) {
     this.symbols = symbols;
+  }
+  get visitor(): PathVisitor {
     // eslint-disable-next-line @typescript-eslint/no-this-alias
     const self = this;
-    const visitor = PathVisitor.fromMethodsObject<frameSymbolVisitorContext>({
+    const symbols = this.symbols;
+    return PathVisitor.fromMethodsObject<frameSymbolVisitorContext>({
       visitName({ node }, state) {
         if (state?.storeAsParam || node.ctx === "param") {
           symbols.declareParameter(node.name);
@@ -364,7 +374,6 @@ export class FrameSymbolVisitor {
         return false;
       },
     });
-    this.visitor = visitor;
   }
   visit(path: Path | t.Node, state: frameSymbolVisitorContext = {}): void {
     this.visitor.visit(path, state);

@@ -1,4 +1,4 @@
-import { builtInTypes, getFieldValue, Type } from "./types";
+import { builtInTypes, getFieldValue, getFieldNames, Type } from "./types";
 import * as n from "./gen/types";
 import "./def";
 
@@ -60,6 +60,20 @@ type NodePathGetRetTK<
     ? NodePath<V, V, K>
     : NodePath<N, V, K>
   : never;
+type NodePathGetRetChildNodes<
+  V,
+  N extends n.Node,
+  K extends PropertyKey
+> = K extends keyof N
+  ? V extends n.Node
+    ? NodePath<V, V, K>
+    : V extends (infer L)[]
+    ? L extends n.Node
+      ? NodePath<L, L, number>
+      : never
+    : never
+  : never;
+
 type NodePathGetRet<T extends n.Node, K extends PropertyKey> = K extends keyof T
   ? NodePathGetRetTK<T[K], T, K>
   : never;
@@ -67,6 +81,15 @@ type NodePathListGetRetTK<
   V extends any[],
   N extends n.Node
 > = V extends (infer L)[] ? NodePathGetRetTKNumber<L, N> : never;
+
+type EachChildCallback<C, V, N extends n.Node> = V extends any[]
+  ? (this: C, value: NodePathListGetRetTK<V, N>) => void
+  : V extends n.Node
+  ? <K extends keyof V>(
+      this: C,
+      value: NodePathGetRetChildNodes<V[K], N, K>
+    ) => void
+  : never;
 
 export class NodePath<
   N extends n.Node = n.Node,
@@ -163,24 +186,8 @@ export class NodePath<
     parent: NodePath<N, V>;
     parentPath: NodePath<N>;
   };
-  get(
-    ...names: PathName[]
-  ): NodePath & { parent: NodePath<N, V>; parentPath: NodePath<N> };
-  get(
-    name: PathName,
-    ...names: PathName[]
-  ): NodePath & { parent: NodePath; parentPath: NodePath } {
-    if (!names?.length) {
-      return this._getChildPath(name);
-    }
-    names.unshift(name);
-    let path: NodePath = this as unknown as NodePath;
-
-    for (let i = 0; i < names.length; ++i) {
-      path = path._getChildPath(names[i]);
-    }
-
-    return path as NodePath & { parent: NodePath; parentPath: NodePath };
+  get(name: PathName): NodePath & { parent: NodePath; parentPath: NodePath } {
+    return this._getChildPath(name);
   }
 
   each<T>(callback: EachCallback<T, NodePath>, context: T): void;
@@ -232,6 +239,31 @@ export class NodePath<
     }, (context || this) as T);
 
     return result;
+  }
+
+  eachChild<T = this>(
+    callback: EachChildCallback<T, V, N>,
+    context: T = this as any
+  ): void {
+    const value = this.value;
+    if (Array.isArray(value)) {
+      for (let i = 0; i < value.length; i++) {
+        callback.call(context, this.get(i));
+      }
+    } else if (n.Node.check(value)) {
+      getFieldNames(value).forEach((name) => {
+        const child = this.get(name);
+        if (Array.isArray(child.value) && child.value.length) {
+          for (let i = 0; i < child.value.length; i++) {
+            if (n.Node.check(child.value[i])) {
+              callback.call(context, child.get(i));
+            }
+          }
+        } else if (n.Node.check(child.value)) {
+          callback.call(context, child);
+        }
+      });
+    }
   }
 
   // eslint-disable-next-line @typescript-eslint/no-empty-function
@@ -498,7 +530,7 @@ export class NodePath<
           results.push(pp.get(name + i));
         }
 
-        if (results[0] !== this) {
+        if (results[0] !== (this as unknown as NodePath)) {
           throw new Error("");
         }
       }
@@ -507,7 +539,7 @@ export class NodePath<
         this.__childCache = null;
       }
       this.value = (parentValue as any)[name] = args[0];
-      results.push(this);
+      results.push(this as unknown as NodePath);
     } else if (args.length === 0) {
       delete (parentValue as any)[name];
       this.value = undefined as unknown as V;

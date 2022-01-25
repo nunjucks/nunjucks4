@@ -100,7 +100,6 @@ function computeMethodNameTable(visitor: any) {
       methodNameTable[typeName] = methodName;
     }
   }
-  console.log(methodNameTable);
   return methodNameTable;
 }
 
