@@ -26,6 +26,7 @@ import {
 
 import { Path } from "./path";
 import { PathVisitor } from "./path-visitor";
+import type { Visitor } from "./gen/visitor";
 
 Object.assign(types, njkTypes);
 
@@ -53,6 +54,8 @@ export {
   someField,
   finalize,
 };
+
+export type { Visitor };
 
 export const visit = PathVisitor.visit;
 

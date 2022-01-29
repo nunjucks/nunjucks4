@@ -237,7 +237,6 @@ const rootVisitor = (
         return false;
       },
       visitFor(path, { forBranch }) {
-        console.log("forBranch = ", forBranch);
         const branchVisitor = new FrameSymbolVisitor(symbols);
         let branch: t.Node[] = [];
         if (forBranch === "body" || forBranch === undefined) {
