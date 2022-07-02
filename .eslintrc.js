@@ -10,7 +10,6 @@ module.exports = {
     "@typescript-eslint/camelcase": "off",
     "@typescript-eslint/explicit-function-return-type": "off",
     "@typescript-eslint/no-var-requires": "off",
-    "@typescript-eslint/no-non-null-assertion": "off",
     "@typescript-eslint/no-explicit-any": "off",
     "@typescript-eslint/ban-types": [
       "error",
@@ -71,7 +70,8 @@ module.exports = {
         "@typescript-eslint/camelcase": "off",
         "@typescript-eslint/no-explicit-any": "off",
         "@typescript-eslint/explicit-function-return-type": "off",
-        "@typescript-eslint/explicit-module-boundary-types": "off"
+        "@typescript-eslint/explicit-module-boundary-types": "off",
+        "@typescript-eslint/no-non-null-assertion": "off",
       }
     },
     {
@@ -90,6 +90,12 @@ module.exports = {
       "files": ["rollup.config.js"],
       "env": {
         "node": true
+      }
+    },
+    {
+      "files": ["**/gen/types.ts"],
+      "rules": {
+        "@typescript-eslint/no-namespace": "off"
       }
     },
     {

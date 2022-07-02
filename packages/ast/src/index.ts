@@ -22,11 +22,15 @@ import {
   eachField,
   someField,
   finalize,
+  PredicateType,
+  ArrayType,
+  OrType,
+  IdentityType,
 } from "./types";
 
 import { Path } from "./path";
 import { PathVisitor } from "./path-visitor";
-import type { Visitor } from "./gen/visitor";
+import { Visitor } from "./gen/visitor";
 
 Object.assign(types, njkTypes);
 
@@ -53,9 +57,13 @@ export {
   eachField,
   someField,
   finalize,
+  PredicateType,
+  ArrayType,
+  OrType,
+  IdentityType,
 };
 
-export type { Visitor };
+export { Visitor };
 
 export const visit = PathVisitor.visit;
 

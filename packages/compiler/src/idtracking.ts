@@ -1,15 +1,15 @@
 import { Path, PathVisitor, visit, types as t } from "@nunjucks/ast";
 
-const VAR_LOAD_PARAMETER = "param";
-const VAR_LOAD_RESOLVE = "resolve";
-const VAR_LOAD_ALIAS = "alias";
-const VAR_LOAD_UNDEFINED = "undefined";
+export const VAR_LOAD_PARAMETER = "param";
+export const VAR_LOAD_RESOLVE = "resolve";
+export const VAR_LOAD_ALIAS = "alias";
+export const VAR_LOAD_UNDEFINED = "undefined";
 
 type LoadType =
-  | typeof VAR_LOAD_PARAMETER
-  | typeof VAR_LOAD_RESOLVE
-  | typeof VAR_LOAD_ALIAS
-  | typeof VAR_LOAD_UNDEFINED;
+  | [typeof VAR_LOAD_PARAMETER, string | null]
+  | [typeof VAR_LOAD_RESOLVE, string | null]
+  | [typeof VAR_LOAD_ALIAS, string]
+  | [typeof VAR_LOAD_UNDEFINED, string | null];
 
 type RootVisitorState = {
   forBranch?: "body" | "else" | "test";
@@ -19,7 +19,7 @@ export class Symbols {
   level: number;
   parent: Symbols | null;
   refs: Record<string, string>;
-  loads: Record<string, [LoadType, string | null]>;
+  loads: Record<string, LoadType>;
   stores: Set<string>;
   constructor(parent?: Symbols | null, level?: number) {
     if (level === undefined) {
@@ -49,7 +49,7 @@ export class Symbols {
     rootVisitor(node, this, state);
   }
 
-  _defineRef(name: string, load?: [LoadType, string | null]): string {
+  _defineRef(name: string, load?: LoadType): string {
     const ident = `l_${this.level}_${name}`;
     this.refs[name] = ident;
     if (load !== undefined) {
@@ -58,7 +58,7 @@ export class Symbols {
     return ident;
   }
 
-  findLoad(target: string): unknown {
+  findLoad(target: string): LoadType | null {
     if (target in this.loads) {
       return this.loads[target];
     }
@@ -138,7 +138,7 @@ export class Symbols {
         this.loads[target] = [VAR_LOAD_ALIAS, outerTarget];
         continue;
       }
-      this.loads[target] = [VAR_LOAD_ALIAS, outerTarget];
+      this.loads[target] = [VAR_LOAD_RESOLVE, outerTarget];
     }
   }
 
@@ -281,6 +281,7 @@ export class FrameSymbolVisitor {
     const symbols = this.symbols;
     return PathVisitor.fromMethodsObject<frameSymbolVisitorContext>({
       visitName({ node }, state) {
+        console.log(node);
         if (state?.storeAsParam || node.ctx === "param") {
           symbols.declareParameter(node.name);
         } else if (node.ctx === "store") {
@@ -288,6 +289,7 @@ export class FrameSymbolVisitor {
         } else if (node.ctx === "load") {
           symbols.load(node.name);
         }
+        console.log(symbols);
         return false;
       },
       visitNSRef(path) {

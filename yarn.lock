@@ -1807,6 +1807,34 @@
   dependencies:
     "@octokit/openapi-types" "^8.2.1"
 
+"@pregenerator/ast-types@1.1.0-beta.2":
+  version "1.1.0-beta.2"
+  resolved "http://localhost:4873/@pregenerator%2fast-types/-/ast-types-1.1.0-beta.2.tgz#c1fa02d1281b3a6e1231ef3e8736ace07ba5d287"
+  integrity sha512-7ThWpqedaoxYtNGiPBoeJLhW4MeXvx6PnQb/otF6mWzDFRy6SlY3rb8gTGmiXuOCKiiLpaCmdQC3zwpC+PuBHw==
+
+"@pregenerator/ast-types@1.1.0-beta.8", "@pregenerator/ast-types@^1.1.0-beta.8":
+  version "1.1.0-beta.8"
+  resolved "http://localhost:4873/@pregenerator%2fast-types/-/ast-types-1.1.0-beta.8.tgz#bf973d1863fa95550259e95dbe89434c4c8d670c"
+  integrity sha512-bp2GGD2MrT7zBsSeut9QdthmY7svgpmutsC8Y4gl1XKdbb3Y6vxMesypO/GiuhaYBkXPzHTpQ7T4H07vzvTkVA==
+
+"@pregenerator/parser@^1.1.0-beta.8":
+  version "1.1.0-beta.8"
+  resolved "http://localhost:4873/@pregenerator%2fparser/-/parser-1.1.0-beta.8.tgz#459c29ecbf72e813bf6b93b3d67667cb104d133a"
+  integrity sha512-x5OkIsZuxV+V+ZXMOHVFco54wEYrwoVjcE0Ba+QB8Iwv88pEmBACDQTFob471iA5GguNH3RrhzgNxLb9IviHbg==
+  dependencies:
+    "@pregenerator/ast-types" "^1.1.0-beta.8"
+    acorn "^8.3.0"
+
+"@pregenerator/template@1.1.0-beta.8":
+  version "1.1.0-beta.8"
+  resolved "http://localhost:4873/@pregenerator%2ftemplate/-/template-1.1.0-beta.8.tgz#239707fb3adf2f1336e4e8801e7d905c4bf60950"
+  integrity sha512-//N4qLp8DVLUvsxFFUcAZ4VGSXn2UghlJ7cY/U0SGH7f7L3ZxLCC0DglWK/IIYWWb/JzR+HGDNWERfGmUzWeuQ==
+  dependencies:
+    "@pregenerator/ast-types" "^1.1.0-beta.8"
+    "@pregenerator/parser" "^1.1.0-beta.8"
+    acorn "^8.3.0"
+    astring "^1.7.5"
+
 "@tootallnate/once@1":
   version "1.1.2"
   resolved "https://registry.yarnpkg.com/@tootallnate/once/-/once-1.1.2.tgz#ccb91445360179a04e7fe6aff78c00ffc1eeaf82"
@@ -2154,6 +2182,11 @@ acorn@^7.4.0:
   resolved "https://registry.yarnpkg.com/acorn/-/acorn-7.4.1.tgz#feaed255973d2e77555b83dbc08851a6c63520fa"
   integrity sha512-nQyp0o1/mNdbTO1PO6kHkwSrmgZ0MT/jCCpNiwbUjGoRN4dlBhqJtoQuCnEOKzgTVwg0ZWiCoQy6SxMebQVh8A==
 
+acorn@^8.3.0:
+  version "8.7.0"
+  resolved "http://localhost:4873/acorn/-/acorn-8.7.0.tgz#90951fde0f8f09df93549481e5fc141445b791cf"
+  integrity sha512-V/LGr1APy+PXIwKebEWrkZPwoeoF+w1jiOBUmuxuiUIaOHtob8Qc9BTrYo7VuI5fR8tqsy+buA2WFooR5olqvQ==
+
 acorn@^8.4.1:
   version "8.4.1"
   resolved "https://registry.yarnpkg.com/acorn/-/acorn-8.4.1.tgz#56c36251fc7cabc7096adc18f05afe814321a28c"
@@ -2420,6 +2453,11 @@ astral-regex@^2.0.0:
   version "2.0.0"
   resolved "https://registry.yarnpkg.com/astral-regex/-/astral-regex-2.0.0.tgz#483143c567aeed4785759c0865786dc77d7d2e31"
   integrity sha512-Z7tMw1ytTXt5jqMcOP+OQteU1VuNK9Y02uuJtKQ1Sv69jXQKKg5cibLwGJow8yzZP+eAc18EmLGPal0bp36rvQ==
+
+astring@^1.7.5:
+  version "1.8.1"
+  resolved "http://localhost:4873/astring/-/astring-1.8.1.tgz#a91c4afd4af3523e11f31242a3d5d9af62bb6cc6"
+  integrity sha512-Aj3mbwVzj7Vve4I/v2JYOPFkCGM2YS7OqQTNSxmUR+LECRpokuPgAYghePgr6SALDo5bD5DlfbSaYjOzGJZOLQ==
 
 async-each@^1.0.1:
   version "1.0.3"

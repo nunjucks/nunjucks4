@@ -30,6 +30,8 @@ export interface PathConstructor {
   ): Path<N, V>;
 }
 
+type PathValueType<T> = T extends n.Node ? Path<T, T> : Path<n.Node, T>;
+
 const PRECEDENCE: any = {};
 [
   ["||"],
@@ -88,7 +90,7 @@ type EachChildCallback<C, V, N extends n.Node> = V extends any[]
       this: C,
       value: PathGetRetChildNodes<V[K], N, K>
     ) => void
-  : never;
+  : (this: C, value: Path<n.Node, any>) => void;
 
 export class Path<
   N extends n.Node = n.Node,
@@ -254,28 +256,80 @@ export class Path<
     return result;
   }
 
+  _eachChild<T = this>(
+    callback: (value: Path) => void,
+    context: T = this as any
+  ) {
+    for (const child of this.iterChildNodes()) {
+      callback.call(context, child);
+    }
+  }
+
   eachChild<T = this>(
     callback: EachChildCallback<T, V, N>,
     context: T = this as any
   ): void {
+    this._eachChild<T>(callback as any, context);
+  }
+
+  *iterChildren(): Generator<Path> {
     const value = this.value;
+    const childPaths: Path[] = [];
     if (Array.isArray(value)) {
       for (let i = 0; i < value.length; i++) {
-        callback.call(context, this.get(i));
+        childPaths.push(this.get(i));
       }
-    } else if (n.Node.check(value)) {
-      getFieldNames(value).forEach((name) => {
-        const child = this.get(name);
-        if (Array.isArray(child.value) && child.value.length) {
-          for (let i = 0; i < child.value.length; i++) {
-            if (n.Node.check(child.value[i])) {
-              callback.call(context, child.get(i));
-            }
-          }
-        } else if (n.Node.check(child.value)) {
-          callback.call(context, child);
+    } else if (value && typeof value === "object") {
+      for (const childName of getFieldNames(value)) {
+        if (!hasOwn.call(value, childName)) {
+          (value as any)[childName] = getFieldValue(value, childName);
         }
-      });
+        childPaths.push(this.get(childName));
+        // yield this.get(childName);
+      }
+    }
+    for (const childPath of childPaths) {
+      yield childPath;
+    }
+  }
+
+  *iterFind<U>(type: Type<U>): Generator<PathValueType<U>> {
+    for (const child of this.iterChildren()) {
+      if (type.check(child.value)) {
+        yield child as unknown as PathValueType<U>;
+      } else {
+        for (const match of child.iterFind(type)) {
+          yield match;
+        }
+      }
+    }
+  }
+
+  findAll<U>(type: Type<U>): PathValueType<U>[] {
+    const matches: PathValueType<U>[] = [];
+    for (const match of this.iterFind(type)) {
+      matches.push(match);
+    }
+    return matches;
+  }
+
+  find<U>(type: Type<U>): PathValueType<U> | undefined {
+    for (const match of this.iterFind(type)) {
+      return match;
+    }
+  }
+
+  *iterChildNodes(): Generator<Path<n.Node, n.Node>> {
+    for (const child of this.iterChildren()) {
+      if (Array.isArray(child.value) && child.value.length) {
+        for (let i = 0; i < child.value.length; i++) {
+          if (n.Node.check(child.value[i])) {
+            yield (child as any).get(i);
+          }
+        }
+      } else if (n.Node.check(child.value)) {
+        yield child;
+      }
     }
   }
 

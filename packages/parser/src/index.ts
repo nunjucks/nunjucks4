@@ -576,7 +576,7 @@ export class Parser {
         loc: this.tokToLoc(token, this.current),
       });
     } else if (this.skipAny(["int", "float"])) {
-      return b.const.from({ value: token.value, loc });
+      return b.const.from({ value: parseFloat(token.value), loc });
     } else if (this.skip(lexer.TOKEN_LPAREN)) {
       const node = this.parseTuple({ explicitParentheses: true });
       this.expect(lexer.TOKEN_RPAREN);

@@ -3,7 +3,7 @@ import path from "path";
 import * as prettier from "prettier";
 import "../src/def";
 import { Type, builders, njkTypes as t, getBuilderName } from "../src/types";
-import { builders as b } from "ast-types";
+import { builders as b } from "@pregenerator/ast-types";
 import { Linter } from "eslint";
 
 function prettyPrint(ast: any) {

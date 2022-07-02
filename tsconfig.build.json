@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "outDir": "dist",
-    "target": "es5",
+    "target": "es2020",
     "allowJs": true,
     "noImplicitAny": true,
     "skipLibCheck": true,

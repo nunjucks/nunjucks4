@@ -25,7 +25,9 @@
     "test": "yarn run build",
     "gen": "ts-node --transpile-only scripts/gen-types.ts"
   },
-  "dependencies": {},
+  "dependencies": {
+    "@pregenerator/ast-types": "1.1.0-beta.2"
+  },
   "devDependencies": {
     "@types/prettier": "^2.4.3",
     "ast-types": "^0.14.2",

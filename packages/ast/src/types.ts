@@ -33,7 +33,7 @@ abstract class BaseType<T> {
   }
 }
 
-class ArrayType<T> extends BaseType<T> {
+export class ArrayType<T> extends BaseType<T> {
   readonly kind: "ArrayType" = "ArrayType";
 
   constructor(
@@ -74,7 +74,7 @@ export class IdentityType<T> extends BaseType<T> {
   }
 }
 
-class ObjectType<T> extends BaseType<T> {
+export class ObjectType<T> extends BaseType<T> {
   readonly kind: "ObjectType" = "ObjectType";
 
   constructor(public readonly fields: Field<any>[]) {
@@ -95,7 +95,7 @@ class ObjectType<T> extends BaseType<T> {
   }
 }
 
-class OrType<T> extends BaseType<T> {
+export class OrType<T> extends BaseType<T> {
   readonly kind: "OrType" = "OrType";
 
   constructor(public readonly types: Type<any>[]) {
@@ -113,7 +113,7 @@ class OrType<T> extends BaseType<T> {
   }
 }
 
-class PredicateType<T> extends BaseType<T> {
+export class PredicateType<T> extends BaseType<T> {
   readonly kind: "PredicateType" = "PredicateType";
 
   constructor(
@@ -1007,5 +1007,3 @@ export function finalize(): void {
     defCache[name].finalize();
   });
 }
-
-export type { ArrayType, OrType, PredicateType };

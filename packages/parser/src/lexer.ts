@@ -531,7 +531,10 @@ export class Tokenizer {
         // We could hit the end of the template in the middle of
         // our looping, so check for the null return value from
         // _extractUntil
-        while ((data = this._extractUntil(beginChars)) !== null) {
+        while (
+          !this.isFinished() &&
+          (data = this._extractUntil(beginChars)) !== null
+        ) {
           tok += data;
 
           if (
