@@ -6,6 +6,24 @@ type Deep = boolean | ((type: Type<any>, value: any) => void);
 
 export type Omit<T, K> = Pick<T, Exclude<keyof T, K>>;
 
+export class ConstError extends Error {
+  _constError: boolean;
+
+  constructor(message = "Cannot convert to const") {
+    super(message);
+    this._constError = true;
+  }
+}
+
+export type Serializable =
+  | string
+  | number
+  | boolean
+  | null
+  | undefined
+  | Serializable[]
+  | { [key: string]: Serializable };
+
 // A type is an object with a .check method that takes a value and returns
 // true or false according to whether the value matches the type.
 export type Type<T> =
@@ -181,11 +199,12 @@ export abstract class Def<T = any> {
   }
 
   isSupertypeOf(that: Def<any>): boolean {
+    const that_: any = that;
     if (that instanceof Def) {
-      if (this.finalized !== true || that.finalized !== true) {
+      if (this.finalized !== true || that_.finalized !== true) {
         throw new Error("");
       }
-      return hasOwn.call(that.allSupertypes, this.typeName);
+      return hasOwn.call(that_.allSupertypes, this.typeName);
     } else {
       throw new Error(that + " is not a Def");
     }
@@ -415,7 +434,7 @@ export const Type = {
   // type d.type by calling methods such as d.bases, d.build, and d.field.
   def(typeName: string): Def {
     return hasOwn.call(defCache, typeName)
-      ? defCache[typeName]
+      ? (defCache as any)[typeName]
       : (defCache[typeName] = new DefImpl(typeName));
   },
 

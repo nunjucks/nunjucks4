@@ -1,22 +1,22 @@
 import { Symbols } from "./idtracking";
-// import type { Environment } from "./environment";
-import { EvalContext } from "@nunjucks/environment";
+import type { Environment } from "./environment";
 
-// export class EvalContext {
-//   autoescape: boolean;
-//   environment: Environment;
-//   volatile: boolean;
+export class EvalContext {
+  autoescape: boolean;
+  environment: Environment;
+  volatile: boolean;
 
-//   constructor(environment: Environment, templateName?: string | null) {
-//     this.environment = environment;
-//     if (typeof environment.autoescape === "function") {
-//       this.autoescape = environment.autoescape(templateName);
-//     } else {
-//       this.autoescape = environment.autoescape;
-//     }
-//     this.volatile = false;
-//   }
-// }
+  constructor(environment: Environment, templateName?: string | null) {
+    this.environment = environment;
+    if (typeof environment.autoescape === "function") {
+      this.autoescape = environment.autoescape(templateName);
+    } else {
+      this.autoescape = environment.autoescape;
+    }
+    this.volatile = false;
+  }
+}
+
 export class Frame {
   evalCtx: EvalContext;
   parent: Frame | null;

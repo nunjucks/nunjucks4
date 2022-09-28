@@ -290,7 +290,7 @@ export class Parser {
   }): t.Name | t.Tuple;
 
   parseAssignTarget({
-    withTuple = false,
+    withTuple = true,
     nameOnly = false,
     extraEndRules,
     withNamespace = false,

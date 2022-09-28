@@ -1,7 +1,41 @@
 import { Type, AnyType, finalize } from "./types";
 import { defaults, geq } from "./shared";
+// import { ConstError } from "./types";
 
 const { def, or } = Type;
+
+// const binopToFunc: Record<string, (a: any, b: any) => any> = {
+//   "*": (a, b) => a * b,
+//   "/": (a, b) => a / b,
+//   "//": (a, b) => Math.floor(a / b),
+//   "**": (a, b) => Math.pow(a, b),
+//   "%": (a, b) => a % b,
+//   "+": (a, b) => a + b,
+//   "-": (a, b) => a - b,
+// };
+
+// const uaopToFunc: Record<string, (a: any) => any> = {
+//   not: (a) => !a,
+//   "+": (a) => +a,
+//   "-": (a) => -a,
+// };
+
+// const cmpopToFunc: Record<string, (a: any, b: any) => boolean> = {
+//   eq: (a, b) => a == b,
+//   ne: (a, b) => a != b,
+//   gt: (a, b) => a > b,
+//   gteq: (a, b) => a >= b,
+//   lt: (a, b) => a < b,
+//   lteq: (a, b) => a <= b,
+//   in: (a, b) => {
+//     // TODO
+//     return a.includes(b);
+//   },
+//   notin: (a, b) => {
+//     // TODO
+//     return !a.includes(b);
+//   },
+// };
 
 def("Position").field("line", geq(1)).field("column", geq(0));
 

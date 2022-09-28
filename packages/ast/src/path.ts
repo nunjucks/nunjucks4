@@ -83,6 +83,38 @@ type PathListGetRetTK<V extends any[], N extends n.Node> = V extends (infer L)[]
   ? PathGetRetTKNumber<L, N>
   : never;
 
+// type KeyOf<T> = T extends n.Node ? keyof T : never;
+// type NodeKeys<N extends n.Node> = Exclude<
+//   {
+//     [K in keyof N]: K;
+//   }[keyof N],
+//   undefined | "type" | "loc"
+// >;
+
+// type PathSafe<N, K extends PropertyKey> = N extends n.Node
+//   ? Path<N, N, K>
+//   : never;
+
+// type PathChild<V> = V extends (infer L)[]
+//   ? PathChild<L>
+//   : V extends n.Node
+//   ? Exclude<
+//       {
+//         [K in keyof V]: V[K] extends n.Node
+//           ? PathSafe<V[K], K>
+//           : V[K] extends (infer M)[]
+//           ? M extends n.Node
+//             ? PathSafe<M, number>
+//             : never
+//           : never;
+//       }[keyof V],
+//       undefined
+//     >
+//   : never;
+
+// type FooChild<N extends n.Node> = N extends any ? 1 : never;
+// type Test123 = PathChild<n.Dict>;
+
 type EachChildCallback<C, V, N extends n.Node> = V extends any[]
   ? (this: C, value: PathListGetRetTK<V, N>) => void
   : V extends n.Node
