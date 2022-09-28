@@ -25,10 +25,13 @@
     "test": "yarn run build"
   },
   "dependencies": {
-    "@pregenerator/ast-types": "1.1.0-beta.8",
-    "@pregenerator/template": "1.1.0-beta.8"
+    "@babel/generator": "^7.18.7",
+    "@nunjucks/environment": "workspace:*",
+    "@pregenerator/ast-types": "1.1.0-beta.9",
+    "@pregenerator/template": "1.1.0-beta.9"
   },
   "devDependencies": {
+    "@types/babel__generator": "^7.6.4",
     "rimraf": "~3.0.2",
     "typescript": "^4.3.5"
   }

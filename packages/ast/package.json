@@ -26,9 +26,11 @@
     "gen": "ts-node --transpile-only scripts/gen-types.ts"
   },
   "dependencies": {
-    "@pregenerator/ast-types": "1.1.0-beta.2"
+    "@nunjucks/environment": "workspace:*",
+    "@pregenerator/ast-types": "1.1.0-beta.9"
   },
   "devDependencies": {
+    "@types/node": "^18.7.23",
     "@types/prettier": "^2.4.3",
     "ast-types": "^0.14.2",
     "rimraf": "~3.0.2",
