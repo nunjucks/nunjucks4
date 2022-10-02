@@ -295,6 +295,9 @@ export class Tokenizer {
             }
           }
         }
+        if (tok[0] === "-") {
+          this._extract(whitespaceChars);
+        }
         return token(TOKEN_BLOCK_END, tok, lineno, colno, pos);
       } else if (
         (tok = this._extractString(this.tags.VARIABLE_END)) ||
@@ -578,6 +581,14 @@ export class Tokenizer {
 
         if (data === null && inComment) {
           throw new Error("expected end of comment, got end of file");
+        }
+
+        if (!inComment && this._matches(this.tags.BLOCK_START + "-")) {
+          // If the next token is a left-stripping block tag, strip trailing
+          // whitespace
+          tok = tok.replace(/\s+$/, "");
+          // If the token is now empty, skip and return the next
+          if (!tok) return this._nextToken();
         }
 
         return token(

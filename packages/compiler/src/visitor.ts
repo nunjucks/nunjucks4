@@ -23,6 +23,7 @@ import {
 } from "./idtracking";
 import n = namedTypes;
 import toConst from "./const";
+import { env } from "process";
 
 type Bookmark = n.EmptyStatement & {
   _isBookmark: true;
@@ -52,7 +53,17 @@ const memberExpr = (s: string) => {
   return memberExpr;
 };
 
-function forceExpression(node: n.Node): n.Expression {
+function differenceUpdate<T>(a: Set<T>, b: Set<T>): void {
+  b.forEach((val) => a.delete(val));
+}
+
+function forceExpression(node: n.Node | n.Node[]): n.Expression {
+  if (Array.isArray(node)) {
+    if (node.length != 1) {
+      throw new Error("Expected only one node");
+    }
+    node = node[0];
+  }
   if (n.ExpressionStatement.check(node)) {
     return node.expression;
   }
@@ -257,7 +268,6 @@ export class CodeGenerator {
           inner.push(ast`let parentTemplate = null`());
         }
         const frameNodes: n.Node[] = self.traverse(path, { ...state, frame });
-        console.log("frameNodes=", frameNodes);
         const frameStatements: n.Statement[] = [];
         for (const node of frameNodes) {
           n.assertStatement(node);
@@ -285,7 +295,7 @@ export class CodeGenerator {
             inner: b.tryStatement(
               b.blockStatement(innerStmts),
               b.catchClause(
-                b.identifier("e"),
+                id("e"),
                 null,
                 b.blockStatement([
                   ast.ast`cb(rt.handleError(e, lineno, colno))`,
@@ -295,11 +305,6 @@ export class CodeGenerator {
           })
         );
         return nodes;
-        // debugger;
-        // astPath.push(newAst);
-        // astPath.scope?.scan(true);
-        // console.log(astPath.value);
-        // this.traverse(path, { ...state, astPath: getBookmark(astPath)! });
       },
       visitOutput(path, state) {
         // todo: implement finalize
@@ -326,7 +331,6 @@ export class CodeGenerator {
           }
           body.push([val]);
         }
-        // TK frame.buffer append/extend
         const innerNodes: n.Statement[] = [];
 
         if (frame.buffer !== null) {
@@ -341,16 +345,19 @@ export class CodeGenerator {
               );
             }
           }
-          const callee = b.memberExpression(id(frame.buffer), id("push"));
+          const callee = memberExpr(`${frame.buffer}.push`);
           innerNodes.push(
-            b.expressionStatement(
-              b.callExpression(callee, [
-                args.length === 1
-                  ? args[0]
-                  : b.spreadElement(b.arrayExpression(args)),
-              ])
-            )
+            b.expressionStatement(b.callExpression(callee, args))
           );
+          // innerNodes.push(
+          //   b.expressionStatement(
+          //     b.callExpression(callee, [
+          //       args.length === 1
+          //         ? args[0]
+          //         : b.spreadElement(b.arrayExpression(args)),
+          //     ])
+          //   )
+          // );
         } else {
           for (const item of body) {
             if (Array.isArray(item)) {
@@ -376,17 +383,41 @@ export class CodeGenerator {
           return b.numericLiteral(node.value);
         }
       },
+      visitTemplateData({ node }, { self, frame }) {
+        return self.write(self.outputChildToConst(node, frame), node, frame);
+      },
+      visitGetattr({ node }, state) {
+        const { self } = state;
+        const target = forceExpression(self.visit(node.node, state));
+        return ast`environment.getattr(%%target%%, %%attr%%)`({
+          target,
+          attr: b.stringLiteral(node.attr),
+        });
+      },
+      // visitTuple({ node }, state) {
+      //   const { self } = state;
+      //   const elements: n.PatternLike[] = [];
+      //   for (const item of node.items) {
+      //     const ret = self.visit(item, state);
+      //     for (const r of ret) {
+      //       n.assertPatternLike(r);
+      //       elements.push(r);
+      //     }
+      //   }
+      //   return b.arrayPattern(elements);
+      // },
       visitTuple({ node }, state) {
         const { self } = state;
-        const elements: n.PatternLike[] = [];
+        const elements: n.Expression[] = [];
         for (const item of node.items) {
-          const ret = self.visit(item, state);
-          for (const r of ret) {
-            n.assertPatternLike(r);
-            elements.push(r);
-          }
+          elements.push(forceExpression(self.visit(item, state)));
+          // const ret = self.visit(item, state);
+          // for (const r of ret) {
+          //   n.assertPatternLike(r);
+          //   elements.push(r);
+          // }
         }
-        return b.arrayPattern(elements);
+        return b.arrayExpression(elements);
       },
       visitAssign(path, state) {
         const { node } = path;
@@ -410,12 +441,7 @@ export class CodeGenerator {
           }
         }
         const ref = frame.symbols.ref(node.name);
-        /*                self.write(
-                    f"(undefined(name={node.name!r}) if {ref} is missing else {ref})"
-                )
-                return
 
-        self.write(ref)*/
         // If we are looking up a variable we might have to deal with the
         // case where it's undefined.  We can skip that case if the load
         // instruction indicates a parameter which are always defined.
@@ -428,17 +454,61 @@ export class CodeGenerator {
               !self.parameterIsUndeclared(ref)
             )
           )
-            return ast`(%%ref%% === missing) ? undef({name: %%name%%}) : %%name%%`(
+            return ast`(%%ref%% === missing) ? runtime.undef({name: %%name%%}) : %%name%%`(
               {
                 name: node.name,
                 ref,
               }
             );
         }
-        return b.identifier(ref);
+        return id(ref);
+      },
+      visitIf(path, state) {
+        const { node } = path;
+        const { self } = state;
+        const frame = state.frame.soft();
+        const test = forceExpression(
+          self.visit(node.test, { ...state, frame })
+        );
+        const consequent = b.blockStatement(
+          self.visitStatements(node.body, { ...state, frame })
+        );
+        const elifs: n.IfStatement[] = [];
+        const alternates: { test: n.Expression; consequent: n.Statement }[] =
+          node.elif.map((elif) => ({
+            test: forceExpression(self.visit(elif.test, { ...state, frame })),
+            consequent: b.blockStatement(
+              self.visitStatements(elif.body, { ...state, frame })
+            ),
+          }));
+
+        const else_ = node.else_?.length
+          ? b.blockStatement(
+              self.visitStatements(node.else_, { ...state, frame })
+            )
+          : undefined;
+
+        // let else_: n.Statement | undefined = undefined;
+        // if (node.else_?.length) {
+        //   else_ = b.blockStatement(
+        //     self.visitStatements(node.else_, { ...state, frame })
+        //   );
+        // }
+        const alternate =
+          alternates.reduceRight(
+            (alt: n.Statement | undefined, { test, consequent }) =>
+              b.ifStatement(test, consequent, alt),
+            else_
+          ) || null;
+        return b.ifStatement(test, consequent, alternate);
+        // const else_ = node.else_
+        //   ? self.visit(node.else_, { ...state, frame })
+        //   : undefined;
+        // // b.ifStatement();
+        // // for (const elif of node.elif) {
+        // // }
       },
       visitFor(path, state) {
-        console.log("visitFor!");
         const { astPath, frame, self } = state;
         const { node } = path;
         const loopFrame = frame.inner();
@@ -497,23 +567,19 @@ export class CodeGenerator {
             test,
             yieldTarget: cloneNode(target),
           });
-          // console.log("STMT");
-          // console.log(stmt);
           const blockStmt = self.wrapFrame(testFrame, stmt);
-          // rootStatements.push(blockStmt);
-          // debugger;
-          // // bookmark.replace(blockStmt);
           rootStatements.push(
             ast`function %%loopFilterFunc%%(fiter) {
             %%blockStmt%%
           }`({ loopFilterFunc, blockStmt })
           );
-          // self.wrapFrame(testFrame)
-          // self.enterFrame
         }
         if (node.recursive) {
           const funcDecl: n.FunctionDeclaration =
-            ast`function *loop(reciter, loopRenderFunc, { depth = 0 }) {}`();
+            ast`function loop(reciter, loopRenderFunc, { depth = 0 }) {}`();
+          if (self.isAsync) {
+            funcDecl.async = true;
+          }
           currStatements.push(funcDecl);
           currStatements = funcDecl.body.body;
           self.buffer(loopFrame);
@@ -561,33 +627,25 @@ export class CodeGenerator {
           }
         }
         target = b.variableDeclaration("let", [b.variableDeclarator(target)]);
-        // let iter: n.Expression = id("reciter");
-        // if (!node.recursive) {
-        //   const iterNodes = self.visit(node.iter, { ...state });
-        //   let iterNode: n.Node = iterNodes[0];
-        //   if (n.ExpressionStatement.check(iterNode)) {
-        //     iterNode = iterNode.expression;
-        //   }
-        //   n.Expression.assert(iterNode);
-        //   iter = iterNode;
-        // }
 
-        let [iter] = node.recursive
-          ? [id("reciter")]
-          : self
-              .visit(node.iter, { ...state, frame })
-              .map((node) => forceExpression(node));
+        // let [iter] = node.recursive
+        //   ? [id("reciter")]
+        //   : self
+        //       .visit(node.iter, { ...state, frame })
+        //       .map((node) => forceExpression(node));
+        let iter = node.recursive
+          ? id("reciter")
+          : forceExpression(self.visit(node.iter, { ...state, frame }));
 
-        n.Expression.assert(iter);
         if (!node.recursive && self.environment.isAsync && !extendedLoop) {
-          iter = b.callExpression(id("auto_aiter"), [iter]);
+          iter = b.callExpression(runtimeExpr("auto_aiter"), [iter]);
         }
         if (extendedLoop) {
-          const args = [iter, id("undef")];
+          const args = [iter, runtimeExpr("undef")];
           if (node.recursive) {
             args.push(id("loopRenderFunc"), id("depth"));
           }
-          iter = b.callExpression(id("LoopContext"), [iter]);
+          iter = b.callExpression(runtimeExpr("LoopContext"), [iter]);
         }
         if (loopFilterFunc !== null) {
           iter = b.callExpression(id(loopFilterFunc), [iter]);
@@ -604,19 +662,10 @@ export class CodeGenerator {
               self.visit(bodyNode, { ...state, frame: loopFrame })
             )
           );
-          // const ln = ;
-          // for (const lnn of ln) {
-          //   n.Statement.assert(lnn);
-          //   loopBody.push(lnn);
-          // }
         }
         if (node.else_?.length) {
-          // loopBody.push(b.expressionStatement(b.assignmentExpression("=", id(iterationIndicator), b.numericLiteral(0)))
           loopBody.push(ast`${iterationIndicator} = 0`());
-        }
 
-        if (node.else_?.length) {
-          debugger;
           const elseNodes = forceStatements(
             self.visit(path.get("else_"), {
               ...state,
@@ -631,47 +680,61 @@ export class CodeGenerator {
           );
         }
         if (node.recursive) {
-          // TODO
-          /*
-                  if node.recursive:
-            self.return_buffer_contents(loop_frame)
-            self.outdent()
-            self.start_write(frame, node)
-            self.write(f"{self.choose_async('await ')}loop(")
-            if self.environment.is_async:
-                self.write("auto_aiter(")
-            self.visit(node.iter, frame)
-            if self.environment.is_async:
-                self.write(")")
-            self.write(", loop)")
-            self.end_write(frame)
-          */
+          loopBody.push(self.returnBufferContents(loopFrame));
+          // currStatements.push(self.write())
+          let loopArgs = self
+            .visit(path.get("iter"), state)
+            .map((x) => forceExpression(x));
+          if (self.isAsync) {
+            loopArgs = [b.callExpression(runtimeExpr("auto_aiter"), loopArgs)];
+          }
+          loopArgs.push(id("loop"));
+          const callExpr = b.callExpression(id("loop"), loopArgs);
+          currStatements.push(
+            b.expressionStatement(
+              self.isAsync ? b.yieldExpression(callExpr) : callExpr
+            )
+          );
         }
-        rootStatements.push(
+        currStatements.push(
           b.forOfStatement.from({
             left: target,
             right: iter,
             body: b.blockStatement(loopBody),
-            // await: self.environment.isAsync,
+            await: self.environment.isAsync,
           })
         );
-        // if (n.Identifier.check(target)) target;
-        // const forOf = b.forOfStatement(target);
-        // console.log(
-        //   "target=",
-        //   target.map((t) => generate(t as any).code).join("\n")
-        // );
-        debugger;
+        if (self.assignStack.length) {
+          differenceUpdate(
+            self.assignStack[self.assignStack.length - 1],
+            loopFrame.symbols.stores
+          );
+        }
         return rootStatements;
       },
     };
   }
 
+  visitStatements<T extends t.Node>(
+    nodeOrPath: T | Path<T, any, PropertyKey> | T[],
+    state: State
+  ): n.Statement[] {
+    const result = this.visit(nodeOrPath, state);
+    return forceStatements(result);
+  }
   visit<T extends t.Node>(
-    nodeOrPath: T | Path<T, any, PropertyKey>,
+    nodeOrPath: T | Path<T, any, PropertyKey> | T[],
     state: State
   ): n.Node[] {
     let path: Path;
+
+    if (Array.isArray(nodeOrPath)) {
+      const result: n.Node[] = [];
+      nodeOrPath.forEach((node) => {
+        result.push(...this.visit(node, state));
+      });
+      return result;
+    }
 
     if (!(nodeOrPath instanceof Path)) {
       path = new Path({ root: nodeOrPath }).get("root");
@@ -716,7 +779,6 @@ export class CodeGenerator {
       frame,
       astPath: astPath,
     });
-    console.log(res);
     astPath.push(...res);
     return astNode;
   }
@@ -746,13 +808,13 @@ export class CodeGenerator {
   buffer(frame: Frame): n.VariableDeclaration {
     frame.buffer = this.temporaryIdentifier();
     return b.variableDeclaration("let", [
-      b.variableDeclarator(b.identifier(frame.buffer), b.arrayExpression([])),
+      b.variableDeclarator(id(frame.buffer), b.arrayExpression([])),
     ]);
   }
   returnBufferContents(
     frame: Frame,
-    { forceUnescaped = false }
-  ): n.BlockStatement {
+    { forceUnescaped = false } = {}
+  ): n.ReturnStatement {
     const concat = b.callExpression(runtimeExpr("concat"), [id(frame.buffer!)]);
     const markup = b.callExpression(runtimeExpr("Markup"), [concat]);
     let returnExpr: n.Expression = concat;
@@ -767,15 +829,11 @@ export class CodeGenerator {
         returnExpr = markup;
       }
     }
-    return b.blockStatement([b.returnStatement(returnExpr)]);
+    return b.returnStatement(returnExpr);
   }
   enterFrame(frame: Frame): n.Statement[] {
     const undefs: string[] = [];
     const nodes: n.Statement[] = [];
-    console.log("frame.symbols.loads=", frame.symbols.loads);
-    if ("l_2_y" in frame.symbols.loads) {
-      debugger;
-    }
     Object.entries(frame.symbols.loads).forEach(([target, load]) => {
       const [action, param] = load;
       if (action === VAR_LOAD_PARAMETER) return;
@@ -783,7 +841,7 @@ export class CodeGenerator {
         nodes.push(
           b.variableDeclaration("let", [
             b.variableDeclarator(
-              b.identifier(target),
+              id(target),
               b.callExpression(this.getResolveFunc(), [
                 param === null ? b.nullLiteral() : b.stringLiteral(param),
               ])
@@ -793,7 +851,7 @@ export class CodeGenerator {
       } else if (action === VAR_LOAD_ALIAS) {
         nodes.push(
           b.variableDeclaration("let", [
-            b.variableDeclarator(b.identifier(target), b.identifier(param!)),
+            b.variableDeclarator(id(target), id(param!)),
           ])
         );
       } else if (action === VAR_LOAD_UNDEFINED) {
@@ -806,7 +864,7 @@ export class CodeGenerator {
         b.variableDeclaration(
           "let",
           undefs.map((target) =>
-            b.variableDeclarator(b.identifier(target), b.identifier("missing"))
+            b.variableDeclarator(id(target), id("missing"))
           )
         )
       );
@@ -821,9 +879,10 @@ export class CodeGenerator {
     const target =
       this.contextReferenceStack[this.contextReferenceStack.length - 1];
     if (target === "context") {
-      return b.identifier("resolve");
+      return id("resolve");
     } else {
-      return b.memberExpression(b.identifier(target), b.identifier("resolve"));
+      return memberExpr(`${target}.resolve`);
+      // return b.memberExpression(b.identifier(target), b.identifier("resolve"));
     }
   }
   popAssignTracking(frame: Frame): n.Expression[] {
@@ -839,30 +898,37 @@ export class CodeGenerator {
       const ref = frame.symbols.ref(name);
       let obj: n.Expression;
       if (frame.loopFrame) {
-        obj = b.identifier("_loopVars");
+        obj = id("_loopVars");
       } else if (frame.blockFrame) {
-        obj = b.identifier("_blockVars");
+        obj = id("_blockVars");
       } else {
-        obj = b.memberExpression(b.identifier("context"), b.identifier("vars"));
+        obj = memberExpr("context.vars");
+        // obj = b.memberExpression(id("context"), id("vars"));
       }
       const prop = b.stringLiteral(name);
-      const refId = b.identifier(ref);
+      const refId = id(ref);
       return b.assignmentExpression("=", b.memberExpression(obj, prop), refId);
     });
 
     if (!frame.blockFrame && frame.loopFrame && publicNames.length) {
       nodes.push(
         b.callExpression(
-          b.memberExpression(
-            b.memberExpression(
-              b.identifier("context"),
-              b.identifier("exportedVars")
-            ),
-            b.identifier("push")
-          ),
+          memberExpr("context.exportedVars.push"),
           publicNames.map((name) => b.stringLiteral(name))
         )
       );
+      // nodes.push(
+      //   b.callExpression(
+      //     b.memberExpression(
+      //       b.memberExpression(
+      //         b.identifier("context"),
+      //         b.identifier("exportedVars")
+      //       ),
+      //       b.identifier("push")
+      //     ),
+      //     publicNames.map((name) => b.stringLiteral(name))
+      //   )
+      // );
     }
 
     return nodes;
@@ -882,17 +948,28 @@ export class CodeGenerator {
 
   wrapChildPre(argument: n.Node[], frame: Frame) {
     const callee: n.Expression = frame.evalCtx.volatile
-      ? ast`(context.evalCtx.autoescape ? escape : str)`()
+      ? ast`(context.evalCtx.autoescape ? runtime.escape : runtime.str)`()
       : frame.evalCtx.autoescape
-      ? id("escape")
-      : id("str");
+      ? runtimeExpr("escape")
+      : runtimeExpr("str");
     return b.callExpression(
       callee,
       argument.map((arg) => forceExpression(arg))
     );
   }
 
-  // get finalize() {
-
-  // }
+  write(
+    expr: n.Expression | string,
+    node: t.Node,
+    frame: Frame
+  ): n.ExpressionStatement {
+    if (typeof expr === "string") {
+      expr = b.stringLiteral(expr);
+    }
+    return b.expressionStatement(
+      frame.buffer
+        ? b.callExpression(memberExpr(`${frame.buffer}.push`), [expr])
+        : b.yieldExpression(expr)
+    );
+  }
 }

@@ -281,7 +281,6 @@ export class FrameSymbolVisitor {
     const symbols = this.symbols;
     return PathVisitor.fromMethodsObject<frameSymbolVisitorContext>({
       visitName({ node }, state) {
-        console.log(node);
         if (state?.storeAsParam || node.ctx === "param") {
           symbols.declareParameter(node.name);
         } else if (node.ctx === "store") {
@@ -289,7 +288,6 @@ export class FrameSymbolVisitor {
         } else if (node.ctx === "load") {
           symbols.load(node.name);
         }
-        console.log(symbols);
         return false;
       },
       visitNSRef(path) {

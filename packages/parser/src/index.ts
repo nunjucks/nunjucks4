@@ -716,7 +716,7 @@ export class Parser {
       const peek = this.peekToken();
       if (peek.type === lexer.TOKEN_PIPE) {
         node = this.parseFilter(node);
-      } else if (peek.type === lexer.TOKEN_NAME || peek.value === "is") {
+      } else if (peek.type === lexer.TOKEN_NAME && peek.value === "is") {
         node = this.parseTest(node);
       } else if (peek.type === lexer.TOKEN_LPAREN) {
         // calls are valid both after postfix expressions (getattr
@@ -957,9 +957,8 @@ export class Parser {
       "lbrace",
     ]);
     const logicalOpRules = ["name:else", "name:or", "name:and"];
-    const negatedToken = this.nextToken();
+    const token = this.nextToken();
     const negated = this.skip("name:not");
-    const token = this.current;
     const nameParts = [this.expect("name").value];
     while (this.skip("dot")) {
       nameParts.push(this.expect("name").value);
@@ -999,7 +998,7 @@ export class Parser {
     if (negated) {
       node = b.not.from({
         node,
-        loc: this.tokToLoc(negatedToken, this.current),
+        loc: this.tokToLoc(token, this.current),
       });
     }
     return node;
@@ -1431,7 +1430,9 @@ export class Parser {
         result.elif.push(node);
         continue;
       } else if (nextTok?.value === "else") {
-        result.else_ = this.parseStatements(["name:endif"]);
+        result.else_ = this.parseStatements(["name:endif"], {
+          dropNeedle: true,
+        });
       }
       break;
     }
@@ -1463,7 +1464,9 @@ export class Parser {
   subparse(endTokens?: string[]): t.Node[] {
     const body: t.Node[] = [];
     let dataBuffer: t.Expr[] = [];
-    const addData = dataBuffer.push.bind(dataBuffer);
+    const addData = (v: t.Expr) => {
+      dataBuffer.push(v);
+    };
     if (endTokens && endTokens.length) {
       this._endTokenStack.push(endTokens);
     }
