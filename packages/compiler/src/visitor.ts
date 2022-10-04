@@ -101,24 +101,31 @@ function forceStatements(nodes: n.Node[]): n.Statement[] {
   });
 }
 
-const findDependencies = (node: t.Node) => {
-  const filters: Set<string> = new Set();
-  const tests: Set<string> = new Set();
+const findDependencies = (nodes: t.Node[]) => {
+  const filtersSet: Set<string> = new Set();
+  const testsSet: Set<string> = new Set();
 
-  visit(node, {
+  const visitor: Visitor = {
     visitFilter(path) {
       this.traverse(path);
-      filters.add(path.node.name);
+      filtersSet.add(path.node.name);
     },
     visitTest(path) {
       this.traverse(path);
-      tests.add(path.node.name);
+      testsSet.add(path.node.name);
     },
     visitBlock() {
       // Stop visiting at blocks
       return false;
     },
-  });
+  };
+
+  nodes.forEach((node) => visit(node, visitor));
+
+  const filters = Array.from(filtersSet);
+  filters.sort();
+  const tests = Array.from(testsSet);
+  tests.sort();
 
   return { filters, tests };
 };
@@ -250,16 +257,18 @@ export class CodeGenerator {
         const evalCtx = new EvalContext(this.environment, this.name);
         const frame = new Frame(evalCtx);
         const haveExtends = !!path.find(t.Extends);
-        const inner: n.Node[] = [];
+        const inner: n.Statement[] = [];
         for (const { node: block } of path.findAll(t.Block)) {
           if (block.name in this.blocks) {
             this.fail(`block ${block.name} defined twice`, block.loc);
           }
           this.blocks[block.name] = block;
         }
-        if (findUndeclared(node.body, ["self"])) {
+        if (findUndeclared(node.body, ["self"]).has("self")) {
           const ref = frame.symbols.declareParameter("self");
-          inner.push(ast`const %%ref%% = 42`({ ref }));
+          inner.push(
+            ast`const %%ref%% = runtime.TemplateReference(context)`({ ref })
+          );
         }
         frame.symbols.analyzeNode(node);
         frame.toplevel = frame.rootlevel = true;
@@ -267,22 +276,28 @@ export class CodeGenerator {
         if (haveExtends) {
           inner.push(ast`let parentTemplate = null`());
         }
-        const frameNodes: n.Node[] = self.traverse(path, { ...state, frame });
-        const frameStatements: n.Statement[] = [];
-        for (const node of frameNodes) {
-          n.assertStatement(node);
-          frameStatements.push(node);
+        inner.push(...self.enterFrame(frame));
+        inner.push(...self.pullDependencies(node.body));
+        inner.push(
+          ...forceStatements(self.traverse(path, { ...state, frame }))
+        );
+        if (haveExtends) {
+          let parentCall: n.Expression = ast.ast`parentTemplate.rootRenderFunc(context)`;
+          if (self.isAsync) {
+            parentCall = b.awaitExpression(parentCall);
+          }
+          let extendsYield: n.Statement = b.expressionStatement(
+            b.yieldExpression(parentCall, true)
+          );
+          if (!self.hasKnownExtends) {
+            extendsYield = ast`if (parentTemplate !== null) %%inner%%`({
+              inner: b.blockStatement([extendsYield]),
+            });
+          }
+          inner.push(extendsYield);
         }
-        inner.push(self.wrapFrame(frame, frameStatements));
-        const nodes: n.Node[] = [];
 
-        const innerStmts: n.Statement[] = [];
-        for (const node of inner) {
-          n.assertStatement(node);
-          innerStmts.push(node);
-        }
-
-        nodes.push(
+        const rootStatements: n.Statement[] = [
           ast`
         function* root(env, context, frame, runtime, cb) {
           const lineno = %%lineno%%;
@@ -293,7 +308,7 @@ export class CodeGenerator {
             lineno: 1,
             colno: 1,
             inner: b.tryStatement(
-              b.blockStatement(innerStmts),
+              b.blockStatement(inner),
               b.catchClause(
                 id("e"),
                 null,
@@ -302,9 +317,50 @@ export class CodeGenerator {
                 ])
               )
             ),
-          })
-        );
-        return nodes;
+          }),
+        ];
+        Object.entries(self.blocks).forEach(([name, block]) => {
+          const blockStatements: n.Statement[] = [];
+          rootStatements.push(
+            b.functionDeclaration(
+              id(`block_${name}`),
+              [id("context"), id("runtime"), id("environment")],
+              b.blockStatement(blockStatements)
+            )
+          );
+          const blockFrame = new Frame(evalCtx);
+          blockFrame.blockFrame = true;
+          const undeclared = findUndeclared(block.body, ["self", "super"]);
+          if (undeclared.has("self")) {
+            const ref = blockFrame.symbols.declareParameter("self");
+            blockStatements.push(
+              ast`%%ref%% = new runtime.TemplateReference(context)`({
+                ref: id(ref),
+              })
+            );
+          }
+          if (undeclared.has("super")) {
+            const ref = blockFrame.symbols.declareParameter("super");
+            blockStatements.push(
+              ast`%%ref%% = context.super(%%name%%, %%blockFnName%%)`({
+                ref: id(ref),
+                name,
+                blockFnName: id(`block_${name}`),
+              })
+            );
+          }
+          blockFrame.symbols.analyzeNode(block);
+          blockFrame.block = name;
+          blockStatements.push(ast.ast`_blockVars = {}`);
+          blockStatements.push(...self.enterFrame(blockFrame));
+          blockStatements.push(
+            ...forceStatements([
+              ...self.pullDependencies(block.body),
+              ...self.visit(block.body, { ...state, frame: blockFrame }),
+            ])
+          );
+        });
+        return rootStatements;
       },
       visitOutput(path, state) {
         // todo: implement finalize
@@ -378,9 +434,11 @@ export class CodeGenerator {
         }
         return innerNodes;
       },
-      visitConst({ node }, state) {
+      visitConst({ node }) {
         if (typeof node.value === "number") {
           return b.numericLiteral(node.value);
+        } else {
+          throw new Error("TK");
         }
       },
       visitTemplateData({ node }, { self, frame }) {
@@ -394,33 +452,46 @@ export class CodeGenerator {
           attr: b.stringLiteral(node.attr),
         });
       },
-      // visitTuple({ node }, state) {
-      //   const { self } = state;
-      //   const elements: n.PatternLike[] = [];
-      //   for (const item of node.items) {
-      //     const ret = self.visit(item, state);
-      //     for (const r of ret) {
-      //       n.assertPatternLike(r);
-      //       elements.push(r);
-      //     }
-      //   }
-      //   return b.arrayPattern(elements);
-      // },
       visitTuple({ node }, state) {
         const { self } = state;
         const elements: n.Expression[] = [];
         for (const item of node.items) {
           elements.push(forceExpression(self.visit(item, state)));
-          // const ret = self.visit(item, state);
-          // for (const r of ret) {
-          //   n.assertPatternLike(r);
-          //   elements.push(r);
-          // }
         }
         return b.arrayExpression(elements);
       },
+      visitList({ node }, state) {
+        const { self } = state;
+        const elements: n.Expression[] = [];
+        for (const item of node.items) {
+          elements.push(forceExpression(self.visit(item, state)));
+        }
+        return b.arrayExpression(elements);
+      },
+      visitBinExpr({ node }, state) {
+        const { self } = state;
+        // TODO: sandboxed binop?
+        const left = forceExpression(self.visit(node.left, state));
+        const right = forceExpression(self.visit(node.right, state));
+
+        const operator =
+          node.operator === "and"
+            ? "&&"
+            : node.operator === "or"
+            ? "||"
+            : node.operator;
+
+        if (operator === "//") {
+          return ast`Math.floor(%%left%% / %%right%%)`({ left, right });
+        } else if (operator == "**") {
+          return ast`Math.pow(%%left%%, %%right%%)`({ left, right });
+        } else if (operator === "||" || operator === "&&") {
+          return b.logicalExpression(operator, left, right);
+        } else {
+          return b.binaryExpression(operator, left, right);
+        }
+      },
       visitAssign(path, state) {
-        const { node } = path;
         const { frame, self } = state;
         this.pushAssignTracking();
         const [left] = this.visit(path.get("target"), state);
@@ -432,8 +503,51 @@ export class CodeGenerator {
         );
         return [assign, ...self.popAssignTracking(frame)];
       },
+      visitAssignBlock({ node }, state) {
+        const { self, frame } = state;
+        self.pushAssignTracking();
+        const blockFrame = frame.inner();
+        // This is a special case.  Since a set block always captures we
+        // will disable output checks.  This way one can use set blocks
+        // toplevel even in extended templates.
+        blockFrame.requireOutputCheck = false;
+        blockFrame.symbols.analyzeNode(node);
+        const stmts: n.Statement[] = [];
+        stmts.push(self.buffer(blockFrame));
+        stmts.push(
+          ...forceStatements(
+            self.visit(node.body, { ...state, frame: blockFrame })
+          )
+        );
+        const target = forceExpression(self.visit(node.target, state));
+        const callee: n.ConditionalExpression = ast.ast`
+          (context.evalCtx.autoescape ? runtime.Markup : runtime.identity)
+        `;
+        const args: n.Expression[] = [];
+        if (node.filter) {
+          args.push(
+            forceExpression(
+              self.visit(node.filter, { ...state, frame: blockFrame })
+            )
+          );
+        } else {
+          args.push(
+            ast`runtime.concat(%%buf%%)`({ buf: id(blockFrame.buffer!) })
+          );
+        }
+        stmts.push(
+          ast`%%target%% = (%%callee%%)(%%args%%)`({
+            target,
+            callee,
+            args,
+          })
+        );
+        stmts.push(...self.popAssignTracking(frame));
+
+        return self.wrapFrame(blockFrame, stmts);
+      },
       visitName(path, state) {
-        const { self, astPath, frame } = state;
+        const { self, frame } = state;
         const { node } = path;
         if (node.ctx === "store" && (frame?.loopFrame || frame?.blockFrame)) {
           if (self.assignStack.length) {
@@ -454,9 +568,9 @@ export class CodeGenerator {
               !self.parameterIsUndeclared(ref)
             )
           )
-            return ast`(%%ref%% === missing) ? runtime.undef({name: %%name%%}) : %%name%%`(
+            return ast`(%%ref%% === missing) ? runtime.undef({name: %%name%%}) : %%ref%%`(
               {
-                name: node.name,
+                name: b.stringLiteral(node.name),
                 ref,
               }
             );
@@ -473,7 +587,6 @@ export class CodeGenerator {
         const consequent = b.blockStatement(
           self.visitStatements(node.body, { ...state, frame })
         );
-        const elifs: n.IfStatement[] = [];
         const alternates: { test: n.Expression; consequent: n.Statement }[] =
           node.elif.map((elif) => ({
             test: forceExpression(self.visit(elif.test, { ...state, frame })),
@@ -481,19 +594,11 @@ export class CodeGenerator {
               self.visitStatements(elif.body, { ...state, frame })
             ),
           }));
-
         const else_ = node.else_?.length
           ? b.blockStatement(
               self.visitStatements(node.else_, { ...state, frame })
             )
           : undefined;
-
-        // let else_: n.Statement | undefined = undefined;
-        // if (node.else_?.length) {
-        //   else_ = b.blockStatement(
-        //     self.visitStatements(node.else_, { ...state, frame })
-        //   );
-        // }
         const alternate =
           alternates.reduceRight(
             (alt: n.Statement | undefined, { test, consequent }) =>
@@ -501,15 +606,9 @@ export class CodeGenerator {
             else_
           ) || null;
         return b.ifStatement(test, consequent, alternate);
-        // const else_ = node.else_
-        //   ? self.visit(node.else_, { ...state, frame })
-        //   : undefined;
-        // // b.ifStatement();
-        // // for (const elif of node.elif) {
-        // // }
       },
       visitFor(path, state) {
-        const { astPath, frame, self } = state;
+        const { frame, self } = state;
         const { node } = path;
         const loopFrame = frame.inner();
         loopFrame.loopFrame = true;
@@ -582,7 +681,7 @@ export class CodeGenerator {
           }
           currStatements.push(funcDecl);
           currStatements = funcDecl.body.body;
-          self.buffer(loopFrame);
+          currStatements.push(self.buffer(loopFrame));
           // Use the same buffer for the else frame
           elseFrame.buffer = loopFrame.buffer;
         }
@@ -645,7 +744,7 @@ export class CodeGenerator {
           if (node.recursive) {
             args.push(id("loopRenderFunc"), id("depth"));
           }
-          iter = b.callExpression(runtimeExpr("LoopContext"), [iter]);
+          iter = b.callExpression(runtimeExpr("LoopContext"), args);
         }
         if (loopFilterFunc !== null) {
           iter = b.callExpression(id(loopFilterFunc), [iter]);
@@ -656,6 +755,14 @@ export class CodeGenerator {
             b.variableDeclarator(id("_loopVars"), b.objectExpression([])),
           ]),
         ];
+        currStatements.push(
+          b.forOfStatement.from({
+            left: target,
+            right: iter,
+            body: b.blockStatement(loopBody),
+            await: self.environment.isAsync,
+          })
+        );
         for (const bodyNode of node.body) {
           loopBody.push(
             ...forceStatements(
@@ -680,8 +787,7 @@ export class CodeGenerator {
           );
         }
         if (node.recursive) {
-          loopBody.push(self.returnBufferContents(loopFrame));
-          // currStatements.push(self.write())
+          currStatements.push(self.returnBufferContents(loopFrame));
           let loopArgs = self
             .visit(path.get("iter"), state)
             .map((x) => forceExpression(x));
@@ -689,21 +795,13 @@ export class CodeGenerator {
             loopArgs = [b.callExpression(runtimeExpr("auto_aiter"), loopArgs)];
           }
           loopArgs.push(id("loop"));
-          const callExpr = b.callExpression(id("loop"), loopArgs);
-          currStatements.push(
-            b.expressionStatement(
-              self.isAsync ? b.yieldExpression(callExpr) : callExpr
-            )
-          );
+          let callExpr: n.Expression = b.callExpression(id("loop"), loopArgs);
+          if (self.isAsync) {
+            callExpr = b.awaitExpression(callExpr);
+          }
+          rootStatements.push(self.write(callExpr, node, frame));
         }
-        currStatements.push(
-          b.forOfStatement.from({
-            left: target,
-            right: iter,
-            body: b.blockStatement(loopBody),
-            await: self.environment.isAsync,
-          })
-        );
+
         if (self.assignStack.length) {
           differenceUpdate(
             self.assignStack[self.assignStack.length - 1],
@@ -742,10 +840,13 @@ export class CodeGenerator {
       path = nodeOrPath as unknown as Path;
     }
     const { type } = path.node;
-    const method = `visit${type}`;
-    const fn = (this.visitorMethods as any)[method];
+    const supertypes = Type.def(type).supertypeList;
+    const fn = supertypes
+      .map((t) => (this.visitorMethods as any)[`visit${t}`])
+      .find((t) => !!t);
+    // const method = `visit${type}`;
+    // const fn = (this.visitorMethods as any)[method];
     const ret: n.Node[] = [];
-    if (method === "visitAssign") debugger;
     if (fn) {
       const v = fn.call(this, path, state);
       if (Array.isArray(v)) {
@@ -885,7 +986,7 @@ export class CodeGenerator {
       // return b.memberExpression(b.identifier(target), b.identifier("resolve"));
     }
   }
-  popAssignTracking(frame: Frame): n.Expression[] {
+  popAssignTracking(frame: Frame): n.Statement[] {
     const stackVars = [...(this.assignStack.pop() || [])];
     if (
       (!frame.blockFrame && !frame.loopFrame && !frame.toplevel) ||
@@ -894,7 +995,7 @@ export class CodeGenerator {
       return [];
     }
     const publicNames = stackVars.filter((v) => v[0] !== "_");
-    const nodes: n.Expression[] = stackVars.map((name) => {
+    const nodes: n.Statement[] = stackVars.map((name) => {
       const ref = frame.symbols.ref(name);
       let obj: n.Expression;
       if (frame.loopFrame) {
@@ -907,14 +1008,18 @@ export class CodeGenerator {
       }
       const prop = b.stringLiteral(name);
       const refId = id(ref);
-      return b.assignmentExpression("=", b.memberExpression(obj, prop), refId);
+      return b.expressionStatement(
+        b.assignmentExpression("=", b.memberExpression(obj, prop), refId)
+      );
     });
 
     if (!frame.blockFrame && frame.loopFrame && publicNames.length) {
       nodes.push(
-        b.callExpression(
-          memberExpr("context.exportedVars.push"),
-          publicNames.map((name) => b.stringLiteral(name))
+        b.expressionStatement(
+          b.callExpression(
+            memberExpr("context.exportedVars.push"),
+            publicNames.map((name) => b.stringLiteral(name))
+          )
         )
       );
       // nodes.push(
@@ -971,5 +1076,36 @@ export class CodeGenerator {
         ? b.callExpression(memberExpr(`${frame.buffer}.push`), [expr])
         : b.yieldExpression(expr)
     );
+  }
+
+  pullDependencies(nodes: t.Node[]): n.Statement[] {
+    const { filters, tests } = findDependencies(nodes);
+    const statements: n.Statement[] = [];
+
+    const depIter: [Record<string, string>, string[], string][] = [
+      [this.filters, filters, "filter"],
+      [this.tests, tests, "test"],
+    ];
+
+    for (const [idMap, names, dependency] of depIter) {
+      for (const name of names) {
+        if (!(name in idMap)) {
+          idMap[name] = this.temporaryIdentifier();
+        }
+        statements.push(
+          ast`
+            let %%id%% = environment.%%dep%%[%%name%%]
+            || () => throw new %%exc%%(%%msg%%)`({
+            id: id(idMap[name]),
+            dep: id(`${dependency}s`),
+            name: b.stringLiteral(name),
+            exc: runtimeExpr("TemplateRuntimeError"),
+            msg: b.stringLiteral(`No ${dependency} named "${name}" found.`),
+          })
+        );
+      }
+    }
+    return statements;
+    // for (const [idMap, names, dependency] of [[this.filters, filters, "filters"]])
   }
 }
