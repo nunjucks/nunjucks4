@@ -19,8 +19,9 @@
     "inlineSources": true,
     "declaration": true,
     "declarationMap": true,
+    "noErrorTruncation": true,
     "sourceMap": true,
     "types": ["node"]
   },
-  "exclude": ["node_modules", "dist", "./dist/**/*"]
+  "exclude": ["node_modules", "dist", "./dist/**/*", "**/node_modules"]
 }

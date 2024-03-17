@@ -1,5 +1,5 @@
 import { types as t } from "@nunjucks/ast";
-import { EvalContext } from "@nunjucks/environment";
+import { EvalContext } from "@nunjucks/runtime";
 
 export type Serializable =
   | string
@@ -70,19 +70,31 @@ class SafeString extends String {
   }
 }
 
-function toConst(
-  evalCtx: EvalContext,
+function toConst<IsAsync extends boolean>(
+  evalCtx: EvalContext<IsAsync>,
   node: t.Pair | t.Keyword
 ): [Serializable, Serializable];
-function toConst(
-  evalCtx: EvalContext,
+function toConst<IsAsync extends boolean>(
+  evalCtx: EvalContext<IsAsync>,
   node: t.Slice
 ): { start: number | null; stop: number | null; step: number | null };
-function toConst(evalCtx: EvalContext, node: t.Keyword): [string, Serializable];
-function toConst(evalCtx: EvalContext, node: t.Concat): string;
-function toConst(evalCtx: EvalContext, node: t.Node): Serializable;
+function toConst<IsAsync extends boolean>(
+  evalCtx: EvalContext<IsAsync>,
+  node: t.Keyword
+): [string, Serializable];
+function toConst<IsAsync extends boolean>(
+  evalCtx: EvalContext<IsAsync>,
+  node: t.Concat
+): string;
+function toConst<IsAsync extends boolean>(
+  evalCtx: EvalContext<IsAsync>,
+  node: t.Node
+): Serializable;
 
-function toConst(evalCtx: EvalContext, node: t.Node): Serializable {
+function toConst<IsAsync extends boolean>(
+  evalCtx: EvalContext<IsAsync>,
+  node: t.Node
+): Serializable {
   const { environment } = evalCtx;
   try {
     if (t.BinExpr.check(node)) {
@@ -174,8 +186,8 @@ function isTwoTuple(val: Serializable): val is [Serializable, Serializable] {
   return Array.isArray(val) && val.length === 2;
 }
 
-function argsAsConst(
-  evalCtx: EvalContext,
+function argsAsConst<IsAsync extends boolean>(
+  evalCtx: EvalContext<IsAsync>,
   node: t.Filter | t.Test | t.Call
 ): [Serializable[], Record<string, Serializable>] {
   const args = node.args.map((x) => toConst(evalCtx, x));

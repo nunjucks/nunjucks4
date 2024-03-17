@@ -401,11 +401,14 @@ export interface CompareBuilder {
   }): types.Compare;
 }
 export interface OperandBuilder {
-  (op: string, expr: types.Expr): types.Operand;
+  (
+    op: "eq" | "ne" | "gt" | "gteq" | "lt" | "lteq" | "in" | "notin",
+    expr: types.Expr
+  ): types.Operand;
   from(params: {
     expr: types.Expr;
     loc?: types.SourceLocation | null;
-    op: string;
+    op: "eq" | "ne" | "gt" | "gteq" | "lt" | "lteq" | "in" | "notin";
   }): types.Operand;
 }
 export interface MulBuilder {

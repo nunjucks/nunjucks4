@@ -16,14 +16,15 @@ export interface Extension {
 
 const assertName: typeof t.Name["assert"] = t.Name.assert.bind(t.Name);
 
-const compareOperators: Set<string> = new Set([
-  "eq",
-  "ne",
-  "lt",
-  "lteq",
-  "gt",
-  "gteq",
-]);
+const compareOperatorsList = ["eq", "ne", "lt", "lteq", "gt", "gteq"] as const;
+
+type CompareOperator = typeof compareOperatorsList[number];
+
+const compareOperators: Set<CompareOperator> = new Set(compareOperatorsList);
+
+function isCompareOperator(val: string): val is CompareOperator {
+  return (compareOperators as Set<string>).has(val);
+}
 
 type MathBuilders =
   | typeof b.add
@@ -412,7 +413,7 @@ export class Parser {
     // eslint-disable-next-line no-constant-condition
     while (true) {
       const tokenType = this.peekToken().type;
-      if (compareOperators.has(tokenType)) {
+      if (isCompareOperator(tokenType)) {
         this.nextToken();
         ops.push(
           b.operand.from({

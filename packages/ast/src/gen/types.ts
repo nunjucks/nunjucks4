@@ -357,7 +357,7 @@ export interface Compare extends BaseNode {
 }
 export interface Operand extends BaseNode {
   type: "Operand";
-  op: string;
+  op: "eq" | "ne" | "gt" | "gteq" | "lt" | "lteq" | "in" | "notin";
   expr: Expr;
 }
 export interface Mul extends BinExprBase {

@@ -2354,6 +2354,8 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@nunjucks/environment@workspace:packages/environment"
   dependencies:
+    "@nunjucks/runtime": "workspace:*"
+    astring: ^1.8.6
     rimraf: ~3.0.2
     typescript: ^4.3.5
   languageName: unknown
@@ -2377,10 +2379,11 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@nunjucks/runtime@workspace:packages/runtime":
+"@nunjucks/runtime@workspace:*, @nunjucks/runtime@workspace:packages/runtime":
   version: 0.0.0-use.local
   resolution: "@nunjucks/runtime@workspace:packages/runtime"
   dependencies:
+    "@nunjucks/environment": "workspace:*"
     rimraf: ~3.0.2
     typescript: ^4.3.5
   languageName: unknown
@@ -3490,6 +3493,15 @@ __metadata:
   bin:
     astring: bin/astring
   checksum: 2a86ff8cc0c8f25694865cb8b22cdff784b8a0b115bd970c3def864618f22fe6ea78c3bef3ecdc359b2e5eb254a16d408ab06fa52a44e887b298cbf980a8083c
+  languageName: node
+  linkType: hard
+
+"astring@npm:^1.8.6":
+  version: 1.8.6
+  resolution: "astring@npm:1.8.6"
+  bin:
+    astring: bin/astring
+  checksum: 6f034d2acef1dac8bb231e7cc26c573d3c14e1975ea6e04f20312b43d4f462f963209bc64187d25d477a182dc3c33277959a0156ab7a3617aa79b1eac4d88e1f
   languageName: node
   linkType: hard
 

@@ -268,8 +268,8 @@ function makeContextConstructor<S>(visitor: PathVisitor<S>): typeof Context {
   const Context = class {
     currentPath?: Path;
     needToCallTraverse: boolean;
-    state: Record<string, any>;
-    reset: (this: Context, path: Path, state?: Record<string, any>) => this;
+    state: S;
+    reset: (this: Context, path: Path, state?: S) => this;
 
     constructor(path: Path) {
       Object.assign(this, visitor);

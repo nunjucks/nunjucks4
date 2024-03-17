@@ -108,6 +108,30 @@ export type TokenType =
   | typeof TOKEN_INITIAL
   | typeof TOKEN_EOF;
 
+export class TemplateSyntaxError extends Error {
+  name = "TemplateSyntaxError";
+  lineno: number;
+  sourcename?: string | null;
+  filename?: string | null;
+  source: string | null = null;
+  translated: boolean;
+
+  constructor(
+    message: string,
+    {
+      lineno,
+      name = null,
+      filename = null,
+    }: { lineno: number; name?: string | null; filename?: string | null }
+  ) {
+    super(message);
+    this.lineno = lineno;
+    this.sourcename = name;
+    this.filename = filename;
+    this.translated = false;
+  }
+}
+
 export type Token<T extends TokenType = TokenType> = {
   type: T;
   value: string;
@@ -491,7 +515,10 @@ export class Tokenizer {
         } else if (tok) {
           return token(TOKEN_NAME, tok, lineno, colno, pos);
         } else {
-          throw new Error("Unexpected value while parsing: " + tok);
+          throw new TemplateSyntaxError(
+            "Unexpected value while parsing: " + tok,
+            { lineno: this.lineno }
+          );
         }
       }
     } else {
@@ -567,7 +594,9 @@ export class Tokenizer {
             break;
           } else if (this._matches(this.tags.COMMENT_END)) {
             if (!inComment) {
-              throw new Error("unexpected end of comment");
+              throw new TemplateSyntaxError("unexpected end of comment", {
+                lineno: this.lineno,
+              });
             }
             tok += this._extractString(this.tags.COMMENT_END);
             break;
@@ -580,7 +609,10 @@ export class Tokenizer {
         }
 
         if (data === null && inComment) {
-          throw new Error("expected end of comment, got end of file");
+          throw new TemplateSyntaxError(
+            "expected end of comment, got end of file",
+            { lineno: this.lineno }
+          );
         }
 
         if (!inComment && this._matches(this.tags.BLOCK_START + "-")) {

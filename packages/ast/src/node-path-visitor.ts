@@ -100,7 +100,6 @@ function computeMethodNameTable(visitor: any) {
       methodNameTable[typeName] = methodName;
     }
   }
-  console.log(methodNameTable);
   return methodNameTable;
 }
 
@@ -202,7 +201,8 @@ export class PathVisitor<S = Record<string, any>> {
     let path: NodePath;
 
     if (!(nodeOrPath instanceof NodePath)) {
-      path = new NodePath({ root: nodeOrPath }).get("root");
+      const exprStmt: n.ExprStmt = { type: "ExprStmt", node: nodeOrPath };
+      path = new NodePath(exprStmt).get("node") as unknown as NodePath;
     } else {
       path = nodeOrPath;
     }

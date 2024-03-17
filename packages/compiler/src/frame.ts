@@ -1,25 +1,10 @@
 import { Symbols } from "./idtracking";
-// import type { Environment } from "./environment";
-import { EvalContext } from "@nunjucks/environment";
+import { EvalContext } from "@nunjucks/runtime";
 
-// export class EvalContext {
-//   autoescape: boolean;
-//   environment: Environment;
-//   volatile: boolean;
-
-//   constructor(environment: Environment, templateName?: string | null) {
-//     this.environment = environment;
-//     if (typeof environment.autoescape === "function") {
-//       this.autoescape = environment.autoescape(templateName);
-//     } else {
-//       this.autoescape = environment.autoescape;
-//     }
-//     this.volatile = false;
-//   }
-// }
-export class Frame {
-  evalCtx: EvalContext;
-  parent: Frame | null;
+export class Frame<IsAsync extends boolean> {
+  async: IsAsync;
+  evalCtx: EvalContext<IsAsync>;
+  parent: Frame<IsAsync> | null;
   symbols: Symbols;
   requireOutputCheck: boolean;
   /**
@@ -46,8 +31,11 @@ export class Frame {
   softFrame: boolean;
 
   constructor(
-    evalCtx: EvalContext,
-    { parent = null, level }: { parent?: Frame | null; level?: number } = {}
+    evalCtx: EvalContext<IsAsync>,
+    {
+      parent = null,
+      level,
+    }: { parent?: Frame<IsAsync> | null; level?: number } = {}
   ) {
     this.evalCtx = evalCtx;
     this.parent = parent || null;
@@ -65,7 +53,7 @@ export class Frame {
     this.softFrame = false;
   }
 
-  copy(): Frame {
+  copy(): Frame<IsAsync> {
     const frame = new Frame(this.evalCtx, { parent: this.parent });
     frame.symbols = this.symbols.copy();
     frame.requireOutputCheck = this.requireOutputCheck;
@@ -78,7 +66,7 @@ export class Frame {
     frame.softFrame = this.softFrame;
     return frame;
   }
-  inner({ isolated = false }: { isolated?: boolean } = {}): Frame {
+  inner({ isolated = false }: { isolated?: boolean } = {}): Frame<IsAsync> {
     if (isolated) {
       return new Frame(this.evalCtx, { level: this.symbols.level + 1 });
     } else {
@@ -93,7 +81,7 @@ export class Frame {
    * This is only used to implement if-statements and conditional
    * expressions.
    */
-  soft(): Frame {
+  soft(): Frame<IsAsync> {
     const frame = this.copy();
     frame.rootlevel = false;
     frame.softFrame = true;

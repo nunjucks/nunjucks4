@@ -25,6 +25,7 @@
     "test": "yarn run build"
   },
   "devDependencies": {
+    "@nunjucks/environment": "workspace:*",
     "rimraf": "~3.0.2",
     "typescript": "^4.3.5"
   }

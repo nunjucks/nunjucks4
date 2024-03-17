@@ -368,7 +368,7 @@ def("Operand")
   .bases("BaseNode")
   .aliases("Node", "Helper")
   .build("op", "expr")
-  .field("op", String)
+  .field("op", or("eq", "ne", "gt", "gteq", "lt", "lteq", "in", "notin"))
   .field("expr", def("Expr"));
 
 function defBinExpr(typeName: string, operator: string): void {
