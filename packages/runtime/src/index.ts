@@ -2,8 +2,16 @@ import { Undefined, MISSING } from "@nunjucks/environment";
 import type { Environment } from "@nunjucks/environment";
 import { LoopContext } from "./loops";
 import type { IfAsync } from "./types";
+import { isPlainObject } from "./utils";
+
+import { Macro } from "./macro";
 
 export type { IfAsync } from "./types";
+
+export type NunjucksFunction = ((...args: any[]) => any) & {
+  nunjucksPassArg?: "context" | "evalContext" | "environment";
+  nunjucksArgs?: string[];
+};
 
 export type Block<IsAsync extends boolean> = IsAsync extends true
   ? (context: Context<IsAsync>) => AsyncGenerator<string> | Generator<string>
@@ -15,7 +23,7 @@ export function hasOwn<K extends string>(
   o: unknown,
   key: K
 ): o is Record<K, unknown> {
-  return Object.prototype.hasOwnProperty.call(o, key);
+  return o && Object.prototype.hasOwnProperty.call(o, key);
 }
 export function identity<T>(val: T): T {
   return val;
@@ -70,6 +78,10 @@ export class EvalContext<IsAsync extends boolean> {
   name: string | null;
   volatile = false;
   autoescape = false;
+
+  [Symbol.toStringTag]() {
+    return "EvalContext";
+  }
 
   constructor({
     environment,
@@ -265,12 +277,68 @@ export class Context<IsAsync extends boolean> {
     context.evalCtx = this.evalCtx;
     return context;
   }
+
+  call(func: NunjucksFunction, args: any[]): any {
+    let kwargs: Record<string, any> = {};
+    if (args.length) {
+      const lastArg = args[args.length - 1];
+      if (
+        isPlainObject(lastArg) &&
+        hasOwn(lastArg, "__isKwargs") &&
+        lastArg.__isKwargs
+      ) {
+        kwargs = Object.fromEntries(
+          Array.from(
+            Object.entries(args.pop()).filter(
+              ([k]) => typeof k === "string" && k !== "__isKwargs"
+            )
+          )
+        );
+      }
+    }
+
+    const passArg = func.nunjucksPassArg;
+    if (passArg === "context") {
+      // eslint-disable-next-line @typescript-eslint/no-this-alias
+      let context: Context<IsAsync> = this;
+      if (kwargs._loopVars) {
+        context = this.derived(kwargs._loopVars);
+      }
+      if (kwargs._blockVars) {
+        context = this.derived(kwargs._blockVars);
+      }
+      args.unshift(context);
+    } else if (passArg === "evalContext") {
+      args.unshift(this.evalCtx);
+    } else if (passArg === "environment") {
+      args.unshift(this.environment);
+    }
+
+    delete kwargs._blockVars;
+    delete kwargs._loopVars;
+
+    if (func.nunjucksArgs) {
+      // TODO functionality for annotating argument names for passing of kwargs
+      // and distinct *args and **kwargs variadics
+    }
+
+    if (
+      func instanceof Macro ||
+      Object.prototype.toString.call(func) === "[object Macro]"
+    ) {
+      args.push(kwargs);
+      // args.unshift(kwargs.caller);
+      // delete kwargs.caller;
+    }
+    debugger;
+    return func(...args);
+  }
 }
 
 /**
  * One block on a template reference.
  */
-export class BlockReference<IsAsync extends boolean> {
+export class BlockReference<IsAsync extends boolean> extends Function {
   name: string;
   _context: Context<IsAsync>;
   _stack: Block<IsAsync>[];
@@ -288,6 +356,7 @@ export class BlockReference<IsAsync extends boolean> {
     stack: Block<IsAsync>[];
     depth: number;
   }) {
+    super();
     this.name = name;
     this._context = context;
     this._stack = stack;
@@ -383,6 +452,129 @@ function test(obj: unknown): boolean {
   return !!obj;
 }
 
+const escapeMap: Record<string, string> = {
+  "&": "&amp;",
+  '"': "&quot;",
+  "'": "&#39;",
+  "<": "&lt;",
+  ">": "&gt;",
+};
+
+const escapeRegex = new RegExp(
+  `[${[...Object.keys(escapeMap)].join("")}]`,
+  "g"
+);
+
+export function isMarkup(obj: unknown): obj is MarkupType {
+  return Object.prototype.toString.call(obj) === "[object Markup]";
+}
+
+export function escape(obj: unknown): MarkupType {
+  if (isMarkup(obj)) return obj;
+  const s = `${obj}`;
+  return markSafe(
+    s.replace(escapeRegex, (c) => (c in escapeMap ? escapeMap[c] : c))
+  );
+}
+
+export function markSafe(s: unknown) {
+  return new Markup(s) as MarkupType;
+}
+
+export class Markup extends String {
+  val: string;
+
+  constructor(value: unknown) {
+    if (
+      value &&
+      (typeof value === "object" || typeof value === "function") &&
+      value !== null &&
+      hasOwn(value, "__html__") &&
+      typeof value.__html__ === "function"
+    ) {
+      value = value.__html__();
+    }
+    const val = `${value}`;
+    super(val);
+    this.val = val;
+  }
+  get [Symbol.toStringTag]() {
+    return "Markup";
+  }
+  concat(...strings: (string | Markup)[]): MarkupType {
+    const args: string[] = [];
+    for (const s of strings) {
+      if (isMarkup(s)) {
+        args.push(`${s}`);
+      } else {
+        args.push(`${escape(s)}`);
+      }
+    }
+    return markSafe(super.concat(...args));
+  }
+  split(
+    separator:
+      | string
+      | RegExp
+      | {
+          [Symbol.split](string: string, limit?: number | undefined): string[];
+        },
+    limit?: number | undefined
+  ): MarkupType[] {
+    const ret =
+      typeof separator === "string"
+        ? super.split(separator, limit)
+        : separator instanceof RegExp
+        ? super.split(separator, limit)
+        : typeof separator === "object" && Symbol.split in separator
+        ? super.split(separator, limit)
+        : super.split(`${separator}`, limit);
+
+    return ret.map((s) => markSafe(s));
+  }
+  slice(start?: number | undefined, end?: number | undefined): MarkupType {
+    return markSafe(super.slice(start, end));
+  }
+  substring(start: number, end?: number | undefined): MarkupType {
+    return markSafe(super.substring(start, end));
+  }
+  toUpperCase(): MarkupType {
+    return markSafe(super.toUpperCase());
+  }
+  toLowerCase(): MarkupType {
+    return markSafe(super.toLowerCase());
+  }
+  trim(): MarkupType {
+    return markSafe(super.trim());
+  }
+  trimStart(): MarkupType {
+    return markSafe(super.trimStart());
+  }
+  trimEnd(): MarkupType {
+    return markSafe(super.trimEnd());
+  }
+  repeat(count: number): MarkupType {
+    return markSafe(super.repeat(count));
+  }
+  charAt(pos: number): MarkupType {
+    return markSafe(super.charAt(pos));
+  }
+  padStart(maxLength: number, padString?: string | undefined): MarkupType {
+    return markSafe(super.padStart(maxLength, padString));
+  }
+  padEnd(maxLength: number, padString?: string | undefined): MarkupType {
+    return markSafe(super.padEnd(maxLength, padString));
+  }
+}
+
+export type MarkupType = Markup & string;
+
+// eslint-disable-next-line @typescript-eslint/ban-types
+// export const Markup = _Markup as unknown as (String & string) & {
+//   constructor(value: unknown): _Markup;
+// };
+// export type Markup = typeof Markup;
+
 export default {
   str,
   call,
@@ -395,4 +587,7 @@ export default {
   concat,
   BlockReference,
   TemplateReference,
+  markSafe,
+  Markup,
+  Macro,
 };

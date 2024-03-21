@@ -429,7 +429,7 @@ export class Parser {
           })
         );
       } else if (this.skip("name:not")) {
-        if (!this.test(this.stream.peekToken(), "name:in")) {
+        if (!this.test(this.peekToken(), "name:in")) {
           this.pushToken(this.current);
           break;
         } else {
@@ -1166,15 +1166,13 @@ export class Parser {
 
   parseImportContext(default_: boolean): boolean {
     const peek = this.peekToken();
-    const look = this.stream.peekToken();
     let withContext = default_;
-    if (
-      this.testAny(peek, ["name:with", "name:without"]) &&
-      this.test(look, "name:context")
-    ) {
+
+    if (this.testAny(peek, ["name:with", "name:without"])) {
       withContext = this.nextToken().value === "with";
       this.expect("name:context");
     }
+
     return withContext;
   }
 
@@ -1182,13 +1180,14 @@ export class Parser {
     const token = this.nextToken();
     const template = this.parseExpression();
     const peek = this.peekToken();
-    const look = this.stream.peekToken();
+    // const look = this.stream.peekToken();
     let ignoreMissing = false;
-    if (this.test(peek, "name:ignore") && this.test(look, "name:missing")) {
+    if (this.test(peek, "name:ignore")) {
       ignoreMissing = true;
       this.expect("name:ignore");
       this.expect("name:missing");
     }
+
     return b.include.from({
       template,
       ignoreMissing,
@@ -1219,15 +1218,12 @@ export class Parser {
 
     const parseContext: () => boolean = () => {
       const peek = this.peekToken();
-      const look = this.stream.peekToken();
-      if (
-        this.testAny(peek, ["name:with", "name:without"]) &&
-        this.test(look, "name:context")
-      ) {
+      if (this.testAny(peek, ["name:with", "name:without"])) {
         withContext = this.nextToken().value === "with";
-        this.nextToken();
+        this.expect("name:context");
         return true;
       }
+
       return false;
     };
 

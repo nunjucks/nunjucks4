@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { EventEmitter } from "events";
 import { Context, EvalContext, hasOwn } from "@nunjucks/runtime";
 import { types } from "@nunjucks/ast";
@@ -65,7 +66,7 @@ function getObjectTypeName(obj: unknown) {
   return prototype.constructor.name;
 }
 
-export class Undefined {
+export class Undefined extends Function {
   undefinedHint: string | null;
   undefinedObj: any;
   undefinedName: string | null;
@@ -79,6 +80,7 @@ export class Undefined {
     exc?: new (message?: string) => Error
   );
   constructor(arg1?: UndefinedOpts | string | null, ...args: any[]) {
+    super();
     let opts: UndefinedOpts = {};
     if (
       typeof arg1 === "string" ||
@@ -339,7 +341,6 @@ export class Environment<IsAsync extends boolean> extends EventEmitter {
     return this.undef({ obj, name: argument });
   }
   getattr(obj: any, argument: string): any {
-    if (argument === "nextitem") debugger;
     return this.getitem(obj, argument);
   }
   _filterTestCommon({
