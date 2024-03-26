@@ -29,12 +29,11 @@ export class Template<IsAsync extends boolean> {
     blocks = {},
     environment,
   }: {
-    async: IsAsync;
     environment: Environment<IsAsync>;
-    globals: Record<string, any>;
-    name: string | null;
-    filename: string | null;
-    blocks: Record<string, Block<IsAsync>>;
+    globals?: Record<string, any>;
+    name?: string | null;
+    filename?: string | null;
+    blocks?: Record<string, Block<IsAsync>>;
   }) {
     this.async = environment.isAsync;
     this.globals = globals;
@@ -87,7 +86,7 @@ export class Template<IsAsync extends boolean> {
   }
 
   render(
-    context: Record<string, any>
+    context: Record<string, any> = {}
   ): IfAsync<IsAsync, Promise<string>, string> {
     return (
       this.async ? this.renderAsync(context) : this.renderSync(context)

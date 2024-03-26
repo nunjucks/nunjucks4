@@ -21,7 +21,7 @@
     "declarationMap": true,
     "noErrorTruncation": true,
     "sourceMap": true,
-    "types": ["node"]
+    "types": ["node", "jest"]
   },
   "exclude": ["node_modules", "dist", "./dist/**/*", "**/node_modules"]
 }

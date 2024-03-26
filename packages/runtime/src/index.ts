@@ -327,10 +327,7 @@ export class Context<IsAsync extends boolean> {
       Object.prototype.toString.call(func) === "[object Macro]"
     ) {
       args.push(kwargs);
-      // args.unshift(kwargs.caller);
-      // delete kwargs.caller;
     }
-    debugger;
     return func(...args);
   }
 }
@@ -567,6 +564,93 @@ export class Markup extends String {
   }
 }
 
+function* range(
+  start = 0,
+  stop = Infinity,
+  step = 1
+): IterableIterator<number> {
+  for (let i = start; i < stop; i += step) yield i;
+}
+
+function* enumerate<T>(iter: Iterable<T>, offset = 0): Generator<[number, T]> {
+  let i = offset;
+  for (const item of iter) {
+    yield [i, item];
+    i++;
+  }
+}
+
+function* arrayslice<T>(
+  array: T[],
+  start = 0,
+  stop = Infinity,
+  step = 1
+): Generator<T> {
+  const direction = Math.sign(step);
+  const len = array.length;
+  if (direction >= 0) {
+    start = start < 0 ? Math.max(len + start, 0) : Math.min(start, len);
+    stop = stop < 0 ? Math.max(len + stop, 0) : Math.min(stop, len);
+  } else {
+    start = start < 0 ? Math.max(len + start, -1) : Math.min(start, len - 1);
+    stop = stop < -1 ? Math.max(len + stop, -1) : Math.min(stop, len - 1);
+  }
+
+  for (let i = start; direction * i < direction * stop; i += step) {
+    yield array[i];
+  }
+}
+
+function* slice<T = any>(
+  iterable: Iterable<T>,
+  start = 0,
+  stop = Infinity,
+  step = 1
+): Generator<T> {
+  if (start < 0 || stop < 0 || step < 0) {
+    yield* arrayslice([...iterable], start, stop, step);
+  }
+  const it = range(start, stop, step)[Symbol.iterator]();
+  let next = it.next();
+  let index = 0;
+  for (const item of iterable) {
+    if (next.done) return;
+
+    if (index === next.value) {
+      yield item;
+      next = it.next();
+    }
+    index++;
+  }
+}
+
+async function* asyncSlice<T = any>(
+  iterable: Iterable<T> | AsyncIterable<T>,
+  start = 0,
+  stop = Infinity,
+  step = 1
+): AsyncGenerator<T> {
+  if (start < 0 || stop < 0 || step < 0) {
+    const arr: T[] = [];
+    for await (const item of iterable) {
+      arr.push(item);
+    }
+    yield* arrayslice(arr, start, stop, step);
+  }
+  const it = range(start, stop, step)[Symbol.iterator]();
+  let next = it.next();
+  let index = 0;
+  for await (const item of iterable) {
+    if (next.done) return;
+
+    if (index === next.value) {
+      yield item;
+      next = it.next();
+    }
+    index++;
+  }
+}
+
 export type MarkupType = Markup & string;
 
 // eslint-disable-next-line @typescript-eslint/ban-types
@@ -590,4 +674,7 @@ export default {
   markSafe,
   Markup,
   Macro,
+  enumerate,
+  slice,
+  asyncSlice,
 };

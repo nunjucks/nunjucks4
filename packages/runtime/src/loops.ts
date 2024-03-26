@@ -92,12 +92,12 @@ export class LoopContext<
 
     this._iterable = iterable;
     this._iteritems = [];
-    this._iterator = this._toIterator(iterable);
     this._undefined = undef;
     this._recurse = recurse;
     this.depth0 = depth0;
-
     this._isAsync = async;
+    this._iterator = this._toIterator(iterable);
+
     //
     //     if (async) {
     //       this[Symbol.iterator] = () => this;

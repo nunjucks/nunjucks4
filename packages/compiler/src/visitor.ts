@@ -716,7 +716,8 @@ export class CodeGenerator<IsAsync extends boolean> {
         }
         return innerNodes;
       },
-      visitConst({ node }) {
+      visitConst(path) {
+        const { node } = path;
         if (typeof node.value === "number") {
           return b.numericLiteral(node.value);
         } else if (typeof node.value === "string") {
@@ -730,7 +731,7 @@ export class CodeGenerator<IsAsync extends boolean> {
         }
       },
       visitTemplateData({ node }, { self, frame }) {
-        return self.write(self.outputChildToConst(node, frame), node, frame);
+        return self.write(self.outputChildToConst(node, frame), frame);
       },
       visitGetattr({ node }, state) {
         const { self } = state;
@@ -764,12 +765,13 @@ export class CodeGenerator<IsAsync extends boolean> {
         }
         return b.arrayExpression(elements);
       },
-      visitList({ node }, state) {
+      visitList(path, state) {
+        const { node } = path;
         const { self } = state;
         const elements: n.Expression[] = [];
-        for (const item of node.items) {
-          elements.push(self.visitExpression(item, state));
-        }
+        path.get("items").each((child) => {
+          elements.push(self.visitExpression(child, state));
+        });
         return b.arrayExpression(elements);
       },
       visitDict({ node }, state) {
@@ -812,11 +814,18 @@ export class CodeGenerator<IsAsync extends boolean> {
         const { frame, self } = state;
         let funcName: n.Expression;
         if (frame.evalCtx.volatile) {
-          // funcName = forceExpression()
+          funcName = ast.expression`
+            context.evalCtx.volatile ? runtime.markupJoin : runtime.strJoin
+          `();
+        } else if (frame.evalCtx.autoescape) {
+          funcName = ast.expression`runtime.markupJoin`();
+        } else {
+          funcName = ast.expression`runtime.strJoin`();
         }
-      },
-      visitOperand(path, state) {
-        throw new Error("not implemented");
+        return ast.expression`%%funcName%%(%%args%%)`({
+          funcName,
+          args: node.nodes.map((child) => self.visitExpression(child, state)),
+        });
       },
       visitUnaryExpr({ node }, state) {
         // TODO: sandbox intercept unary ops?
@@ -1061,6 +1070,7 @@ export class CodeGenerator<IsAsync extends boolean> {
         const { frame, self } = state;
         const { node } = path;
         const loopFrame = frame.inner();
+        const decls: n.VariableDeclaration[] = [];
         loopFrame.loopFrame = true;
         const testFrame = frame.inner();
         const elseFrame = frame.inner();
@@ -1098,34 +1108,57 @@ export class CodeGenerator<IsAsync extends boolean> {
           // );
           // const bookmark = getBookmark(astPath)!;
           // const stmts = [];
-          const target = this.traverse(path.get("target"), {
-            ...state,
-            frame: loopFrame,
-          });
+          const target = forceExpression(
+            self.visit(node.target, {
+              ...state,
+              frame: loopFrame,
+            }),
+            decls
+          );
           n.assertIdentifier(target);
-          const test = this.traverse(path.get("test"), {
-            ...state,
-            frame: testFrame,
-          });
-          const stmt = ast`for (%%target%% of fiter) {
+          const test = forceExpression(
+            self.visit(node.test, {
+              ...state,
+              frame: testFrame,
+            }),
+            decls
+          );
+          const stmt: n.ForOfStatement =
+            ast.statement`for (%%target%% of fiter) {
             if (%%test%%) {
-              yield %%yieldTarget%%;
+              %%consequent%%;
             }
           }`({
-            target,
-            test,
-            yieldTarget: cloneNode(target),
-          });
-          const blockStmt = self.wrapFrame(testFrame, stmt);
+              target: b.variableDeclaration("const", [
+                b.variableDeclarator(target),
+              ]),
+              test,
+              consequent: b.expressionStatement(
+                b.yieldExpression(cloneNode(target))
+              ),
+              // yieldTarget: cloneNode(target),
+            });
+          stmt.await = this.isAsync;
+          const blockStmt = self.wrapFrame(testFrame, [stmt]);
           rootStatements.push(
-            ast`function %%loopFilterFunc%%(fiter) {
-            %%blockStmt%%
-          }`({ loopFilterFunc, blockStmt })
+            b.functionDeclaration.from({
+              id: id(loopFilterFunc),
+              params: [id("fiter")],
+              body: blockStmt,
+              async: self.isAsync,
+              generator: true,
+            })
           );
+          // rootStatements.push(
+          //   ast`function %%loopFilterFunc%%(fiter) %%blockStmt%%`({
+          //     loopFilterFunc,
+          //     blockStmt,
+          //   })
+          // );
         }
         if (node.recursive) {
           const funcDecl: n.FunctionDeclaration =
-            ast`function loop(reciter, loopRenderFunc, { depth = 0 } = {}) {}`();
+            ast`function loop(reciter, loopRenderFunc, depth = 0) {}`();
           if (self.isAsync) {
             funcDecl.async = true;
           }
@@ -1162,6 +1195,23 @@ export class CodeGenerator<IsAsync extends boolean> {
             node.loc
           );
         }
+        // Convert array expressions to array patterns for lhs
+        if (n.ArrayExpression.check(target)) {
+          const elements: (n.PatternLike | null)[] = [];
+          for (const el of target.elements) {
+            if (el === null) {
+              elements.push(el);
+              continue;
+            }
+            n.PatternLike.assert(el);
+            elements.push(el);
+          }
+          target = b.arrayPattern(elements);
+        }
+        // let target = n.ArrayExpression.check(_target)
+        //   ? b.arrayPattern(_target.elements as n.PatternLike[])
+        //   : _target;
+
         const assertTarget: (
           t: n.Node
         ) => asserts t is n.Identifier | n.ArrayPattern = (t) =>
@@ -1181,6 +1231,10 @@ export class CodeGenerator<IsAsync extends boolean> {
           ? id("reciter")
           : self.visitExpression(node.iter, { ...state, frame });
 
+        if (loopFilterFunc !== null) {
+          iter = b.callExpression(id(loopFilterFunc), [iter]);
+        }
+
         if (extendedLoop) {
           const args = [iter, id("undef")];
           if (node.recursive) {
@@ -1190,9 +1244,6 @@ export class CodeGenerator<IsAsync extends boolean> {
           }
           args.push(b.booleanLiteral(this.isAsync));
           iter = b.newExpression(runtimeExpr("LoopContext"), args);
-        }
-        if (loopFilterFunc !== null) {
-          iter = b.callExpression(id(loopFilterFunc), [iter]);
         }
         const loopBody: n.Statement[] = [
           ...self.enterFrame(loopFrame),
@@ -1239,7 +1290,7 @@ export class CodeGenerator<IsAsync extends boolean> {
           const callExpr = self.awaitIfAsync(
             b.callExpression(id("loop"), loopArgs)
           );
-          rootStatements.push(self.write(callExpr, node, frame));
+          rootStatements.push(self.write(callExpr, frame));
         }
 
         if (self.assignStack.length) {
@@ -1248,7 +1299,7 @@ export class CodeGenerator<IsAsync extends boolean> {
             loopFrame.symbols.stores
           );
         }
-        return rootStatements;
+        return [...decls, ...rootStatements];
       },
 
       visitMacro({ node }, state) {
@@ -1283,13 +1334,38 @@ export class CodeGenerator<IsAsync extends boolean> {
 
           self.write(
             self.visitExpression(node.call, { ...state, forwardCaller: true }),
-            node,
             frame
           ),
         ];
       },
       visitFilterBlock({ node }, state) {
-        throw new Error("not implemented");
+        const { frame, self } = state;
+        const filterFrame = frame.inner();
+        filterFrame.symbols.analyzeNode(node);
+        return [
+          ...self.enterFrame(filterFrame),
+          self.buffer(filterFrame),
+          ...self.blockvisit(node.body, { ...state, frame: filterFrame }),
+          self.write(
+            self.visitExpression(node.filter, { ...state, frame: filterFrame }),
+            frame
+          ),
+          ...self.leaveFrame(filterFrame),
+        ];
+        // const statements: n.Statement[] = [];
+        // statements.push(...self.enterFrame(filterFrame));
+        // statements.push(self.buffer(filterFrame));
+        // statements.push(
+        //   ...self.blockvisit(node.body, { ...state, frame: filterFrame })
+        // );
+        // statements.push(
+        //   self.write(
+        //     self.visitExpression(node.filter, { ...state, frame: filterFrame }),
+        //     frame
+        //   )
+        // );
+        // statements.push(...self.leaveFrame(filterFrame));
+        // return statements;
       },
       visitWith({ node }, state) {
         const { self } = state;
@@ -1329,14 +1405,14 @@ export class CodeGenerator<IsAsync extends boolean> {
   }
 
   visitStatements<T extends t.Node>(
-    nodeOrPath: T | Path<T, any, PropertyKey> | T[],
+    nodeOrPath: T | Path<T, any> | T[],
     state: State<IsAsync>
   ): n.Statement[] {
     const result = this.visit(nodeOrPath, state);
     return forceStatements(result);
   }
   visitStatement<T extends t.Node>(
-    nodeOrPath: T | Path<T, any, PropertyKey> | T[],
+    nodeOrPath: T | Path<T, any> | T[],
     state: State<IsAsync>
   ): n.Statement {
     const statements = this.visitStatements(nodeOrPath, state);
@@ -1347,13 +1423,13 @@ export class CodeGenerator<IsAsync extends boolean> {
     return statements[0];
   }
   visitExpression<T extends t.Node>(
-    nodeOrPath: T | Path<T, any, PropertyKey> | T[],
+    nodeOrPath: T | Path<T, T> | T[],
     state: State<IsAsync>
   ): n.Expression {
     return forceExpression(this.visit(nodeOrPath, state));
   }
   visit<T extends t.Node>(
-    nodeOrPath: T | Path<T, any, PropertyKey> | T[],
+    nodeOrPath: T | Path<T, T> | T[] | Path<T, T>[],
     state: State<IsAsync>
   ): n.Node[] {
     let path: Path;
@@ -1367,7 +1443,9 @@ export class CodeGenerator<IsAsync extends boolean> {
     }
 
     if (!(nodeOrPath instanceof Path)) {
-      path = new Path({ root: nodeOrPath }).get("root");
+      path = (new Path({ root: nodeOrPath }) as any).get(
+        "root"
+      ) as unknown as Path;
     } else {
       path = nodeOrPath as unknown as Path;
     }
@@ -1492,9 +1570,11 @@ export class CodeGenerator<IsAsync extends boolean> {
           b.variableDeclaration("let", [
             b.variableDeclarator(
               id(target),
-              b.callExpression(this.getResolveFunc(), [
-                param === null ? b.nullLiteral() : b.stringLiteral(param),
-              ])
+              this.awaitIfAsync(
+                b.callExpression(this.getResolveFunc(), [
+                  param === null ? b.nullLiteral() : b.stringLiteral(param),
+                ])
+              )
             ),
           ])
         );
@@ -1565,7 +1645,7 @@ export class CodeGenerator<IsAsync extends boolean> {
       nodes.push(
         b.expressionStatement(
           b.callExpression(
-            memberExpr("context.exportedVars.push"),
+            memberExpr("context.exportedVars.add"),
             publicNames.map((name) => b.stringLiteral(name))
           )
         )
@@ -1665,7 +1745,6 @@ export class CodeGenerator<IsAsync extends boolean> {
 
   write(
     expr: n.Expression | string,
-    node: t.Node,
     frame: Frame<IsAsync>
   ): n.ExpressionStatement {
     if (typeof expr === "string") {
@@ -1802,7 +1881,6 @@ export class CodeGenerator<IsAsync extends boolean> {
     this.popParameterDefinitions();
 
     stmts.push(...this.blockvisit(node.body, { ...state, frame }));
-
     stmts.push(this.returnBufferContents(frame, { forceUnescaped: true }));
     stmts.push(...this.leaveFrame(frame, { withPythonScope: true }));
     const funcDecl: n.FunctionDeclaration = ast`
@@ -1865,30 +1943,8 @@ export class CodeGenerator<IsAsync extends boolean> {
         )
       ),
     ];
-    // const undef: string[] = [];
-    // for (const target of frame.symbols.loads) {}
   }
-  // macroDef(macroRef: MacroRef, frame: Frame<IsAsync>): n.NewExpression {
-  //   const argArray = b.arrayExpression(
-  //     macroRef.node.args.map((x) => b.stringLiteral(x.name))
-  //   );
-  //   const name: n.Literal =
-  //     "name" in macroRef.node
-  //       ? b.stringLiteral(macroRef.node.name)
-  //       : b.nullLiteral();
-  //   return ast`new Macro(%%args%%)`({
-  //     args: [
-  //       id("environment"),
-  //       id("macro"),
-  //       name,
-  //       argArray,
-  //       b.booleanLiteral(macroRef.accessesKwargs),
-  //       b.booleanLiteral(macroRef.accessesVarargs),
-  //       b.booleanLiteral(macroRef.accessesCaller),
-  //       memberExpr("context.evalCtx.autoescape"),
-  //     ],
-  //   });
-  // }
+
   markParameterStored(target: string): void {
     if (this.paramDefBlock?.length) {
       this.paramDefBlock[this.paramDefBlock.length - 1].delete(target);

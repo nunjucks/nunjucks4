@@ -127,7 +127,14 @@ export class Undefined extends Function {
       },
     });
   }
-
+  [Symbol.iterator]() {
+    return [][Symbol.iterator]();
+  }
+  [Symbol.asyncIterator]() {
+    return (async function* () {
+      /* do nothing */
+    })()[Symbol.asyncIterator]();
+  }
   toString() {
     return this._failWithUndefinedError();
   }
@@ -480,5 +487,11 @@ export class Environment<IsAsync extends boolean> extends EventEmitter {
     const ast = codegen.compile(source);
     const jsSource = generate(ast as any).code;
     return jsSource;
+  }
+
+  fromString(source: string): Template<IsAsync> {
+    const template = new Template<IsAsync>({ environment: this });
+    template.rootRenderFunc = this.compile(source);
+    return template;
   }
 }
