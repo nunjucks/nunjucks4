@@ -297,7 +297,7 @@ export class Environment<IsAsync extends boolean> extends EventEmitter {
     return true;
   }
 
-  getitem(obj: any, argument: any): any {
+  _getitem(obj: any, argument: any): any {
     // Handle marksafe values
     if (
       typeof argument === "object" &&
@@ -347,8 +347,17 @@ export class Environment<IsAsync extends boolean> extends EventEmitter {
     }
     return this.undef({ obj, name: argument });
   }
+  getitem(obj: any, argument: any): any {
+    const ret = this._getitem(obj, argument);
+    return typeof ret === "function" || ret instanceof Function
+      ? ret.bind(obj)
+      : ret;
+  }
   getattr(obj: any, argument: string): any {
-    return this.getitem(obj, argument);
+    const ret = this._getitem(obj, argument);
+    return typeof ret === "function" || ret instanceof Function
+      ? ret.bind(obj)
+      : ret;
   }
   _filterTestCommon({
     name,

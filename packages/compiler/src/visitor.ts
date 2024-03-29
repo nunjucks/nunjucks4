@@ -743,9 +743,28 @@ export class CodeGenerator<IsAsync extends boolean> {
           })
         );
       },
-      visitGetitem({ node }, state) {
+      visitGetitem(path, state) {
+        const { node } = path;
         const { self } = state;
-        const target = self.visitExpression(node.node, state);
+        const target = self.visitExpression(path.get("node"), state);
+        if (t.Slice.check(node.arg)) {
+          const slice = path.get("arg") as Path<t.Slice, t.Slice>;
+          const start = node.arg.start
+            ? self.visitExpression(slice.get("start") as Path, state)
+            : b.numericLiteral(0);
+          const stop = node.arg.stop
+            ? self.visitExpression(slice.get("stop") as Path, state)
+            : id("Infinity");
+          const step = node.arg.step
+            ? self.visitExpression(slice.get("step") as Path, state)
+            : b.numericLiteral(1);
+          return self.awaitIfAsync(
+            b.callExpression(
+              runtimeExpr(this.isAsync ? "asyncSlice" : "slice"),
+              [target, start, stop, step]
+            )
+          );
+        }
         const attr = self.visitExpression(node.arg, state);
         return self.awaitIfAsync(
           ast.expression`env.getattr(%%target%%, %%attr%%)`({
