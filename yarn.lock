@@ -2912,7 +2912,7 @@ __metadata:
   resolution: "@nunjucks/ast@workspace:packages/ast"
   dependencies:
     "@nunjucks/environment": "workspace:*"
-    "@pregenerator/ast-types": 1.1.0-beta.9
+    "@pregenerator/ast-types": 1.1.1
     "@types/node": ^18.7.23
     "@types/prettier": ^2.4.3
     ast-types: ^0.14.2
@@ -2928,8 +2928,8 @@ __metadata:
   dependencies:
     "@babel/generator": ^7.18.7
     "@nunjucks/environment": "workspace:*"
-    "@pregenerator/ast-types": 1.1.0-beta.9
-    "@pregenerator/template": 1.1.0-beta.9
+    "@pregenerator/ast-types": ^1.1.1
+    "@pregenerator/template": ^1.1.1
     "@types/babel__generator": ^7.6.4
     rimraf: ~3.0.2
     typescript: ^4.3.5
@@ -3134,32 +3134,32 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@pregenerator/ast-types@npm:1.1.0-beta.9, @pregenerator/ast-types@npm:^1.1.0-beta.9":
-  version: 1.1.0-beta.9
-  resolution: "@pregenerator/ast-types@npm:1.1.0-beta.9"
-  checksum: 81068d3a931ccdf23bf9c734d46c6f2ec6287c5d17b91201b790d16b758318c60d024148815db1c43f0558dcabd427ff0a0b5cb1f6f02c1958b8ca6f08d82aa0
+"@pregenerator/ast-types@npm:1.1.1, @pregenerator/ast-types@npm:^1.1.1":
+  version: 1.1.1
+  resolution: "@pregenerator/ast-types@npm:1.1.1"
+  checksum: ceb5f702f3fe9aa9ccb867156de4fc0842aeb706b1e039cebdc5b849222f0d4782f9210511c832eb525fd9f4b0533efa4cf544047844764d6359236fa6636053
   languageName: node
   linkType: hard
 
-"@pregenerator/parser@npm:^1.1.0-beta.9":
-  version: 1.1.0-beta.9
-  resolution: "@pregenerator/parser@npm:1.1.0-beta.9"
+"@pregenerator/parser@npm:^1.1.1":
+  version: 1.1.1
+  resolution: "@pregenerator/parser@npm:1.1.1"
   dependencies:
-    "@pregenerator/ast-types": ^1.1.0-beta.9
+    "@pregenerator/ast-types": ^1.1.1
     acorn: ^8.3.0
-  checksum: 83784fcddaab7b1e0ebda8dde146a7297e96ac55f8e124ca6ae239be18d9a7306cda6f1721fad00884efe61545f32f39cfc02dd8b9bfc28c496cc336e2600312
+  checksum: 88809307f01d9ee92af4c920e61adce5bd46bf9f52dcc58b43e06527c0e1eef2e564528565bbfb20949615948f9592a98a7450e842c1b96275eb25ee0e633eda
   languageName: node
   linkType: hard
 
-"@pregenerator/template@npm:1.1.0-beta.9":
-  version: 1.1.0-beta.9
-  resolution: "@pregenerator/template@npm:1.1.0-beta.9"
+"@pregenerator/template@npm:^1.1.1":
+  version: 1.1.1
+  resolution: "@pregenerator/template@npm:1.1.1"
   dependencies:
-    "@pregenerator/ast-types": ^1.1.0-beta.9
-    "@pregenerator/parser": ^1.1.0-beta.9
+    "@pregenerator/ast-types": ^1.1.1
+    "@pregenerator/parser": ^1.1.1
     acorn: ^8.3.0
     astring: ^1.7.5
-  checksum: 9eadd0a3fcf948e25147e890418175d7cfd6758a0a0fcf1f32b0f3878cfc3617fb203b31798b87889c23ba494bd3c582c7cf7ba5bfe35ac6faabc11321ac18c2
+  checksum: a29ef4473bdb2fac14e25d153138b7aa30b140f5b96fde7c5f59233744f35ebf3e279d6dbf6299a92fd19369321c7ca98e1135ec9c2a3da9ff2254d89526e2a1
   languageName: node
   linkType: hard
 

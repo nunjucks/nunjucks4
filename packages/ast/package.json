@@ -26,10 +26,10 @@
     "gen": "ts-node --transpile-only scripts/gen-types.ts"
   },
   "dependencies": {
-    "@nunjucks/environment": "workspace:*",
-    "@pregenerator/ast-types": "1.1.0-beta.9"
+    "@nunjucks/environment": "workspace:*"
   },
   "devDependencies": {
+    "@pregenerator/ast-types": "1.1.1",
     "@types/node": "^18.7.23",
     "@types/prettier": "^2.4.3",
     "ast-types": "^0.14.2",
