@@ -98,7 +98,6 @@ describe("nunjucks", () => {
     ).toBe("[x.1.2<[x.1.2][x.2.x]>][x.2.3<[x.1.2][x.2.x]>][x.3.x<[x.a.x]>]");
   });
 
-  // ===
   test("recursive depth0", () => {
     const env = new Environment();
     const tmpl = env.fromString(
@@ -323,7 +322,6 @@ describe("nunjucks", () => {
     ]);
   });
 
-  // ===
   test("non-recursive loop filter", () => {
     const env = new Environment({ isAsync: false });
     const t = env.fromString(`
@@ -383,4 +381,46 @@ describe("nunjucks", () => {
     const t = env.fromString("{% for x in a.b[:1] %}{{ x }}{% endfor %}");
     expect(t.render({ a: { b: [1, 2, 3] } })).toBe("1");
   });
+
+  test("loop.changed", () => {
+    const env = new Environment({ isAsync: false });
+    const t = env.fromString(`
+      {%- for item in seq -%}
+      {{ loop.changed(item) }},
+      {%- endfor -%}
+    `);
+    expect(t.render({ seq: [null, null, 1, 2, 2, 3, 4, 4, 4] })).toBe(
+      "true,false,true,true,false,true,true,false,false,"
+    );
+  });
+
+  test("await on calls", async () => {
+    const env = new Environment({ isAsync: true });
+    const t = env.fromString("{{ async_func() + normal_func() }}");
+    expect(
+      await t.render({
+        async async_func() {
+          return 42;
+        },
+        normal_func() {
+          return 23;
+        },
+      })
+    ).toBe("65");
+  });
+  //
+  //   test("await on calls in macros", async () => {
+  //     const env = new Environment({ isAsync: true });
+  //     const t = env.fromString("{{ async_func() + normal_func() }}");
+  //     expect(
+  //       await t.render({
+  //         async async_func() {
+  //           return 42;
+  //         },
+  //         normal_func() {
+  //           return 23;
+  //         },
+  //       })
+  //     ).toBe("65");
+  //   });
 });
