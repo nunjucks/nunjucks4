@@ -8,13 +8,5 @@
       "nunjucks/*": ["packages/core/src/*"],
       "@nunjucks/*": ["packages/*/src"]
     }
-  },
-  "references": [
-    {"path": "packages/environment"},
-    {"path": "packages/runtime"},
-    {"path": "packages/ast"},
-    {"path": "packages/parser"},
-    {"path": "packages/compiler"},
-    {"path": "packages/runtime"}
-  ]
+  }
 }
