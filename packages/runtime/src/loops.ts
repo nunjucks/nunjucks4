@@ -10,7 +10,7 @@ import { MISSING, Undefined } from "@nunjucks/environment";
 type LoopRenderFunc<V> = (
   reciter: Iterable<V>,
   loopRenderFunc: LoopRenderFunc<V>,
-  depth?: number
+  depth?: number,
 ) => string;
 
 /**
@@ -21,11 +21,11 @@ type LoopRenderFunc<V> = (
  */
 const LoopContextFunc = function LoopContext<
   IsAsync extends boolean | undefined,
-  V extends PromiseIfAsync<IsAsync> = any
+  V extends PromiseIfAsync<IsAsync> = any,
 >(this: LoopContext<IsAsync, V>, iterable: Iterable<V>): string {
   if (this._recurse === null) {
     throw new TypeError(
-      "The loop must have the 'recursive' marker to be called recursively."
+      "The loop must have the 'recursive' marker to be called recursively.",
     );
   }
   return this._recurse(iterable, this._recurse, this.depth);
@@ -36,7 +36,7 @@ const LoopContextFunc = function LoopContext<
  */
 export class LoopContext<
   IsAsync extends boolean | undefined,
-  V extends PromiseIfAsync<IsAsync> = any
+  V extends PromiseIfAsync<IsAsync> = any,
 > {
   index0: number;
   _length: number | null;
@@ -81,7 +81,7 @@ export class LoopContext<
     undef: typeof Undefined,
     recurse: LoopRenderFunc<V> | null = null,
     depth0 = 0,
-    async: IsAsync
+    async: IsAsync,
   ) {
     this.index0 = -1;
     this._length = null;
@@ -122,7 +122,7 @@ export class LoopContext<
       IsAsync,
       AsyncIterable<UnwrapPromise<V>> | Iterable<UnwrapPromise<V>>,
       Iterable<V>
-    >
+    >,
   ): IfAsync<
     IsAsync,
     AsyncIterator<UnwrapPromise<V>> | Iterator<UnwrapPromise<V>>,

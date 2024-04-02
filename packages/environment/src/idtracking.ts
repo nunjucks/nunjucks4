@@ -76,7 +76,7 @@ export class Symbols {
     const rv = this.findRef(name);
     if (rv === null) {
       throw new Error(
-        `Tried to resolve a name to a reference that was unknown to the frame (${name})`
+        `Tried to resolve a name to a reference that was unknown to the frame (${name})`,
       );
     }
     return rv;
@@ -178,7 +178,7 @@ export class Symbols {
 const rootVisitor = (
   node: t.Node,
   symbols: Symbols,
-  state?: RootVisitorState
+  state?: RootVisitorState,
 ) => {
   const symVisitor = new FrameSymbolVisitor(symbols);
 
@@ -261,7 +261,7 @@ const rootVisitor = (
         return false;
       },
     },
-    state
+    state,
   );
 };
 
@@ -381,7 +381,7 @@ export class FrameSymbolVisitor {
 
 export const findSymbols = (
   nodes: t.Node[],
-  parentSymbols?: Symbols
+  parentSymbols?: Symbols,
 ): Symbols => {
   const sym = new Symbols(parentSymbols);
   const visitor = new FrameSymbolVisitor(sym);
@@ -391,7 +391,7 @@ export const findSymbols = (
 
 export const symbolsForNode = (
   node: t.Node,
-  parentSymbols?: Symbols
+  parentSymbols?: Symbols,
 ): Symbols => {
   const sym = new Symbols(parentSymbols);
   sym.analyzeNode(node);

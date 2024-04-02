@@ -122,9 +122,8 @@ const main = (filePath: string) => {
   // Write pretty printed transformed typescript to output directory
   fs.writeFileSync(
     path.resolve(__dirname, "../generated/models.ts"),
-    printer.printFile(result.transformed[0])
+    printer.printFile(result.transformed[0]),
   );
 };
 
 export default main;
-

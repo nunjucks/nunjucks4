@@ -1,16 +1,15 @@
-export type UnwrapPromise<T> = T extends PromiseLike<infer U>
-  ? UnwrapPromise<U>
-  : T;
+export type UnwrapPromise<T> =
+  T extends PromiseLike<infer U> ? UnwrapPromise<U> : T;
 
 export type IfAsync<
   IsAsync extends boolean | undefined,
   A,
-  B
+  B,
 > = IsAsync extends true ? A : B;
 
 export type ConditionalAsync<
   IsAsync extends boolean | undefined,
-  T
+  T,
 > = IsAsync extends true ? (T extends Promise<any> ? T : Promise<T>) : T;
 
 export type PromiseIfAsync<IsAsync extends boolean | undefined> =

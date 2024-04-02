@@ -33,7 +33,7 @@ describe("nunjucks", () => {
           { a: 2, b: [{ a: 1 }, { a: 2 }] },
           { a: 3, b: [{ a: "a" }] },
         ],
-      })
+      }),
     ).toBe("[1<[1][2]>][2<[1][2]>][3<[a]>]");
   });
 
@@ -52,7 +52,7 @@ describe("nunjucks", () => {
           { a: 2, b: [{ a: 1 }, { a: 2 }] },
           { a: 3, b: [{ a: "a" }] },
         ],
-      })
+      }),
     ).toBe("[1<[1][2]>][2<[1][2]>][3<[a]>]");
   });
 
@@ -73,7 +73,7 @@ describe("nunjucks", () => {
           { a: 2, b: [{ a: 1 }, { a: 2 }] },
           { a: 3, b: [{ a: "a" }] },
         ],
-      })
+      }),
     ).toBe("[x.1.2<[x.1.2][x.2.x]>][x.2.3<[x.1.2][x.2.x]>][x.3.x<[x.a.x]>]");
   });
 
@@ -94,7 +94,7 @@ describe("nunjucks", () => {
           { a: 2, b: [{ a: 1 }, { a: 2 }] },
           { a: 3, b: [{ a: "a" }] },
         ],
-      })
+      }),
     ).toBe("[x.1.2<[x.1.2][x.2.x]>][x.2.3<[x.1.2][x.2.x]>][x.3.x<[x.a.x]>]");
   });
 
@@ -104,7 +104,7 @@ describe("nunjucks", () => {
       [
         "{% for item in seq recursive %}[{{ loop.depth0 }}:{{ item.a }}",
         "{% if item.b %}<{{ loop(item.b) }}>{% endif %}]{% endfor %}",
-      ].join("")
+      ].join(""),
     );
 
     expect(
@@ -114,7 +114,7 @@ describe("nunjucks", () => {
           { a: 2, b: [{ a: 1 }, { a: 2 }] },
           { a: 3, b: [{ a: "a" }] },
         ],
-      })
+      }),
     ).toBe("[0:1<[1:1][1:2]>][0:2<[1:1][1:2]>][0:3<[1:a]>]");
   });
 
@@ -124,7 +124,7 @@ describe("nunjucks", () => {
       [
         "{% for item in seq recursive %}[{{ loop.depth0 }}:{{ item.a }}",
         "{% if item.b %}<{{ loop(item.b) }}>{% endif %}]{% endfor %}",
-      ].join("")
+      ].join(""),
     );
 
     expect(
@@ -134,7 +134,7 @@ describe("nunjucks", () => {
           { a: 2, b: [{ a: 1 }, { a: 2 }] },
           { a: 3, b: [{ a: "a" }] },
         ],
-      })
+      }),
     ).toBe("[0:1<[1:1][1:2]>][0:2<[1:1][1:2]>][0:3<[1:a]>]");
   });
 
@@ -162,7 +162,7 @@ describe("nunjucks", () => {
         {%- endfor -%}
         `);
     expect(await tmpl.render({ table: ["ab", "cd"] })).toBe(
-      "[1|1][1|2][2|1][2|2]"
+      "[1|1][1|2][2|1][2|2]",
     );
   });
 
@@ -172,13 +172,13 @@ describe("nunjucks", () => {
       [
         "{% for s in seq %}[{{ loop.first }}{% for c in s %}",
         "|{{ loop.first }}{% endfor %}]{% endfor %}",
-      ].join("")
+      ].join(""),
     );
 
     expect(
       tmpl.render({
         seq: ["ab", "cd"],
-      })
+      }),
     ).toBe("[true|true|false][false|true|false]");
   });
 
@@ -188,24 +188,24 @@ describe("nunjucks", () => {
       [
         "{% for s in seq %}[{{ loop.first }}{% for c in s %}",
         "|{{ loop.first }}{% endfor %}]{% endfor %}",
-      ].join("")
+      ].join(""),
     );
 
     expect(
       await tmpl.render({
         seq: ["ab", "cd"],
-      })
+      }),
     ).toBe("[true|true|false][false|true|false]");
   });
 
   test("scoped loop var", () => {
     const env = new Environment();
     const tmpl1 = env.fromString(
-      "{% for x in seq %}{{ loop.first }}{% for y in seq %}{% endfor %}{% endfor %}"
+      "{% for x in seq %}{{ loop.first }}{% for y in seq %}{% endfor %}{% endfor %}",
     );
     expect(tmpl1.render({ seq: "ab" })).toBe("truefalse");
     const tmpl2 = env.fromString(
-      "{% for x in seq %}{% for y in seq %}{{ loop.first }}{% endfor %}{% endfor %}"
+      "{% for x in seq %}{% for y in seq %}{{ loop.first }}{% endfor %}{% endfor %}",
     );
     expect(tmpl2.render({ seq: "ab" })).toBe("truefalsetruefalse");
   });
@@ -213,11 +213,11 @@ describe("nunjucks", () => {
   test("async scoped loop var", async () => {
     const env = new Environment({ isAsync: true });
     const tmpl1 = env.fromString(
-      "{% for x in seq %}{{ loop.first }}{% for y in seq %}{% endfor %}{% endfor %}"
+      "{% for x in seq %}{{ loop.first }}{% for y in seq %}{% endfor %}{% endfor %}",
     );
     expect(await tmpl1.render({ seq: "ab" })).toBe("truefalse");
     const tmpl2 = env.fromString(
-      "{% for x in seq %}{% for y in seq %}{{ loop.first }}{% endfor %}{% endfor %}"
+      "{% for x in seq %}{% for y in seq %}{{ loop.first }}{% endfor %}{% endfor %}",
     );
     expect(await tmpl2.render({ seq: "ab" })).toBe("truefalsetruefalse");
   });
@@ -257,7 +257,7 @@ describe("nunjucks", () => {
   test("unpacking", () => {
     const env = new Environment();
     const tmpl = env.fromString(
-      "{% for a, b, c in [[1, 2, 3]] %}{{ a }}|{{ b }}|{{ c }}{% endfor %}"
+      "{% for a, b, c in [[1, 2, 3]] %}{{ a }}|{{ b }}|{{ c }}{% endfor %}",
     );
     expect(tmpl.render()).toBe("1|2|3");
   });
@@ -390,7 +390,7 @@ describe("nunjucks", () => {
       {%- endfor -%}
     `);
     expect(t.render({ seq: [null, null, 1, 2, 2, 3, 4, 4, 4] })).toBe(
-      "true,false,true,true,false,true,true,false,false,"
+      "true,false,true,true,false,true,true,false,false,",
     );
   });
 
@@ -405,7 +405,7 @@ describe("nunjucks", () => {
         normal_func() {
           return 23;
         },
-      })
+      }),
     ).toBe("65");
   });
   //

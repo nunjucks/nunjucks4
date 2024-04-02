@@ -21,7 +21,7 @@ export class KeyError extends Error {}
 
 export function hasOwn<K extends string>(
   o: unknown,
-  key: K
+  key: K,
 ): o is Record<K, unknown> {
   return o && Object.prototype.hasOwnProperty.call(o, key);
 }
@@ -225,8 +225,8 @@ export class Context<IsAsync extends boolean> {
     return hasOwn(this.vars, key)
       ? this.vars[key]
       : hasOwn(this.parent, key)
-      ? this.parent[key]
-      : MISSING;
+        ? this.parent[key]
+        : MISSING;
   }
   resolve(key: string): any {
     const retval = this.resolveOrMissing(key);
@@ -290,9 +290,9 @@ export class Context<IsAsync extends boolean> {
         kwargs = Object.fromEntries(
           Array.from(
             Object.entries(args.pop()).filter(
-              ([k]) => typeof k === "string" && k !== "__isKwargs"
-            )
-          )
+              ([k]) => typeof k === "string" && k !== "__isKwargs",
+            ),
+          ),
         );
       }
     }
@@ -329,6 +329,13 @@ export class Context<IsAsync extends boolean> {
       args.push(kwargs);
     }
     return func(...args);
+  }
+
+  isAsync(): this is Context<true> {
+    return this.async;
+  }
+  isSync(): this is Context<false> {
+    return !this.async;
   }
 }
 
@@ -393,7 +400,7 @@ export class BlockReference<IsAsync extends boolean> extends Function {
     if (this._depth + 1 >= this._stack.length) {
       return this._context.environment.undef(
         `there is no parent block called ${this.name}.`,
-        { name: "super" }
+        { name: "super" },
       );
     }
     return new BlockReference({
@@ -459,7 +466,7 @@ const escapeMap: Record<string, string> = {
 
 const escapeRegex = new RegExp(
   `[${[...Object.keys(escapeMap)].join("")}]`,
-  "g"
+  "g",
 );
 
 export function isMarkup(obj: unknown): obj is MarkupType {
@@ -470,7 +477,7 @@ export function escape(obj: unknown): MarkupType {
   if (isMarkup(obj)) return obj;
   const s = `${obj}`;
   return markSafe(
-    s.replace(escapeRegex, (c) => (c in escapeMap ? escapeMap[c] : c))
+    s.replace(escapeRegex, (c) => (c in escapeMap ? escapeMap[c] : c)),
   );
 }
 
@@ -516,16 +523,16 @@ export class Markup extends String {
       | {
           [Symbol.split](string: string, limit?: number | undefined): string[];
         },
-    limit?: number | undefined
+    limit?: number | undefined,
   ): MarkupType[] {
     const ret =
       typeof separator === "string"
         ? super.split(separator, limit)
         : separator instanceof RegExp
-        ? super.split(separator, limit)
-        : typeof separator === "object" && Symbol.split in separator
-        ? super.split(separator, limit)
-        : super.split(`${separator}`, limit);
+          ? super.split(separator, limit)
+          : typeof separator === "object" && Symbol.split in separator
+            ? super.split(separator, limit)
+            : super.split(`${separator}`, limit);
 
     return ret.map((s) => markSafe(s));
   }
@@ -567,7 +574,7 @@ export class Markup extends String {
 function* range(
   start = 0,
   stop = Infinity,
-  step = 1
+  step = 1,
 ): IterableIterator<number> {
   for (let i = start; i < stop; i += step) yield i;
 }
@@ -584,7 +591,7 @@ function* arrayslice<T>(
   array: T[],
   start = 0,
   stop = Infinity,
-  step = 1
+  step = 1,
 ): Generator<T> {
   const direction = Math.sign(step);
   const len = array.length;
@@ -605,7 +612,7 @@ function* slice<T = any>(
   iterable: Iterable<T>,
   start = 0,
   stop = Infinity,
-  step = 1
+  step = 1,
 ): Generator<T> {
   if (start < 0 || stop < 0 || step < 0) {
     yield* arrayslice([...iterable], start, stop, step);
@@ -628,7 +635,7 @@ async function* asyncSlice<T = any>(
   iterable: Iterable<T> | AsyncIterable<T>,
   start = 0,
   stop = Infinity,
-  step = 1
+  step = 1,
 ): AsyncGenerator<T> {
   if (start < 0 || stop < 0 || step < 0) {
     const arr: T[] = [];
@@ -677,4 +684,5 @@ export default {
   enumerate,
   slice,
   asyncSlice,
+  hasOwn,
 };

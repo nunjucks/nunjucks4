@@ -26,7 +26,7 @@ export class Macro<IsAsync extends boolean> extends Function {
     catchKwargs: boolean,
     catchVarargs: boolean,
     caller: boolean,
-    defaultAutoescape: boolean
+    defaultAutoescape: boolean,
   ) {
     super();
     this._environment = environment;
@@ -102,7 +102,7 @@ export class Macro<IsAsync extends boolean> extends Function {
         kwargs.delete("caller");
       } else {
         macroArgs.push(
-          this._environment.undef("No caller defined", { name: "caller" })
+          this._environment.undef("No caller defined", { name: "caller" }),
         );
       }
     }
@@ -115,12 +115,12 @@ export class Macro<IsAsync extends boolean> extends Function {
           [
             `macro '${this._name}' was invoked with two values for the special caller argument. `,
             `This is most likely a bug.`,
-          ].join("")
+          ].join(""),
         );
       } else {
         const nextKwarg = Array.from(kwargs.keys())[0];
         throw new Error(
-          `macro '${this._name}' takes no keyword argument '${nextKwarg}'`
+          `macro '${this._name}' takes no keyword argument '${nextKwarg}'`,
         );
       }
     }
@@ -130,7 +130,7 @@ export class Macro<IsAsync extends boolean> extends Function {
     } else if (macroArgs.length > this._argCount) {
       const s = this._argCount == 1 ? "" : "s";
       throw new Error(
-        `macro '${this._name}' takes no more than ${this._argCount} argument${s}`
+        `macro '${this._name}' takes no more than ${this._argCount} argument${s}`,
       );
     }
 
@@ -138,7 +138,7 @@ export class Macro<IsAsync extends boolean> extends Function {
   }
   _invoke(
     args: any[],
-    autoescape: boolean
+    autoescape: boolean,
   ): IfAsync<IsAsync, Promise<string>, string> {
     return (
       this._environment.isAsync

@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { EventEmitter } from "events";
-import { Context, EvalContext, hasOwn } from "@nunjucks/runtime";
+import { Context, EvalContext, hasOwn, newContext } from "@nunjucks/runtime";
 import { types } from "@nunjucks/ast";
 import { parse } from "@nunjucks/parser";
 import { CodeGenerator } from "@nunjucks/compiler";
