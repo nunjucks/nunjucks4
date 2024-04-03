@@ -2160,21 +2160,17 @@ export class CodeGenerator<IsAsync extends boolean> {
     );
 
     if (node.withContext) {
-      const func = id(`makeModule${this.isAsync ? "Async" : ""}`);
       return this.awaitIfAsync(
-        ast.expression`%%getTemplate%%.%%func%%(context.getAll(), true, %%locals%%)`(
+        ast.expression`%%getTemplate%%.makeModule(context.getAll(), true, %%locals%%)`(
           {
-            func,
             getTemplate,
             locals: this.dumpLocalContext(frame),
           },
         ),
       );
     } else {
-      const func = id(`_getDefaultModule${this.isAsync ? "Async" : ""}`);
       return this.awaitIfAsync(
-        ast.expression`%%getTemplate%%.%%func%%(context)`({
-          func,
+        ast.expression`%%getTemplate%%._getDefaultModule(context)`({
           getTemplate,
         }),
       );

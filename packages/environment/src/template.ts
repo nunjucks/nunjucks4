@@ -1,7 +1,8 @@
 import { Environment } from "./environment";
 import runtime from "@nunjucks/runtime";
-import type { Block } from "@nunjucks/runtime";
+import type { Block, Markup } from "@nunjucks/runtime";
 import { newContext, Context } from "@nunjucks/runtime";
+import setDifference from "set.prototype.difference";
 
 export type Runtime = typeof runtime;
 
@@ -17,11 +18,13 @@ export type RootRenderFunc<IsAsync extends boolean> = IsAsync extends true
       context: Context<false>,
     ) => Generator<string>;
 
-type NewContextVars = {
+type NewContextOpts = {
   vars?: Record<string, any>;
   shared?: boolean;
   locals?: Record<string, any>;
 };
+
+const cachedTemplateModule = Symbol("cachedTemplateModule");
 
 export class Template<IsAsync extends true | false> {
   async: IsAsync;
@@ -34,6 +37,9 @@ export class Template<IsAsync extends true | false> {
   _rootRenderFunc: IsAsync extends true
     ? (context: Context<true>) => AsyncGenerator<string>
     : (context: Context<false>) => Generator<string>;
+  [cachedTemplateModule]?: IsAsync extends true
+    ? Promise<TemplateModule<true>>
+    : TemplateModule<false>;
 
   compiled = false;
 
@@ -61,7 +67,6 @@ export class Template<IsAsync extends true | false> {
     this: Template<true>,
     context: Record<string, any>,
   ): Promise<string>;
-
   _renderAsync(this: Template<false>, context: Record<string, any>): never;
   _renderAsync(
     this: Template<IsAsync>,
@@ -132,17 +137,17 @@ export class Template<IsAsync extends true | false> {
     }
   }
 
-  newContext(this: Template<true>, opts: NewContextVars): Context<true>;
-  newContext(this: Template<false>, opts: NewContextVars): Context<false>;
+  newContext(this: Template<true>, opts: NewContextOpts): Context<true>;
+  newContext(this: Template<false>, opts: NewContextOpts): Context<false>;
   newContext(
     this: Template<IsAsync>,
-    opts: NewContextVars,
+    opts: NewContextOpts,
   ): IsAsync extends true ? Context<true> : Context<false>;
   newContext({
     vars = {},
     shared = false,
     locals = {},
-  }: NewContextVars): Context<true | false> {
+  }: NewContextOpts): Context<true | false> {
     return newContext<IsAsync>({
       async: this.async,
       environment: this.environment,
@@ -163,17 +168,21 @@ export class Template<IsAsync extends true | false> {
 
   makeModule(
     this: Template<false>,
-    opts: NewContextVars,
+    opts?: NewContextOpts,
   ): TemplateModule<false>;
   makeModule(
     this: Template<true>,
-    opts: NewContextVars,
+    opts?: NewContextOpts,
   ): Promise<TemplateModule<true>>;
-  makeModule({
-    vars = {},
-    shared = false,
-    locals = {},
-  }: NewContextVars): TemplateModule<false> | Promise<TemplateModule<true>> {
+  makeModule(
+    this: Template<IsAsync>,
+    opts?: NewContextOpts,
+  ): IsAsync extends true
+    ? Promise<TemplateModule<true>>
+    : TemplateModule<false>;
+  makeModule({ vars = {}, shared = false, locals = {} }: NewContextOpts = {}):
+    | TemplateModule<false>
+    | Promise<TemplateModule<true>> {
     if (this.isAsync()) {
       const context = this.newContext({ vars, shared, locals });
       return (async () => {
@@ -192,6 +201,43 @@ export class Template<IsAsync extends true | false> {
       return new TemplateModule({ template: this, context });
     } else throw new Error("unreachable");
   }
+
+  _getDefaultModule(
+    this: Template<true>,
+    ctx?: Context<true>,
+  ): Promise<TemplateModule<true>>;
+  _getDefaultModule(
+    this: Template<false>,
+    ctx?: Context<false>,
+  ): TemplateModule<false>;
+  _getDefaultModule(
+    this: Template<IsAsync>,
+    ctx?: Context<IsAsync>,
+  ): IsAsync extends true
+    ? Promise<TemplateModule<true>>
+    : TemplateModule<false>;
+  _getDefaultModule<IsAsync extends boolean>(
+    ctx?: Context<IsAsync>,
+  ): Promise<TemplateModule<true>> | TemplateModule<false> {
+    if (ctx) {
+      const keys = [
+        ...setDifference(ctx.globalKeys, new Set(Object.keys(this.globals))),
+      ];
+      if (keys.length) {
+        return this.makeModule({
+          vars: Object.fromEntries(keys.map((k) => [k, ctx.parent[k]])),
+        });
+      }
+    }
+    return (this[cachedTemplateModule] =
+      this[cachedTemplateModule] || this.makeModule());
+  }
+
+  get module(): IsAsync extends true
+    ? Promise<TemplateModule<true>>
+    : TemplateModule<false> {
+    return this._getDefaultModule();
+  }
 }
 
 /**
@@ -203,7 +249,6 @@ export class TemplateModule<IsAsync extends true | false> {
   __name__: string | null;
   __dict__: Record<string, any>;
   _bodyStream: Iterable<string>;
-  async: IsAsync;
 
   constructor(opts: { template: Template<false>; context: Context<false> });
 
@@ -222,7 +267,6 @@ export class TemplateModule<IsAsync extends true | false> {
     context: Context<IsAsync>;
     bodyStream?: Iterable<string> | null;
   }) {
-    this.async = context.environment.isAsync;
     if (bodyStream === null) {
       if (!template.isSync() || !context.isSync()) {
         throw new Error(
@@ -232,15 +276,38 @@ export class TemplateModule<IsAsync extends true | false> {
             " API you are using.",
           ].join(""),
         );
-      } else {
-        this._bodyStream = [...template.rootRenderFunc(context)];
       }
+      this._bodyStream = [...template.rootRenderFunc(context)];
+    } else {
+      this._bodyStream = bodyStream;
     }
+    this.__dict__ = context.getExported();
+    this.__name__ = template.name;
+
+    return new Proxy(this, {
+      get(target, propertyKey, receiver) {
+        if (Reflect.has(target, propertyKey)) {
+          return Reflect.get(target, propertyKey, receiver);
+        }
+        if (typeof propertyKey === "symbol") return undefined;
+        return target.__dict__[propertyKey];
+      },
+    });
   }
-  isSync(): this is TemplateModule<false> {
-    return !this.async;
+
+  toString(): string {
+    return runtime.concat([...this._bodyStream]);
   }
-  isAsync(): this is TemplateModule<true> {
-    return this.async;
+
+  valueOf(): string {
+    return this.toString();
+  }
+
+  __html__(): Markup {
+    return runtime.markSafe(this.toString());
+  }
+
+  get [Symbol.toStringTag]() {
+    return "TemplateModule";
   }
 }

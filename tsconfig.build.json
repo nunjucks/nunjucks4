@@ -21,7 +21,8 @@
     "declarationMap": true,
     "noErrorTruncation": true,
     "sourceMap": true,
-    "types": ["node", "jest"]
+    "types": ["node", "jest"],
+    "typeRoots" : ["./node_modules/@types", "./typings"]
   },
   "exclude": ["node_modules", "dist", "./dist/**/*", "**/node_modules"]
 }
