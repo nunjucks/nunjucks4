@@ -746,6 +746,9 @@ export class CodeGenerator<IsAsync extends boolean> {
         );
         return statements;
       },
+      visitContinue() {
+        return b.continueStatement();
+      },
       visitBreak() {
         return b.breakStatement();
       },
@@ -1044,6 +1047,88 @@ export class CodeGenerator<IsAsync extends boolean> {
             args: b.arrayExpression(args),
           }),
         );
+      },
+      visitMarkSafe(path, state) {
+        const { self } = state;
+        return ast.expression`rt.markSafe(%%expr%%)`({
+          expr: self.visit(path.get("expr"), state),
+        });
+      },
+      visitMarkSafeIfAutoescape(path, state) {
+        const { self } = state;
+        return ast.expression`
+          (context.evalCtx.autoescape ? rt.markSafe : rt.identity)(%%expr%%)
+        `({ expr: self.visit(path.get("expr"), state) });
+      },
+      visitEnvironmentAttribute({ node }) {
+        return memberExpr(`env.${node.name}`);
+      },
+      visitExtensionAttribute({ node }) {
+        return ast.expression`env.extensions[%%id%%].%%name`({
+          id: str(node.identifier),
+          name: id(node.name),
+        });
+      },
+      visitImportedName({ node }, { self }) {
+        const alias = self.importAliases[node.importname];
+        if (!alias) {
+          throw new Error(`import alias '${node.importname}' not found`);
+        }
+        return id(alias);
+      },
+      visitInternalName({ node }) {
+        return id(node.name);
+      },
+      visitContextReference() {
+        return id("context");
+      },
+      visitDerivedContextReference(path, { self, frame }) {
+        return self.deriveContext(frame);
+      },
+      visitScope(path, state) {
+        const { self } = state;
+        const { node } = path;
+        const frame = state.frame.inner();
+        frame.symbols.analyzeNode(node);
+        const statements: n.Statement[] = [
+          ...self.enterFrame(frame),
+          ...self.blockvisit(node.body, state),
+          ...self.leaveFrame(frame),
+        ];
+        return b.blockStatement(statements);
+      },
+      visitOverlayScope(path, state) {
+        const { self, frame } = state;
+        const { node } = path;
+        const ctx = self.temporaryIdentifier();
+        const statements: n.Statement[] = [];
+        statements.push(
+          ast.statement`%%ctx%% = %%derived%%`({
+            ctx: id(ctx),
+            derived: self.deriveContext(frame),
+          }),
+          ast.statement`%%ctx%%.vars = %%rhs%%`({
+            ctx: id(ctx),
+            rhs: self.visit(path.get("context"), state),
+          }),
+        );
+        self.pushContextReference(ctx);
+
+        const scopeFrame = frame.inner({ isolated: true });
+        scopeFrame.symbols.analyzeNode(node);
+        statements.push(
+          ...self.enterFrame(scopeFrame),
+          ...self.blockvisit(node.body, { ...state, frame: scopeFrame }),
+          ...self.leaveFrame(scopeFrame),
+        );
+        self.popContextReference();
+        return b.blockStatement(statements);
+      },
+      visitEvalContextModifier(path, state) {
+        throw new Error("not implemented");
+      },
+      visitScopedEvalContextModifier(path, state) {
+        throw new Error("not implemented");
       },
       visitCondExpr(path, state) {
         const { node } = path;
