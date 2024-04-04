@@ -9,11 +9,11 @@ const isArray = builtInTypes.array;
 const isNumber = builtInTypes.number;
 const isString = builtInTypes.string;
 
-const assertIsArray: typeof isArray["assert"] = isArray.assert.bind(isArray);
-const assertIsNumber: typeof isNumber["assert"] =
+const assertIsArray: (typeof isArray)["assert"] = isArray.assert.bind(isArray);
+const assertIsNumber: (typeof isNumber)["assert"] =
   isNumber.assert.bind(isNumber);
 
-const assertIsString: typeof isString["assert"] =
+const assertIsString: (typeof isString)["assert"] =
   isString.assert.bind(isString);
 
 export type PathName = string | number;
@@ -25,7 +25,7 @@ export interface PathConstructor {
   new <N extends n.Node = n.Node, V = any>(
     value: V,
     parentPath?: any,
-    name?: PathName
+    name?: PathName,
   ): Path<N, V>;
 }
 
@@ -117,11 +117,11 @@ const PRECEDENCE: any = {};
 type EachChildCallback<C, V, N extends n.Node> = V extends (infer U)[]
   ? (this: C, value: Path<PathNode<N, U>, U, number>) => void
   : V extends n.Node
-  ? <K extends Exclude<keyof V, "type" | "loc" | symbol>>(
-      this: C,
-      value: Path<PathNode<N, V[K]>, V[K], K>
-    ) => void
-  : (this: C, value: Path<n.Node, any>) => void;
+    ? <K extends Exclude<keyof V, "type" | "loc" | symbol>>(
+        this: C,
+        value: Path<PathNode<N, V[K]>, V[K], K>,
+      ) => void
+    : (this: C, value: Path<n.Node, any>) => void;
 
 type NodeKeys<N extends n.Node> = Exclude<keyof N, "type" | "loc" | symbol>;
 
@@ -131,7 +131,7 @@ type PathNode<Parent extends n.Node, Value> = Value extends n.Node
 
 type PathGet<N extends n.Node, V, P extends unknown[]> = P extends [
   infer K,
-  ...infer R
+  ...infer R,
 ]
   ? V extends (infer U)[]
     ? K extends number
@@ -140,18 +140,18 @@ type PathGet<N extends n.Node, V, P extends unknown[]> = P extends [
         : PathGet<PathNode<N, U>, U, R>
       : never
     : V extends n.Node
-    ? K extends NodeKeys<V>
-      ? R extends []
-        ? Path<PathNode<N, V[K]>, V[K], K>
-        : PathGet<PathNode<N, V[K]>, V[K], R>
+      ? K extends NodeKeys<V>
+        ? R extends []
+          ? Path<PathNode<N, V[K]>, V[K], K>
+          : PathGet<PathNode<N, V[K]>, V[K], R>
+        : never
       : never
-    : never
   : never;
 
 export class Path<
   N extends n.Node = n.Node,
   V = any,
-  K extends PathName = PathName
+  K extends PathName = PathName,
 > {
   __childCache: null | ChildCache;
   parentPath: Path | null;
@@ -200,7 +200,7 @@ export class Path<
   }
 
   _getChildPath(
-    name: PathName
+    name: PathName,
   ): Path & { parent: Path<N, V>; parentPath: Path<N> } {
     const cache = this._getChildCache();
     const actualChildValue = this.getValueProperty(name);
@@ -239,17 +239,17 @@ export class Path<
     callback: V extends (infer U)[]
       ? (this: T, val: Path<PathNode<N, U>, U, number>) => void
       : never,
-    context?: T
+    context?: T,
   ): void;
   each<N extends n.Node, V, T = this>(
     this: Path<N, V>,
     callback: (this: T, val: Path<n.Node, unknown, number>) => void,
-    context?: T
+    context?: T,
   ): void;
   each<N extends n.Node, V, T = this>(
     this: Path<N, V>,
     callback: (this: T, val: Path<n.Node, unknown, number>) => void,
-    context?: T
+    context?: T,
   ): void {
     const childPaths: Path[] = [];
     assertIsArray(this.value);
@@ -279,12 +279,15 @@ export class Path<
     callback: V extends (infer U)[]
       ? (this: T, val: Path<PathNode<N, U>, U, number>) => R
       : never,
-    context?: T
+    context?: T,
   ): R[] {
     const result: R[] = [];
-    this.each<N, V, T>(function mapCallback(childPath) {
-      result.push(callback.call(this, childPath));
-    }, (context || this) as T);
+    this.each<N, V, T>(
+      function mapCallback(childPath) {
+        result.push(callback.call(this, childPath));
+      },
+      (context || this) as T,
+    );
 
     return result;
   }
@@ -294,15 +297,18 @@ export class Path<
     callback: V extends (infer U)[]
       ? (this: T, val: Path<PathNode<N, U>, U, number>) => boolean
       : never,
-    context?: T
+    context?: T,
   ): V extends (infer U)[] ? Path<PathNode<N, U>, U, number>[] : never {
     const result: Path[] = [];
 
-    this.each<N, V, T>(function filterCallback(this: T, childPath: any) {
-      if (callback.call(this, childPath)) {
-        result.push(childPath);
-      }
-    }, (context || this) as T);
+    this.each<N, V, T>(
+      function filterCallback(this: T, childPath: any) {
+        if (callback.call(this, childPath)) {
+          result.push(childPath);
+        }
+      },
+      (context || this) as T,
+    );
 
     return result as V extends (infer U)[]
       ? Path<PathNode<N, U>, U, number>[]
@@ -325,7 +331,7 @@ export class Path<
 
   eachChild<T = this>(
     callback: EachChildCallback<T, V, N>,
-    context: T = this as any
+    context: T = this as any,
   ): void {
     for (const child of this.iterChildNodes()) {
       callback.call(context, child);
