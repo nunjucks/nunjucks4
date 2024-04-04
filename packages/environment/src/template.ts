@@ -1,4 +1,4 @@
-import { Environment } from "./environment";
+import { Environment, Undefined } from "./environment";
 import runtime from "@nunjucks/runtime";
 import type { Block, Markup } from "@nunjucks/runtime";
 import { newContext, Context } from "@nunjucks/runtime";
@@ -25,6 +25,42 @@ type NewContextOpts = {
 };
 
 const cachedTemplateModule = Symbol("cachedTemplateModule");
+
+function isUndefinedInstance(obj: unknown): obj is Undefined {
+  if (!obj || (typeof obj !== "object" && typeof obj !== "function")) {
+    return false;
+  }
+  if (Object.prototype.toString.call(obj) !== "[object Undefined]")
+    return false;
+  return "_failWithUndefinedError" in obj;
+}
+
+export class TemplateNotFound extends Error {
+  type = "TemplateNotFound";
+  name: string;
+  templates: string[];
+  constructor(
+    name: string | Undefined,
+    message: string | null = null,
+    options?: ErrorOptions,
+  ) {
+    if (isUndefinedInstance(name)) {
+      return name._failWithUndefinedError();
+    }
+    if (!message) {
+      message = name;
+    }
+    super(message, options);
+    if (Error.captureStackTrace) {
+      Error.captureStackTrace(this, TemplateNotFound);
+    }
+    this.name = name;
+    this.templates = [name];
+  }
+  get [Symbol.toStringTag]() {
+    return "TemplateNotFound";
+  }
+}
 
 export class Template<IsAsync extends true | false> {
   async: IsAsync;
@@ -238,7 +274,33 @@ export class Template<IsAsync extends true | false> {
     : TemplateModule<false> {
     return this._getDefaultModule();
   }
+
+  static fromNamespace<IsAsync extends boolean>({
+    environment,
+    namespace: { name = null, filename = null, blocks = {}, root },
+    globals,
+  }: {
+    environment: Environment<IsAsync>;
+    namespace: TemplateNamespace<IsAsync>;
+    globals: Record<string, any>;
+  }): Template<IsAsync> {
+    const template = new Template({
+      environment,
+      globals,
+      name,
+      filename,
+      blocks,
+    });
+    template.rootRenderFunc = root;
+    return template;
+  }
 }
+type TemplateNamespace<IsAsync extends boolean> = {
+  name?: string | null;
+  filename?: string | null;
+  blocks?: Record<string, Block<IsAsync>>;
+  root: RootRenderFunc<IsAsync>;
+};
 
 /**
  * Represents an imported template.  All the exported names of the

@@ -142,6 +142,10 @@ export class Undefined extends Function {
   valueOf() {
     return this._failWithUndefinedError();
   }
+
+  get [Symbol.toStringTag]() {
+    return "Undefined";
+  }
   /**
    * Build a message about the undefined value based on how it was accessed.
    */
