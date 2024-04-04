@@ -15,7 +15,7 @@ export interface TemplateErrorConstructor {
   new (
     message: Error | string,
     lineno?: number,
-    colno?: number
+    colno?: number,
   ): TemplateErrorType;
 }
 
@@ -24,7 +24,7 @@ type GetStack = () => string | undefined;
 const TemplateError = function TemplateError(
   message: Error | string,
   lineno?: number,
-  colno?: number
+  colno?: number,
 ): TemplateErrorType {
   let err: TemplateErrorType;
   let cause: Error | undefined;

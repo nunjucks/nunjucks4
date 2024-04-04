@@ -77,7 +77,7 @@ export class Undefined extends Function {
     hint?: string | null,
     obj?: any,
     name?: string | null,
-    exc?: new (message?: string) => Error
+    exc?: new (message?: string) => Error,
   );
   constructor(arg1?: UndefinedOpts | string | null, ...args: any[]) {
     super();
@@ -193,7 +193,7 @@ function undef(
   hint?: string | null,
   obj?: any,
   name?: string | null,
-  exc?: new (message?: string) => Error
+  exc?: new (message?: string) => Error,
 ): Undefined;
 function undef(
   arg1?: UndefinedOpts | string | null,
@@ -396,7 +396,7 @@ export class Environment<IsAsync extends boolean> extends EventEmitter {
       if (passArg === PASS_ARG_CONTEXT) {
         if (!context) {
           throw new TemplateRuntimeError(
-            `Attempted to invoke a context ${typeName} without context`
+            `Attempted to invoke a context ${typeName} without context`,
           );
         }
         args.unshift(context);
@@ -424,7 +424,7 @@ export class Environment<IsAsync extends boolean> extends EventEmitter {
     {
       name = null,
       filename = null,
-    }: { name?: string | null; filename?: string | null }
+    }: { name?: string | null; filename?: string | null },
   ): types.Template {
     return this._parse(source, { name, filename });
     // try {
@@ -439,19 +439,19 @@ export class Environment<IsAsync extends boolean> extends EventEmitter {
     {
       name = null,
       filename = null,
-    }: { name?: string | null; filename?: string | null }
+    }: { name?: string | null; filename?: string | null },
   ): types.Template {
     return parse(source, [], this.parserOpts);
   }
 
   compile(
     source: types.Template | string,
-    opts?: { name?: string | null; filename?: string | null; raw?: false }
+    opts?: { name?: string | null; filename?: string | null; raw?: false },
   ): RootRenderFunc<IsAsync>;
 
   compile(
     source: types.Template | string,
-    opts: { name?: string | null; filename?: string | null; raw: true }
+    opts: { name?: string | null; filename?: string | null; raw: true },
   ): string;
   compile(
     source: string | types.Template,
@@ -459,7 +459,7 @@ export class Environment<IsAsync extends boolean> extends EventEmitter {
       raw,
       name = null,
       filename = null,
-    }: { name?: string | null; filename?: string | null; raw?: boolean } = {}
+    }: { name?: string | null; filename?: string | null; raw?: boolean } = {},
   ) {
     let njAst: types.Template;
     if (typeof source === "string") {
@@ -480,7 +480,7 @@ export class Environment<IsAsync extends boolean> extends EventEmitter {
     {
       name = null,
       filename = null,
-    }: { name?: string | null; filename?: string | null } = {}
+    }: { name?: string | null; filename?: string | null } = {},
   ): RootRenderFunc<IsAsync> {
     return new Function(`return ${source}`)() as RootRenderFunc<IsAsync>;
   }
@@ -490,7 +490,7 @@ export class Environment<IsAsync extends boolean> extends EventEmitter {
     {
       name = null,
       filename = null,
-    }: { name?: string | null; filename?: string | null } = {}
+    }: { name?: string | null; filename?: string | null } = {},
   ): string {
     const codegen = new CodeGenerator({ environment: this });
     const ast = codegen.compile(source);
