@@ -6,7 +6,7 @@ import setDifference from "set.prototype.difference";
 
 export type Runtime = typeof runtime;
 
-export type RootRenderFunc<IsAsync extends boolean> = IsAsync extends true
+export type RenderFunc<IsAsync extends boolean> = IsAsync extends true
   ? (
       runtime: Runtime,
       environment: Environment<true>,
@@ -85,19 +85,29 @@ export class Template<IsAsync extends true | false> {
     filename = null,
     blocks = {},
     environment,
+    root,
   }: {
     environment: Environment<IsAsync>;
     globals?: Record<string, any>;
     name?: string | null;
     filename?: string | null;
-    blocks?: Record<string, Block<IsAsync>>;
+    blocks?: Record<string, RenderFunc<IsAsync>>;
+    root?: RenderFunc<IsAsync>;
   }) {
     this.async = environment.isAsync;
     this.globals = globals;
     this.name = name;
     this.filename = filename;
-    this.blocks = blocks;
     this.environment = environment;
+    this.blocks = Object.fromEntries(
+      Object.entries(blocks).map(([name, func]) => [
+        name,
+        func.bind(null, runtime, environment),
+      ]),
+    );
+    if (root) {
+      this.rootRenderFunc = root;
+    }
   }
   _renderAsync(
     this: Template<true>,
@@ -149,7 +159,7 @@ export class Template<IsAsync extends true | false> {
     return this._rootRenderFunc;
   }
 
-  set rootRenderFunc(func: RootRenderFunc<IsAsync>) {
+  set rootRenderFunc(func: RenderFunc<IsAsync>) {
     this._rootRenderFunc = func.bind(
       Object.create(null),
       runtime,
@@ -298,8 +308,8 @@ export class Template<IsAsync extends true | false> {
 type TemplateNamespace<IsAsync extends boolean> = {
   name?: string | null;
   filename?: string | null;
-  blocks?: Record<string, Block<IsAsync>>;
-  root: RootRenderFunc<IsAsync>;
+  blocks?: Record<string, RenderFunc<IsAsync>>;
+  root: RenderFunc<IsAsync>;
 };
 
 /**

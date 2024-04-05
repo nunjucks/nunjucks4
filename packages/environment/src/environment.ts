@@ -7,7 +7,7 @@ import { CodeGenerator } from "@nunjucks/compiler";
 import { Template } from "./template";
 // import { generate } from "astring";
 import generate from "@babel/generator";
-import { RootRenderFunc } from "./template";
+import { RenderFunc } from "./template";
 
 export class Missing {}
 
@@ -451,7 +451,10 @@ export class Environment<IsAsync extends boolean> extends EventEmitter {
   compile(
     source: types.Template | string,
     opts?: { name?: string | null; filename?: string | null; raw?: false },
-  ): RootRenderFunc<IsAsync>;
+  ): {
+    root: RenderFunc<IsAsync>;
+    blocks: Record<string, RenderFunc<IsAsync>>;
+  };
 
   compile(
     source: types.Template | string,
@@ -485,8 +488,14 @@ export class Environment<IsAsync extends boolean> extends EventEmitter {
       name = null,
       filename = null,
     }: { name?: string | null; filename?: string | null } = {},
-  ): RootRenderFunc<IsAsync> {
-    return new Function(`return ${source}`)() as RootRenderFunc<IsAsync>;
+  ): {
+    root: RenderFunc<IsAsync>;
+    blocks: Record<string, RenderFunc<IsAsync>>;
+  } {
+    return new Function(source)() as {
+      root: RenderFunc<IsAsync>;
+      blocks: Record<string, RenderFunc<IsAsync>>;
+    };
   }
 
   _generate(
@@ -503,8 +512,7 @@ export class Environment<IsAsync extends boolean> extends EventEmitter {
   }
 
   fromString(source: string): Template<IsAsync> {
-    const template = new Template<IsAsync>({ environment: this });
-    template.rootRenderFunc = this.compile(source);
-    return template;
+    const { root, blocks } = this.compile(source);
+    return new Template<IsAsync>({ environment: this, root, blocks });
   }
 }

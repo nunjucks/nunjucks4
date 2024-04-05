@@ -359,7 +359,7 @@ export class CodeGenerator<IsAsync extends boolean> {
           rootStatements.push(
             b.functionDeclaration.from({
               id: id(`block_${name}`),
-              params: [id("context"), id("rt"), id("env")],
+              params: [id("rt"), id("env"), id("context")],
               body: b.blockStatement(blockStatements),
               async: self.isAsync,
               generator: true,
@@ -397,6 +397,26 @@ export class CodeGenerator<IsAsync extends boolean> {
             ]),
           );
         });
+        // TODO allow commonjs and ESM support
+        rootStatements.push(
+          b.returnStatement(
+            b.objectExpression([
+              b.objectProperty.from({
+                key: id("root"),
+                value: id("root"),
+                shorthand: true,
+              }),
+              b.objectProperty(
+                id("blocks"),
+                b.objectExpression(
+                  [...Object.keys(self.blocks)].map((block) =>
+                    b.objectProperty(id(block), id(`block_${block}`)),
+                  ),
+                ),
+              ),
+            ]),
+          ),
+        );
         return rootStatements;
       },
       visitBlock({ node }, state) {

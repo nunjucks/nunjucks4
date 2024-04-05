@@ -1,11 +1,10 @@
-import { Environment, Template } from "@nunjucks/environment";
+import { Environment } from "@nunjucks/environment";
 import { describe, expect, test } from "@jest/globals";
 
 describe("nunjucks", () => {
   test("macro", () => {
-    const environment = new Environment();
-    const tmpl = new Template({ environment });
-    tmpl.rootRenderFunc = environment.compile(`
+    const env = new Environment();
+    const tmpl = env.fromString(`
       {%- macro do_something() -%}
       [{{ caller() }}]
       {%- endmacro %}

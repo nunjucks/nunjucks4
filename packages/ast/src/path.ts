@@ -158,9 +158,6 @@ export class Path<
   value: V;
   name: K | null;
 
-  parent: Path | null;
-  node: N;
-
   // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
   constructor(value: V, parentPath?: any, name?: K | null) {
     if (parentPath) {
@@ -576,7 +573,7 @@ export class Path<
     return this;
   }
 
-  _computeNode(): N {
+  get node(): N {
     const value = this.value;
     if (n.Node.check(value)) {
       return value as unknown as N;
@@ -588,7 +585,7 @@ export class Path<
     return pp.node as N;
   }
 
-  _computeParent(): Path | null {
+  get parent(): Path | null {
     const value = this.value;
     let pp = this.parentPath;
 
@@ -711,29 +708,3 @@ export class Path<
     }
   }
 }
-
-Object.defineProperties(Path.prototype, {
-  node: {
-    get: function () {
-      Object.defineProperty(this, "node", {
-        configurable: true, // Enable deletion.
-        value: this._computeNode(),
-      });
-
-      return this.node;
-    },
-  },
-
-  parent: {
-    get: function () {
-      Object.defineProperty(this, "parent", {
-        configurable: true, // Enable deletion.
-        value: this._computeParent(),
-      });
-
-      return this.parent;
-    },
-  },
-});
-
-// type Blah = Trav2<n.List, Split<"items.0">>;
