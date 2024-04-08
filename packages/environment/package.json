@@ -27,6 +27,7 @@
   "dependencies": {
     "@nunjucks/runtime": "workspace:*",
     "astring": "^1.8.6",
+    "lru-cache": "^10.2.0",
     "set.prototype.difference": "^1.1.4"
   },
   "devDependencies": {

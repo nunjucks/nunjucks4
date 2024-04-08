@@ -476,7 +476,7 @@ export class CodeGenerator<IsAsync extends boolean> {
             context,
             write: self.write(id("event"), frame),
           });
-          if (self.environment.isAsync) {
+          if (self.environment.isAsync()) {
             stmt.await = true;
           }
           statements.push(stmt);
@@ -1518,7 +1518,7 @@ export class CodeGenerator<IsAsync extends boolean> {
             left: target,
             right: iter,
             body: b.blockStatement(loopBody),
-            await: self.environment.isAsync,
+            await: self.environment.isAsync(),
           }),
         );
         for (const bodyNode of node.body) {
@@ -1786,10 +1786,10 @@ export class CodeGenerator<IsAsync extends boolean> {
     asyncValue = "async ",
     syncValue = "",
   }: { asyncValue?: string; syncValue?: string } = {}) {
-    return this.environment.isAsync ? syncValue : asyncValue;
+    return this.environment.isAsync() ? syncValue : asyncValue;
   }
   get isAsync() {
-    return this.environment.isAsync;
+    return this.environment.isAsync();
   }
   buffer(frame: Frame<IsAsync>): n.VariableDeclaration {
     frame.buffer = this.temporaryIdentifier();

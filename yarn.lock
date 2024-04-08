@@ -3001,6 +3001,7 @@ __metadata:
   dependencies:
     "@nunjucks/runtime": "workspace:*"
     astring: ^1.8.6
+    lru-cache: ^10.2.0
     rimraf: ~3.0.2
     set.prototype.difference: ^1.1.4
     typescript: ^5.4.3
@@ -9701,6 +9702,13 @@ __metadata:
   version: 1.7.1
   resolution: "loglevel@npm:1.7.1"
   checksum: 715a4ae69ad75d4d3bd04e4f6e9edbc4cae4db34d1e7f54f426d8cebe2dd9fef891ca3789e839d927cdbc5fad73d789e998db0af2f11f4c40219c272bc923823
+  languageName: node
+  linkType: hard
+
+"lru-cache@npm:^10.2.0":
+  version: 10.2.0
+  resolution: "lru-cache@npm:10.2.0"
+  checksum: eee7ddda4a7475deac51ac81d7dd78709095c6fa46e8350dc2d22462559a1faa3b81ed931d5464b13d48cbd7e08b46100b6f768c76833912bc444b99c37e25db
   languageName: node
   linkType: hard
 

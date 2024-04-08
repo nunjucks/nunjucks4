@@ -76,7 +76,9 @@ export class Template<IsAsync extends true | false> {
   [cachedTemplateModule]?: IsAsync extends true
     ? Promise<TemplateModule<true>>
     : TemplateModule<false>;
-
+  uptodate?: IsAsync extends true
+    ? () => Promise<boolean> | boolean
+    : () => boolean;
   compiled = false;
 
   constructor({
@@ -86,6 +88,7 @@ export class Template<IsAsync extends true | false> {
     blocks = {},
     environment,
     root,
+    uptodate,
   }: {
     environment: Environment<IsAsync>;
     globals?: Record<string, any>;
@@ -93,8 +96,11 @@ export class Template<IsAsync extends true | false> {
     filename?: string | null;
     blocks?: Record<string, RenderFunc<IsAsync>>;
     root?: RenderFunc<IsAsync>;
+    uptodate?: IsAsync extends true
+      ? () => Promise<boolean> | boolean
+      : () => boolean;
   }) {
-    this.async = environment.isAsync;
+    this.async = !!environment.isAsync() as IsAsync;
     this.globals = globals;
     this.name = name;
     this.filename = filename;
@@ -108,7 +114,17 @@ export class Template<IsAsync extends true | false> {
     if (root) {
       this.rootRenderFunc = root;
     }
+    this.uptodate = uptodate;
   }
+  isUpToDate(this: Template<false>): boolean;
+  isUpToDate(this: Template<true>): Promise<boolean>;
+  isUpToDate(): Promise<boolean> | boolean {
+    if (this.isAsync()) {
+      return (async () => (this.uptodate ? await this.uptodate() : true))();
+    }
+    return !this.uptodate ? true : this.uptodate();
+  }
+
   _renderAsync(
     this: Template<true>,
     context: Record<string, any>,
@@ -206,10 +222,10 @@ export class Template<IsAsync extends true | false> {
     });
   }
   isSync(): this is Template<false> {
-    return !this.environment.isAsync;
+    return !this.environment.isAsync();
   }
   isAsync(): this is Template<true> {
-    return this.environment.isAsync;
+    return !!this.environment.isAsync();
   }
 
   makeModule(

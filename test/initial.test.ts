@@ -37,7 +37,7 @@ describe("nunjucks", () => {
   });
 
   test("recursive loop async", async () => {
-    const env = new Environment({ isAsync: true });
+    const env = new Environment({ async: true });
     const tmpl = env.fromString(`
       {%- for item in seq recursive -%}
       [{{ item.a }}{% if item.b %}<{{ loop(item.b) }}>{% endif %}]
@@ -77,7 +77,7 @@ describe("nunjucks", () => {
   });
 
   test("recursive lookaround async", async () => {
-    const env = new Environment({ isAsync: true });
+    const env = new Environment({ async: true });
     const tmpl = env.fromString(`
       {%- for item in seq recursive -%}
           [{{ loop.previtem.a if loop.previtem is defined else 'x' }}.{{
@@ -118,7 +118,7 @@ describe("nunjucks", () => {
   });
 
   test("recursive depth0 async", async () => {
-    const env = new Environment({ isAsync: true });
+    const env = new Environment({ async: true });
     const tmpl = env.fromString(
       [
         "{% for item in seq recursive %}[{{ loop.depth0 }}:{{ item.a }}",
@@ -151,7 +151,7 @@ describe("nunjucks", () => {
   });
 
   test("async nested loop", async () => {
-    const env = new Environment({ isAsync: true });
+    const env = new Environment({ async: true });
     const tmpl = env.fromString(`
         {%- for row in table %}
             {%- set rowloop = loop -%}
@@ -182,7 +182,7 @@ describe("nunjucks", () => {
   });
 
   test("async scoped special var", async () => {
-    const env = new Environment({ isAsync: true });
+    const env = new Environment({ async: true });
     const tmpl = env.fromString(
       [
         "{% for s in seq %}[{{ loop.first }}{% for c in s %}",
@@ -210,7 +210,7 @@ describe("nunjucks", () => {
   });
 
   test("async scoped loop var", async () => {
-    const env = new Environment({ isAsync: true });
+    const env = new Environment({ async: true });
     const tmpl1 = env.fromString(
       "{% for x in seq %}{{ loop.first }}{% for y in seq %}{% endfor %}{% endfor %}",
     );
@@ -238,7 +238,7 @@ describe("nunjucks", () => {
   });
 
   test("async call in loop", async () => {
-    const env = new Environment({ isAsync: true });
+    const env = new Environment({ async: true });
     const tmpl = env.fromString(`
       {%- macro do_something() -%}
           [{{ caller() }}]
@@ -262,7 +262,7 @@ describe("nunjucks", () => {
   });
 
   test("recursive loop filter", () => {
-    const env = new Environment({ isAsync: false });
+    const env = new Environment({ async: false });
     const t = env.fromString(`
   <?xml version="1.0" encoding="UTF-8"?>
   <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
@@ -292,7 +292,7 @@ describe("nunjucks", () => {
   });
 
   test("async recursive loop filter", async () => {
-    const env = new Environment({ isAsync: true });
+    const env = new Environment({ async: true });
     const t = env.fromString(`
   <?xml version="1.0" encoding="UTF-8"?>
   <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
@@ -322,7 +322,7 @@ describe("nunjucks", () => {
   });
 
   test("non-recursive loop filter", () => {
-    const env = new Environment({ isAsync: false });
+    const env = new Environment({ async: false });
     const t = env.fromString(`
   <?xml version="1.0" encoding="UTF-8"?>
   <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
@@ -349,7 +349,7 @@ describe("nunjucks", () => {
   });
 
   test("async non-recursive loop filter", async () => {
-    const env = new Environment({ isAsync: true });
+    const env = new Environment({ async: true });
     const t = env.fromString(`
   <?xml version="1.0" encoding="UTF-8"?>
   <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
@@ -376,13 +376,13 @@ describe("nunjucks", () => {
   });
 
   test("awaitable property slicing", () => {
-    const env = new Environment({ isAsync: false });
+    const env = new Environment({ async: false });
     const t = env.fromString("{% for x in a.b[:1] %}{{ x }}{% endfor %}");
     expect(t.render({ a: { b: [1, 2, 3] } })).toBe("1");
   });
 
   test("loop.changed", () => {
-    const env = new Environment({ isAsync: false });
+    const env = new Environment({ async: false });
     const t = env.fromString(`
       {%- for item in seq -%}
       {{ loop.changed(item) }},
@@ -394,7 +394,7 @@ describe("nunjucks", () => {
   });
 
   test("await on calls", async () => {
-    const env = new Environment({ isAsync: true });
+    const env = new Environment({ async: true });
     const t = env.fromString("{{ async_func() + normal_func() }}");
     expect(
       await t.render({
@@ -409,7 +409,7 @@ describe("nunjucks", () => {
   });
   //
   //   test("await on calls in macros", async () => {
-  //     const env = new Environment({ isAsync: true });
+  //     const env = new Environment({ async:  true });
   //     const t = env.fromString("{{ async_func() + normal_func() }}");
   //     expect(
   //       await t.render({
@@ -422,4 +422,8 @@ describe("nunjucks", () => {
   //       })
   //     ).toBe("65");
   //   });
+});
+
+describe("async env", () => {
+  test("context imports", async () => {});
 });

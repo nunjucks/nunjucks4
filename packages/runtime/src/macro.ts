@@ -141,7 +141,7 @@ export class Macro<IsAsync extends boolean> extends Function {
     autoescape: boolean,
   ): IfAsync<IsAsync, Promise<string>, string> {
     return (
-      this._environment.isAsync
+      this._environment.isAsync()
         ? this._asyncInvoke(args, autoescape)
         : this._syncInvoke(args, autoescape)
     ) as IfAsync<IsAsync, Promise<string>, string>;
