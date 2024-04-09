@@ -666,6 +666,14 @@ export type MarkupType = Markup & string;
 // };
 // export type Markup = typeof Markup;
 
+export function setAdd<T>(set: Set<T>, ...values: T[]): void {
+  values.forEach((value) => set.add(value));
+}
+
+export function setDelete<T>(set: Set<T>, ...values: T[]): void {
+  values.forEach((value) => set.delete(value));
+}
+
 export default {
   str,
   call,
@@ -685,4 +693,6 @@ export default {
   slice,
   asyncSlice,
   hasOwn,
+  setAdd,
+  setDelete,
 };

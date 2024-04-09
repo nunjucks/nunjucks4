@@ -1,7 +1,125 @@
-import { Environment } from "@nunjucks/environment";
+import { Environment, ObjectSourceLoader } from "@nunjucks/environment";
 import { describe, expect, test } from "@jest/globals";
 
-describe("nunjucks", () => {
+describe("sync imports", () => {
+  const syncEnv = () =>
+    new Environment({
+      async: false,
+      globals: { bar: 23 },
+      loaders: [
+        new ObjectSourceLoader({
+          module: "{% macro test() %}[{{ foo }}|{{ bar }}]{% endmacro %}",
+          header: "[{{ foo }}|{{ 23 }}]",
+          o_printer: "({{ o }})",
+        }),
+      ],
+    });
+
+  test("sync import macro", () => {
+    const env = syncEnv();
+    const t = env.fromString('{% import "module" as m %}{{ m.test() }}');
+    expect(t.render({ foo: 42 })).toBe("[|23]");
+  });
+
+  test("sync import macro without context", () => {
+    const env = syncEnv();
+    const t = env.fromString(
+      '{% import "module" as m without context %}{{ m.test() }}',
+    );
+    expect(t.render({ foo: 42 })).toBe("[|23]");
+  });
+
+  test("sync import macro with context", () => {
+    const env = syncEnv();
+    const t = env.fromString(
+      '{% import "module" as m with context %}{{ m.test() }}',
+    );
+    expect(t.render({ foo: 42 })).toBe("[42|23]");
+  });
+
+  test("sync from import macro", () => {
+    const env = syncEnv();
+    const t = env.fromString('{% from "module" import test %}{{ test() }}');
+    expect(t.render({ foo: 42 })).toBe("[|23]");
+  });
+
+  test("sync from import macro without context", () => {
+    const env = syncEnv();
+    const t = env.fromString(
+      '{% from "module" import test without context %}{{ test() }}',
+    );
+    expect(t.render({ foo: 42 })).toBe("[|23]");
+  });
+
+  test("sync from import macro with context", () => {
+    const env = syncEnv();
+    const t = env.fromString(
+      '{% from "module" import test with context %}{{ test() }}',
+    );
+    expect(t.render({ foo: 42 })).toBe("[42|23]");
+  });
+});
+
+describe("async imports", () => {
+  const asyncEnv = (): Environment<true> =>
+    new Environment({
+      async: true,
+      globals: { bar: 23 },
+      loaders: [
+        new ObjectSourceLoader({
+          module: "{% macro test() %}[{{ foo }}|{{ bar }}]{% endmacro %}",
+          header: "[{{ foo }}|{{ 23 }}]",
+          o_printer: "({{ o }})",
+        }),
+      ],
+    });
+
+  test("async import macro", async () => {
+    const env = asyncEnv();
+    const t = env.fromString('{% import "module" as m %}{{ m.test() }}');
+    expect(await t.render({ foo: 42 })).toBe("[|23]");
+  });
+
+  test("async import macro without context", async () => {
+    const env = asyncEnv();
+    const t = env.fromString(
+      '{% import "module" as m without context %}{{ m.test() }}',
+    );
+    expect(await t.render({ foo: 42 })).toBe("[|23]");
+  });
+
+  test("async import macro with context", async () => {
+    const env = asyncEnv();
+    const t = env.fromString(
+      '{% import "module" as m with context %}{{ m.test() }}',
+    );
+    expect(await t.render({ foo: 42 })).toBe("[42|23]");
+  });
+
+  test("async from import macro", async () => {
+    const env = asyncEnv();
+    const t = env.fromString('{% from "module" import test %}{{ test() }}');
+    expect(await t.render({ foo: 42 })).toBe("[|23]");
+  });
+
+  test("async from import macro without context", async () => {
+    const env = asyncEnv();
+    const t = env.fromString(
+      '{% from "module" import test without context %}{{ test() }}',
+    );
+    expect(await t.render({ foo: 42 })).toBe("[|23]");
+  });
+
+  test("async from import macro with context", async () => {
+    const env = asyncEnv();
+    const t = env.fromString(
+      '{% from "module" import test with context %}{{ test() }}',
+    );
+    expect(await t.render({ foo: 42 })).toBe("[42|23]");
+  });
+});
+
+describe("uncategorized", () => {
   test("macro", () => {
     const env = new Environment();
     const tmpl = env.fromString(`

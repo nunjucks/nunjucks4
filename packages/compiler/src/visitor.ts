@@ -672,7 +672,7 @@ export class CodeGenerator<IsAsync extends boolean> {
           statements.push(
             ast.statement`
               context.exportedVars.delete(%%target%%)
-            `({ target: id(node.target) }),
+            `({ target: str(node.target) }),
           );
         }
         return statements;
@@ -758,11 +758,9 @@ export class CodeGenerator<IsAsync extends boolean> {
           }
         }
         statements.push(
-          ...discardedNames.map((name) =>
-            ast.statement`context.exportedVars.delete(%%name%%)`({
-              name: str(name),
-            }),
-          ),
+          ast.statement`
+          rt.setDelete(context.exportedVars, %%names%%)
+        `({ names: discardedNames.map((name) => str(name)) }),
         );
         return statements;
       },
@@ -1903,13 +1901,13 @@ export class CodeGenerator<IsAsync extends boolean> {
       );
     });
 
-    if (!frame.blockFrame && frame.loopFrame && publicNames.length) {
+    if (!frame.blockFrame && !frame.loopFrame && publicNames.length) {
       nodes.push(
         b.expressionStatement(
-          b.callExpression(
-            memberExpr("context.exportedVars.add"),
-            publicNames.map((name) => b.stringLiteral(name)),
-          ),
+          b.callExpression(memberExpr("rt.setAdd"), [
+            memberExpr("context.exportedVars"),
+            ...publicNames.map((name) => b.stringLiteral(name)),
+          ]),
         ),
       );
       // nodes.push(
@@ -2258,9 +2256,9 @@ export class CodeGenerator<IsAsync extends boolean> {
     const { frame } = state;
     const template = this.visitExpression(node.template, state);
     const getTemplate: n.CallExpression | n.AwaitExpression = this.awaitIfAsync(
-      ast.expression`env.getTemplate(%%template%%, %%name%%)`({
+      ast.expression`env.getTemplate(%%template%%, { parent: %%name%% })`({
         template,
-        name: b.stringLiteral(this.name!),
+        name: this.name ? b.stringLiteral(this.name) : b.nullLiteral(),
       }),
     );
 

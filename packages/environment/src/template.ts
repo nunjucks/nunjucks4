@@ -380,6 +380,32 @@ export class TemplateModule<IsAsync extends true | false> {
         if (typeof propertyKey === "symbol") return undefined;
         return target.__dict__[propertyKey];
       },
+      has(target, propertyKey) {
+        return (
+          Reflect.has(target, propertyKey) ||
+          Object.prototype.hasOwnProperty.call(target.__dict__, propertyKey)
+        );
+      },
+      ownKeys(target) {
+        return [
+          ...new Set([
+            ...Reflect.ownKeys(target),
+            ...Reflect.ownKeys(target.__dict__),
+          ]),
+        ];
+      },
+      getOwnPropertyDescriptor(target, name) {
+        if (Object.prototype.hasOwnProperty.call(target.__dict__, name)) {
+          return {
+            value: this.get(target, name),
+            writable: false,
+            configurable: true,
+            enumerable: true,
+          };
+        }
+        const descriptor = Reflect.getOwnPropertyDescriptor(target, name);
+        return descriptor ? { ...descriptor, writable: false } : descriptor;
+      },
     });
   }
 

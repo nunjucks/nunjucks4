@@ -133,6 +133,9 @@ export class Undefined extends Function {
   [Symbol.iterator]() {
     return [][Symbol.iterator]();
   }
+  [Symbol.toPrimitive]() {
+    return "";
+  }
   [Symbol.asyncIterator]() {
     return (async function* () {
       /* do nothing */
@@ -280,7 +283,7 @@ export class Environment<
 
   shared = false;
 
-  loaders: (IsAsync extends true ? AsyncLoader : SyncLoader)[];
+  loaders: (IsAsync extends true ? AsyncLoader | SyncLoader : SyncLoader)[];
 
   cacheSize: number;
 
@@ -306,7 +309,7 @@ export class Environment<
     cacheSize = 400,
   }: {
     async?: IsAsync;
-    loaders?: (IsAsync extends true ? AsyncLoader : SyncLoader)[];
+    loaders?: (IsAsync extends true ? AsyncLoader | SyncLoader : SyncLoader)[];
     parserOpts?: Partial<ParserOptions>;
     autoescape?: boolean | ((templateName?: string | null) => boolean);
     filters?: Record<string, Filter>;
@@ -610,7 +613,7 @@ export class Environment<
 
       for (const loader of this.loaders) {
         try {
-          template = loader.load(this, name, globals);
+          template = loader.load(this, name, this.makeGlobals(globals));
         } catch (e) {
           if (e instanceof TemplateNotFound) {
             err = e;
@@ -650,9 +653,9 @@ export class Environment<
       parent = null,
       globals = {},
     }: {
-      parent: string | null;
-      globals: Record<string, unknown>;
-    },
+      parent?: string | null;
+      globals?: Record<string, unknown>;
+    } = {},
   ): Promise<Template<true>> | Template<false> {
     if (this.isSync()) {
       if (name instanceof Template) {
