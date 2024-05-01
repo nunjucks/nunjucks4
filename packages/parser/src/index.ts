@@ -1,5 +1,6 @@
 import { types as t, builders as b, canAssign } from "@nunjucks/ast";
 import * as lexer from "./lexer";
+import { TemplateSyntaxError } from "./lexer";
 import type { Token } from "./lexer";
 import { TemplateError } from "@nunjucks/utils";
 import type { TemplateErrorType } from "@nunjucks/utils";
@@ -143,13 +144,13 @@ export class Parser {
     this.peeked = tok;
   }
 
-  error(msg: string, lineno?: number, colno?: number): TemplateErrorType {
+  error(msg: string, lineno?: number, colno?: number): TemplateSyntaxError {
     if (lineno === undefined || colno === undefined) {
       const tok = this.peekToken() || {};
       lineno = tok.lineno;
       colno = tok.colno;
     }
-    return new TemplateError(msg, lineno, colno);
+    return new TemplateSyntaxError(msg, {lineno });
   }
 
   fail(msg: string, lineno?: number, colno?: number): never {
@@ -1516,6 +1517,8 @@ export class Parser {
             body.push(rv);
           }
           this.expect(lexer.TOKEN_BLOCK_END);
+        } else if (token.type === lexer.TOKEN_COMMENT) {
+          this.nextToken();
         } else {
           this.fail("Internal parsing error");
         }
@@ -1550,3 +1553,4 @@ export function parse(
   }
   return p.parse();
 }
+export { TemplateSyntaxError };

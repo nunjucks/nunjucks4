@@ -361,10 +361,9 @@ export class Path<
     for (const child of this.iterChildren()) {
       if (type.check(child.value)) {
         yield child as unknown as PathValueType<U>;
-      } else {
-        for (const match of child.iterFind(type)) {
-          yield match;
-        }
+      }
+      for (const match of child.iterFind(type)) {
+        yield match;
       }
     }
   }

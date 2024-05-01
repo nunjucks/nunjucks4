@@ -500,9 +500,9 @@ export class Tokenizer {
             return token(TOKEN_INT, tok, lineno, colno, pos);
           }
         } else if (tok.match(/^(true|false)$/)) {
-          return token(TOKEN_BOOLEAN, tok, lineno, colno, pos);
+          return token(TOKEN_NAME, tok, lineno, colno, pos);
         } else if (tok === "none") {
-          return token(TOKEN_NONE, tok, lineno, colno, pos);
+          return token(TOKEN_NAME, tok, lineno, colno, pos);
           /*
            * Added to make the test `null is null` evaluate truthily.
            * Otherwise, Nunjucks will look up null in the context and
@@ -511,7 +511,7 @@ export class Tokenizer {
            * variable.
            */
         } else if (tok === "null") {
-          return token(TOKEN_NONE, tok, lineno, colno, pos);
+          return token(TOKEN_NAME, tok, lineno, colno, pos);
         } else if (tok) {
           return token(TOKEN_NAME, tok, lineno, colno, pos);
         } else {

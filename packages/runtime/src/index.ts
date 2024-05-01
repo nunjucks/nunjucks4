@@ -21,7 +21,7 @@ export class KeyError extends Error {}
 
 export function hasOwn<K extends string>(
   o: unknown,
-  key: K,
+  key: K
 ): o is Record<K, unknown> {
   return o && Object.prototype.hasOwnProperty.call(o, key);
 }
@@ -176,8 +176,12 @@ export class Context<IsAsync extends boolean> {
         if (typeof prop === "symbol") return Reflect.has(target, prop);
         return target.__contains__(prop);
       },
-      set() {
-        throw new Error("Context is immutable");
+      set(target, prop, value, receiver) {
+        if (Reflect.has(target, prop)) {
+          return Reflect.set(target, prop, value, receiver);
+        } else {
+          throw new Error("Context is immutable");
+        }
       },
     });
   }
@@ -189,12 +193,16 @@ export class Context<IsAsync extends boolean> {
     current: Block<IsAsync>;
   }): BlockReference<IsAsync> | Undefined {
     if (!(name in this.blocks)) {
-      return this.environment.undef(`there is no parent block called {name}`, {
+      return this.environment.undef(`there is no parent block called ${name}`, {
         name: "super",
       });
     }
     const blocks = this.blocks[name];
-    const index = blocks.indexOf(current) + 1;
+    const index =
+      blocks.findIndex(
+        (block) =>
+          current === block || Object.create(current.prototype) instanceof block
+      ) + 1;
     if (index === 0 || index >= blocks.length) {
       return this.environment.undef(`there is no parent block called ${name}`, {
         name: "super",
@@ -260,7 +268,7 @@ export class Context<IsAsync extends boolean> {
     }
   }
 
-  derived({ locals = {} }: { locals: Record<string, any> }): Context<IsAsync> {
+  derived(locals: Record<string, any> = {}): Context<IsAsync> {
     const context = newContext<IsAsync>({
       environment: this.environment,
       name: this.name,
@@ -290,9 +298,9 @@ export class Context<IsAsync extends boolean> {
         kwargs = Object.fromEntries(
           Array.from(
             Object.entries(args.pop()).filter(
-              ([k]) => typeof k === "string" && k !== "__isKwargs",
-            ),
-          ),
+              ([k]) => typeof k === "string" && k !== "__isKwargs"
+            )
+          )
         );
       }
     }
@@ -368,9 +376,8 @@ export class BlockReference<IsAsync extends boolean> extends Function {
     this.async = context.async;
 
     return new Proxy(this, {
-      apply(target, thisArg, argArray) {
-        return target.__call__.apply(thisArg, argArray);
-      },
+      apply: (target, thisArg, argArray) =>
+        target.__call__.apply(this, argArray),
     });
   }
   __call__(): IfAsync<IsAsync, Promise<string>, string> {
@@ -397,10 +404,10 @@ export class BlockReference<IsAsync extends boolean> extends Function {
   }
 
   super(): BlockReference<IsAsync> | Undefined {
-    if (this._depth + 1 >= this._stack.length) {
+    if (!this._stack || this._depth + 1 >= this._stack.length) {
       return this._context.environment.undef(
         `there is no parent block called ${this.name}.`,
-        { name: "super" },
+        { name: "super" }
       );
     }
     return new BlockReference({
@@ -424,6 +431,9 @@ export class TemplateReference<IsAsync extends boolean> {
           stack: blocks,
           depth: 0,
         });
+      },
+      has(target, prop) {
+        return Reflect.has(context.blocks, prop);
       },
     });
   }
@@ -466,7 +476,7 @@ const escapeMap: Record<string, string> = {
 
 const escapeRegex = new RegExp(
   `[${[...Object.keys(escapeMap)].join("")}]`,
-  "g",
+  "g"
 );
 
 export function isMarkup(obj: unknown): obj is MarkupType {
@@ -477,7 +487,7 @@ export function escape(obj: unknown): MarkupType {
   if (isMarkup(obj)) return obj;
   const s = `${obj}`;
   return markSafe(
-    s.replace(escapeRegex, (c) => (c in escapeMap ? escapeMap[c] : c)),
+    s.replace(escapeRegex, (c) => (c in escapeMap ? escapeMap[c] : c))
   );
 }
 
@@ -523,7 +533,7 @@ export class Markup extends String {
       | {
           [Symbol.split](string: string, limit?: number | undefined): string[];
         },
-    limit?: number | undefined,
+    limit?: number | undefined
   ): MarkupType[] {
     const ret =
       typeof separator === "string"
@@ -574,7 +584,7 @@ export class Markup extends String {
 function* range(
   start = 0,
   stop = Infinity,
-  step = 1,
+  step = 1
 ): IterableIterator<number> {
   for (let i = start; i < stop; i += step) yield i;
 }
@@ -591,7 +601,7 @@ function* arrayslice<T>(
   array: T[],
   start = 0,
   stop = Infinity,
-  step = 1,
+  step = 1
 ): Generator<T> {
   const direction = Math.sign(step);
   const len = array.length;
@@ -612,7 +622,7 @@ function* slice<T = any>(
   iterable: Iterable<T>,
   start = 0,
   stop = Infinity,
-  step = 1,
+  step = 1
 ): Generator<T> {
   if (start < 0 || stop < 0 || step < 0) {
     yield* arrayslice([...iterable], start, stop, step);
@@ -635,7 +645,7 @@ async function* asyncSlice<T = any>(
   iterable: Iterable<T> | AsyncIterable<T>,
   start = 0,
   stop = Infinity,
-  step = 1,
+  step = 1
 ): AsyncGenerator<T> {
   if (start < 0 || stop < 0 || step < 0) {
     const arr: T[] = [];
@@ -674,6 +684,11 @@ export function setDelete<T>(set: Set<T>, ...values: T[]): void {
   values.forEach((value) => set.delete(value));
 }
 
+export class TemplateRuntimeError extends Error {
+  name = "TemplateRuntimeError";
+}
+
+
 export default {
   str,
   call,
@@ -695,4 +710,5 @@ export default {
   hasOwn,
   setAdd,
   setDelete,
+  TemplateRuntimeError,
 };
