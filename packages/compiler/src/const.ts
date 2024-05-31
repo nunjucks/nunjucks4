@@ -136,7 +136,11 @@ function toConst<IsAsync extends boolean>(
       const func = environment.filters[node.name];
       const [args, kwargs] = argsAsConst(evalCtx, node);
       args.unshift(toConst(evalCtx, node.node!)); // TODO: check type here
-      return func(...args, { ...kwargs, evalCtx, environment });
+      return func(...args, {
+        ...kwargs,
+        __evalCtx: evalCtx,
+        __environment: environment,
+      });
     } else if (t.Test.check(node)) {
       if (evalCtx.volatile) throw new Impossible();
       if (!(node.name in environment.tests)) {
@@ -145,7 +149,11 @@ function toConst<IsAsync extends boolean>(
       const func = environment.filters[node.name];
       const [args, kwargs] = argsAsConst(evalCtx, node);
       args.unshift(toConst(evalCtx, node.node!)); // TODO: check type here
-      return func(...args, { ...kwargs, evalCtx, environment });
+      return func(...args, {
+        ...kwargs,
+        __evalCtx: evalCtx,
+        __environment: environment,
+      });
     } else if (t.Getitem.check(node)) {
       if (node.ctx !== "load") throw new Impossible();
       return environment.getitem(
@@ -197,6 +205,7 @@ function argsAsConst<IsAsync extends boolean>(
       return [`${k}`, v];
     })
   );
+  kwargs.__isKwargs = true;
   if (node.dynArgs) {
     const dynArgs = toConst(evalCtx, node.dynArgs);
     if (!Array.isArray(dynArgs)) {

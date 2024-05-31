@@ -12,9 +12,9 @@ import {
 } from "@pregenerator/ast-types";
 import generate from "@babel/generator";
 import ast from "@pregenerator/template";
-import { EvalContext } from "@nunjucks/runtime";
+import { EvalContext, MISSING } from "@nunjucks/runtime";
 import type { IfAsync } from "@nunjucks/runtime";
-import { Environment, MISSING } from "@nunjucks/environment";
+import { Environment } from "@nunjucks/environment";
 import { Frame } from "./frame";
 // import { EvalContext, Frame } from "./frame";
 import {
@@ -794,7 +794,9 @@ export class CodeGenerator<IsAsync extends boolean> {
               buf: id(frame.buffer!),
             });
           } else {
-            return ast.expression`concat(%%buf%%)`({ buf: id(frame.buffer!) });
+            return ast.expression`runtime.concat(%%buf%%)`({
+              buf: id(frame.buffer!),
+            });
           }
         });
       },
@@ -2002,8 +2004,22 @@ export class CodeGenerator<IsAsync extends boolean> {
     for (const arg of node.args) {
       args.push(this.visitExpression(arg, state));
     }
+    if (node.kwargs.length) {
+      let kwargProps: n.ObjectProperty[] = [
+        b.objectProperty(str("__isKwargs"), b.booleanLiteral(true)),
+      ];
+      for (const kwarg of node.kwargs) {
+        kwargProps.push(
+          b.objectProperty(
+            str(kwarg.key),
+            this.visitExpression(kwarg.value, { ...state, frame })
+          )
+        );
+      }
+      args.push(b.objectExpression(kwargProps));
+    }
     return this.awaitIfAsync(
-      ast.expression`runtime.call(%%func%%, %%args%%)`({
+      ast.expression`context.call(%%func%%, %%args%%)`({
         func: funcVar,
         args: b.arrayExpression(args),
       })

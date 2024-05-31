@@ -5,7 +5,7 @@ import type {
   ConditionalAsync,
 } from "./types";
 
-import { MISSING, Undefined } from "@nunjucks/environment";
+import { MISSING, Undefined } from ".";
 
 type LoopRenderFunc<V> = (
   reciter: Iterable<V>,

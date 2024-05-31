@@ -7,6 +7,9 @@ import {
   hasOwn,
   newContext,
   TemplateRuntimeError,
+  Undefined,
+  MISSING,
+  UndefinedOpts,
 } from "@nunjucks/runtime";
 import { types } from "@nunjucks/ast";
 import { parse } from "@nunjucks/parser";
@@ -17,10 +20,7 @@ import generate from "@babel/generator";
 import { RenderFunc } from "./template";
 import type { Loader, AsyncLoader, SyncLoader } from "./loaders";
 import { asyncFind, chainMap, mapFind } from "./utils";
-
-export class Missing {}
-
-export const MISSING = Object.freeze(new Missing());
+import DEFAULT_FILTERS from "./filters"
 
 type ParserOptions = {
   blockStart: string;
@@ -40,7 +40,6 @@ type ParserOptions = {
 type Filter = (...args: any[]) => any;
 type Test = (...args: any[]) => boolean;
 
-const DEFAULT_FILTERS: Record<string, Filter> = {};
 const DEFAULT_TESTS: Record<string, Test> = {
   defined(value: any) {
     return !(value instanceof Undefined) && value !== MISSING;
@@ -48,136 +47,10 @@ const DEFAULT_TESTS: Record<string, Test> = {
 };
 const DEFAULT_NAMESPACE: Record<string, any> = {};
 
-class UndefinedError extends Error {
-  name = "UndefinedError";
-}
-
 const PASS_ARG_EVAL_CONTEXT = Symbol.for("PASS_ARG_EVAL_CONTEXT");
 const PASS_ARG_CONTEXT = Symbol.for("PASS_ARG_CONTEXT");
 const PASS_ARG_ENVIRONMENT = Symbol.for("PASS_ARG_ENVIRONMENT");
 
-type UndefinedOpts = {
-  hint?: string | null;
-  obj?: any;
-  name?: string | null;
-  exc?: new (message?: string) => Error;
-};
-
-function getObjectTypeName(obj: unknown) {
-  if (obj === undefined || obj === null) {
-    return `${obj}`;
-  }
-  const prototype = Object.getPrototypeOf(obj);
-  return prototype.constructor.name;
-}
-
-export class Undefined extends Function {
-  undefinedHint: string | null;
-  undefinedObj: any;
-  undefinedName: string | null;
-  undefinedException: new (message?: string) => Error;
-
-  constructor(opts?: UndefinedOpts);
-  constructor(
-    hint?: string | null,
-    obj?: any,
-    name?: string | null,
-    exc?: new (message?: string) => Error
-  );
-  constructor(arg1?: UndefinedOpts | string | null, ...args: any[]) {
-    super();
-    let opts: UndefinedOpts = {};
-    if (
-      typeof arg1 === "string" ||
-      arg1 === null ||
-      typeof arg1 === "undefined"
-    ) {
-      opts.hint = arg1;
-      [opts.obj, opts.name, opts.exc] = args || [];
-    } else {
-      opts = arg1;
-    }
-    const { hint, obj, name, exc } = opts;
-    this.undefinedHint = hint ?? null;
-    this.undefinedObj = obj ?? MISSING;
-    this.undefinedName = name ?? null;
-    this.undefinedException = exc ?? UndefinedError;
-
-    return new Proxy(this, {
-      get(target, prop, receiver) {
-        if (Reflect.has(target, prop)) {
-          return Reflect.get(target, prop, receiver);
-        }
-        // In async mode, Undefined values are often awaited. This causes an
-        // Object.get for "then" which would prematurely trigger an undefined
-        // error if we didn't have special handling here.
-        if (prop === "then") return undefined;
-
-        target._failWithUndefinedError();
-      },
-      has(target, prop) {
-        if (Reflect.has(target, prop)) {
-          return true;
-        }
-        return target._failWithUndefinedError();
-      },
-      set(target) {
-        return target._failWithUndefinedError();
-      },
-      apply(target) {
-        return target._failWithUndefinedError();
-      },
-      construct(target) {
-        return target._failWithUndefinedError();
-      },
-    });
-  }
-  [Symbol.iterator]() {
-    return [][Symbol.iterator]();
-  }
-  [Symbol.toPrimitive]() {
-    return "";
-  }
-  [Symbol.asyncIterator]() {
-    return (async function* () {
-      /* do nothing */
-    })()[Symbol.asyncIterator]();
-  }
-  toString() {
-    return this._failWithUndefinedError();
-  }
-
-  valueOf() {
-    return this._failWithUndefinedError();
-  }
-
-  get [Symbol.toStringTag]() {
-    return "Undefined";
-  }
-  /**
-   * Build a message about the undefined value based on how it was accessed.
-   */
-  get _undefinedMessage(): string {
-    if (this.undefinedHint) {
-      return this.undefinedHint;
-    }
-    if (this.undefinedObj === MISSING) {
-      return `"${this.undefinedName}" is undefined`;
-    }
-    if (typeof this.undefinedName !== "string") {
-      return `${getObjectTypeName(this.undefinedObj)} has no element "${
-        this.undefinedName
-      }"`;
-    }
-    return `${getObjectTypeName(this.undefinedObj)} has no property "${
-      this.undefinedName
-    }"`;
-  }
-
-  _failWithUndefinedError(): never {
-    throw new this.undefinedException(this._undefinedMessage);
-  }
-}
 
 // const nativeFunc = "[native code] }";
 // const nativeFuncLength = nativeFunc.length;
@@ -467,8 +340,8 @@ export class Environment<
       throw new TemplateRuntimeError(msg);
     }
     args = [value, ...args];
-    if (hasOwn(func, "_nunjucksPassArg")) {
-      const passArg = func._nunjucksPassArg;
+    if (hasOwn(func, "___nunjucksPassArg")) {
+      const passArg = func.___nunjucksPassArg;
       if (passArg === PASS_ARG_CONTEXT) {
         if (!context) {
           throw new TemplateRuntimeError(

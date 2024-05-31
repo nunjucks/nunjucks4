@@ -225,7 +225,7 @@ export interface FilterTestBase extends BaseNode {
   node: Expr | null;
   name: string;
   args: Expr[];
-  kwargs: Pair[];
+  kwargs: Keyword[];
   dynArgs?: Expr | null;
   dynKwargs?: Expr | null;
 }

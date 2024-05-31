@@ -923,14 +923,14 @@ export class Parser {
         name += `.${this.expect(lexer.TOKEN_NAME).value}`;
       }
       let args: t.Expr[] = [];
-      let kwargs: t.Pair[] = [];
+      let kwargs: t.Keyword[] = [];
       let dynArgs: t.Expr | null = null;
       let dynKwargs: t.Expr | null = null;
 
       if (this.peekToken().type === lexer.TOKEN_LPAREN) {
         const callArgs = this.parseCallArgs();
         args = callArgs.args;
-        kwargs = callArgs.kwargs.map((k) => b.Pair(k.key, k.value));
+        kwargs = callArgs.kwargs.map((k) => b.keyword(k.key, k.value));
         dynArgs = callArgs.dynArgs;
         dynKwargs = callArgs.dynKwargs;
       }
@@ -967,14 +967,14 @@ export class Parser {
     }
     const name = nameParts.join(".");
     let args: t.Expr[] = [];
-    let kwargs: t.Pair[] = [];
+    let kwargs: t.Keyword[] = [];
     let dynArgs: t.Expr | null = null;
     let dynKwargs: t.Expr | null = null;
     const peek = this.peekToken();
     if (peek.type === lexer.TOKEN_LPAREN) {
       const callArgs = this.parseCallArgs();
       args = callArgs.args;
-      kwargs = callArgs.kwargs.map((t) => b.Pair(t.key, t.value));
+      kwargs = callArgs.kwargs.map((t) => b.keyword(t.key, t.value));
       dynArgs = callArgs.dynArgs;
       dynKwargs = callArgs.dynKwargs;
     } else if (

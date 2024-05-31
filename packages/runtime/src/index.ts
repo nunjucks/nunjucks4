@@ -1,4 +1,3 @@
-import { Undefined, MISSING } from "@nunjucks/environment";
 import type { Environment } from "@nunjucks/environment";
 import { LoopContext } from "./loops";
 import type { IfAsync } from "./types";
@@ -8,10 +7,235 @@ import { Macro } from "./macro";
 
 export type { IfAsync } from "./types";
 
-export type NunjucksFunction = ((...args: any[]) => any) & {
-  nunjucksPassArg?: "context" | "evalContext" | "environment";
-  nunjucksArgs?: string[];
+export class Missing {}
+
+export const MISSING = Object.freeze(new Missing());
+
+class UndefinedError extends Error {
+  name = "UndefinedError";
+}
+
+export type UndefinedOpts = {
+  hint?: string | null;
+  obj?: any;
+  name?: string | null;
+  exc?: new (message?: string) => Error;
 };
+
+function getObjectTypeName(obj: unknown) {
+  if (obj === undefined || obj === null) {
+    return `${obj}`;
+  }
+  const prototype = Object.getPrototypeOf(obj);
+  return prototype.constructor.name;
+}
+
+export class Undefined extends Function {
+  undefinedHint: string | null;
+  undefinedObj: any;
+  undefinedName: string | null;
+  undefinedException: new (message?: string) => Error;
+
+  constructor(opts?: UndefinedOpts);
+  constructor(
+    hint?: string | null,
+    obj?: any,
+    name?: string | null,
+    exc?: new (message?: string) => Error
+  );
+  constructor(arg1?: UndefinedOpts | string | null, ...args: any[]) {
+    super();
+    let opts: UndefinedOpts = {};
+    if (
+      typeof arg1 === "string" ||
+      arg1 === null ||
+      typeof arg1 === "undefined"
+    ) {
+      opts.hint = arg1;
+      [opts.obj, opts.name, opts.exc] = args || [];
+    } else {
+      opts = arg1;
+    }
+    const { hint, obj, name, exc } = opts;
+    this.undefinedHint = hint ?? null;
+    this.undefinedObj = obj ?? MISSING;
+    this.undefinedName = name ?? null;
+    this.undefinedException = exc ?? UndefinedError;
+
+    return new Proxy(this, {
+      get(target, prop, receiver) {
+        if (Reflect.has(target, prop)) {
+          return Reflect.get(target, prop, receiver);
+        }
+        // In async mode, Undefined values are often awaited. This causes an
+        // Object.get for "then" which would prematurely trigger an undefined
+        // error if we didn't have special handling here.
+        if (prop === "then") return undefined;
+
+        target._failWithUndefinedError();
+      },
+      has(target, prop) {
+        if (Reflect.has(target, prop)) {
+          return true;
+        }
+        return target._failWithUndefinedError();
+      },
+      set(target) {
+        return target._failWithUndefinedError();
+      },
+      apply(target) {
+        return target._failWithUndefinedError();
+      },
+      construct(target) {
+        return target._failWithUndefinedError();
+      },
+    });
+  }
+  [Symbol.iterator]() {
+    return [][Symbol.iterator]();
+  }
+  [Symbol.toPrimitive]() {
+    return "";
+  }
+  [Symbol.asyncIterator]() {
+    return (async function* () {
+      /* do nothing */
+    })()[Symbol.asyncIterator]();
+  }
+  toString() {
+    return this._failWithUndefinedError();
+  }
+
+  valueOf() {
+    return this._failWithUndefinedError();
+  }
+
+  get [Symbol.toStringTag]() {
+    return "Undefined";
+  }
+  /**
+   * Build a message about the undefined value based on how it was accessed.
+   */
+  get _undefinedMessage(): string {
+    if (this.undefinedHint) {
+      return this.undefinedHint;
+    }
+    if (this.undefinedObj === MISSING) {
+      return `"${this.undefinedName}" is undefined`;
+    }
+    if (typeof this.undefinedName !== "string") {
+      return `${getObjectTypeName(this.undefinedObj)} has no element "${
+        this.undefinedName
+      }"`;
+    }
+    return `${getObjectTypeName(this.undefinedObj)} has no property "${
+      this.undefinedName
+    }"`;
+  }
+
+  _failWithUndefinedError(): never {
+    throw new this.undefinedException(this._undefinedMessage);
+  }
+}
+
+export function isUndefinedInstance(obj: unknown): obj is Undefined {
+  if (!obj || (typeof obj !== "object" && typeof obj !== "function")) {
+    return false;
+  }
+  if (Object.prototype.toString.call(obj) !== "[object Undefined]")
+    return false;
+  return "_failWithUndefinedError" in obj;
+}
+
+export type NunjuckArgsInfo = {
+  varNames: string[];
+  varargs: boolean;
+  kwargs: boolean;
+};
+
+declare global {
+  interface Function {
+    __nunjucksPassArg?: "context" | "evalContext" | "environment";
+    __nunjucksArgs?: NunjuckArgsInfo;
+  }
+}
+
+export type NunjucksFunction = ((...args: any[]) => any) & {
+  __nunjucksPassArg?: "context" | "evalContext" | "environment";
+  __nunjucksArgs?: NunjuckArgsInfo;
+};
+
+function isKwargs(o: unknown): o is Record<string, any> & { __isKwargs: true } {
+  return isPlainObject(o) && hasOwn(o, "__isKwargs") && !!o.__isKwargs;
+}
+
+export function nunjucksFunction(
+  varNames: string[],
+  options: {
+    kwargs?: boolean;
+    varargs?: boolean;
+    passArg?: "context" | "evalContext" | "environment";
+  } = {}
+) {
+  return function <T extends (...args: unknown[]) => unknown>(func: T): T {
+    const wrapper = function wrapper(...posargs: any[]) {
+      // shift off the first argument if it is an automatically passed argument
+      // (e.g. Context, EvalContext, or Environment)
+      const kwargs: Record<string, any> | null = options.kwargs ? {} : null;
+      const varargs: any[] = [];
+      let kwargsArg: Record<string, any> | null = null;
+      const kwargsIndex = posargs.findIndex((o) => isKwargs(o));
+      if (kwargsIndex > -1) {
+        [kwargsArg] = posargs.splice(kwargsIndex, 1);
+      }
+      let passedArg: any = undefined;
+      if (options.passArg) {
+        if (options.passArg === "environment" && kwargsArg?.__environment) {
+          passedArg = kwargsArg.__environment;
+        } else if (options.passArg === "evalContext" && kwargsArg?.__evalCtx) {
+          passedArg = kwargsArg.__evalCtx;
+        } else {
+          passedArg = posargs.shift();
+        }
+      }
+      delete kwargsArg?.__environment;
+      delete kwargsArg?.__evalCtx;
+
+      const args: any[] = posargs.slice(0, varNames.length);
+
+      const rest = posargs.slice(varNames.length);
+
+      Object.entries(kwargsArg || {}).forEach(([name, value]) => {
+        const index = varNames.indexOf(name);
+        if (index >= 0) {
+          if (args[index] !== undefined) {
+            throw new TypeError(`got multiple values for argument ${name}`);
+          }
+          args[index] = value;
+        } else if (kwargs) {
+          kwargs[name] = value;
+        } else {
+          throw new TypeError(`got an unexpected keyword argument ${name}`);
+        }
+      });
+      if (options.varargs) {
+        args.push(...rest);
+      }
+
+      if (options.passArg) args.unshift(passedArg);
+
+      return func.apply(this, args);
+    } as unknown as T;
+    wrapper.__nunjucksArgs = {
+      kwargs: true,
+      varargs: !!options.varargs,
+      // singleArgument: !!options.singleArgument,
+      varNames,
+    };
+    if (options.passArg) wrapper.__nunjucksPassArg = options.passArg;
+    return wrapper;
+  };
+}
 
 export type Block<IsAsync extends boolean> = IsAsync extends true
   ? (context: Context<IsAsync>) => AsyncGenerator<string> | Generator<string>
@@ -73,7 +297,7 @@ export function newContext<IsAsync extends boolean>({
   });
 }
 
-export class EvalContext<IsAsync extends boolean> {
+export class EvalContext<IsAsync extends boolean = boolean> {
   environment: Environment<IsAsync>;
   name: string | null;
   volatile = false;
@@ -97,6 +321,13 @@ export class EvalContext<IsAsync extends boolean> {
     } else {
       this.autoescape = environment.autoescape;
     }
+  }
+
+  isAsync(): this is EvalContext<true> {
+    return this.environment.isAsync();
+  }
+  isSync(): this is EvalContext<false> {
+    return !this.environment.isSync();
   }
 }
 
@@ -305,7 +536,7 @@ export class Context<IsAsync extends boolean> {
       }
     }
 
-    const passArg = func.nunjucksPassArg;
+    const passArg = func.__nunjucksPassArg;
     if (passArg === "context") {
       // eslint-disable-next-line @typescript-eslint/no-this-alias
       let context: Context<IsAsync> = this;
@@ -325,15 +556,13 @@ export class Context<IsAsync extends boolean> {
     delete kwargs._blockVars;
     delete kwargs._loopVars;
 
-    if (func.nunjucksArgs) {
-      // TODO functionality for annotating argument names for passing of kwargs
-      // and distinct *args and **kwargs variadics
-    }
 
     if (
       func instanceof Macro ||
-      Object.prototype.toString.call(func) === "[object Macro]"
+      Object.prototype.toString.call(func) === "[object Macro]" ||
+      func.__nunjucksArgs?.kwargs
     ) {
+      Object.defineProperty(kwargs, "__isKwargs", { value: true });
       args.push(kwargs);
     }
     return func(...args);
@@ -454,6 +683,24 @@ def markup_join(seq: t.Iterable[t.Any]) -> str:
 export { concat, LoopContext };
 
 export function str(o: unknown): string {
+  if (Array.isArray(o) || isPlainObject(o)) {
+    // Roughly resembles python repr
+    try {
+      return JSON.stringify(o, null, 1)
+        .replace(/^ +/gm, " ")
+        .replace(/\n/g, "")
+        .replace(/{ /g, "{")
+        .replace(/ }/g, "}")
+        .replace(/\[ /g, "[")
+        .replace(/ \]/g, "]")
+        .replace(/\\([\s\S])|(')/g, "\\$1$2")
+        .replace(/\\([\s\S])|(")/g, (match, p1, p2) =>
+          p2 ? "'" : match === '\\"' ? '"' : match
+        );
+    } catch (e) {
+      // do nothing
+    }
+  }
   return `${o}`;
 }
 
@@ -468,7 +715,7 @@ function test(obj: unknown): boolean {
 
 const escapeMap: Record<string, string> = {
   "&": "&amp;",
-  '"': "&quot;",
+  '"': "&#34;",
   "'": "&#39;",
   "<": "&lt;",
   ">": "&gt;",
@@ -480,12 +727,15 @@ const escapeRegex = new RegExp(
 );
 
 export function isMarkup(obj: unknown): obj is MarkupType {
-  return Object.prototype.toString.call(obj) === "[object Markup]";
+  return (
+    Object.prototype.toString.call(obj) === "[object String]" &&
+    (obj as any).__isMarkup
+  );
 }
 
 export function escape(obj: unknown): MarkupType {
   if (isMarkup(obj)) return obj;
-  const s = `${obj}`;
+  const s = obj === null || obj === undefined ? "" : `${obj}`;
   return markSafe(
     s.replace(escapeRegex, (c) => (c in escapeMap ? escapeMap[c] : c))
   );
@@ -497,6 +747,7 @@ export function markSafe(s: unknown) {
 
 export class Markup extends String {
   val: string;
+  __isMarkup: true;
 
   constructor(value: unknown) {
     if (
@@ -511,10 +762,9 @@ export class Markup extends String {
     const val = `${value}`;
     super(val);
     this.val = val;
+    this.__isMarkup = true;
   }
-  get [Symbol.toStringTag]() {
-    return "Markup";
-  }
+
   concat(...strings: (string | Markup)[]): MarkupType {
     const args: string[] = [];
     for (const s of strings) {
@@ -670,6 +920,10 @@ async function* asyncSlice<T = any>(
 
 export type MarkupType = Markup & string;
 
+export function copySafeness<T>(src: unknown, dest: T): T | MarkupType {
+  return isMarkup(src) ? markSafe(dest) : dest;
+}
+
 // eslint-disable-next-line @typescript-eslint/ban-types
 // export const Markup = _Markup as unknown as (String & string) & {
 //   constructor(value: unknown): _Markup;
@@ -687,7 +941,6 @@ export function setDelete<T>(set: Set<T>, ...values: T[]): void {
 export class TemplateRuntimeError extends Error {
   name = "TemplateRuntimeError";
 }
-
 
 export default {
   str,
@@ -711,4 +964,6 @@ export default {
   setAdd,
   setDelete,
   TemplateRuntimeError,
+  nunjucksFunction,
+  escape,
 };

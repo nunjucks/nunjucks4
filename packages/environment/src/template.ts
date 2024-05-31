@@ -1,7 +1,7 @@
-import { Environment, Undefined } from "./environment";
+import { Environment } from "./environment";
 import runtime from "@nunjucks/runtime";
 import type { Block, Markup } from "@nunjucks/runtime";
-import { newContext, Context } from "@nunjucks/runtime";
+import { newContext, Context, Undefined, isUndefinedInstance } from "@nunjucks/runtime";
 import setDifference from "set.prototype.difference";
 
 export type Runtime = typeof runtime;
@@ -25,15 +25,6 @@ type NewContextOpts = {
 };
 
 const cachedTemplateModule = Symbol("cachedTemplateModule");
-
-function isUndefinedInstance(obj: unknown): obj is Undefined {
-  if (!obj || (typeof obj !== "object" && typeof obj !== "function")) {
-    return false;
-  }
-  if (Object.prototype.toString.call(obj) !== "[object Undefined]")
-    return false;
-  return "_failWithUndefinedError" in obj;
-}
 
 export class TemplateNotFound extends Error {
   type = "TemplateNotFound";

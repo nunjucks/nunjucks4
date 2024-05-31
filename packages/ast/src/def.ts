@@ -174,7 +174,7 @@ def("FilterTestBase")
   .field("node", or(def("Expr"), null))
   .field("name", String)
   .field("args", [def("Expr")])
-  .field("kwargs", [def("Pair")])
+  .field("kwargs", [def("Keyword")])
   .field("dynArgs", or(def("Expr"), null), defaults["null"])
   .field("dynKwargs", or(def("Expr"), null), defaults["null"]);
 

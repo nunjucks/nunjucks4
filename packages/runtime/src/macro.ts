@@ -1,5 +1,5 @@
-import { Environment, MISSING } from "@nunjucks/environment";
-import { EvalContext, markSafe } from ".";
+import { Environment } from "@nunjucks/environment";
+import { EvalContext, markSafe, MISSING } from ".";
 import type { IfAsync } from "./types";
 import { isPlainObject } from "./utils";
 

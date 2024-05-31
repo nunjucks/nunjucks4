@@ -1,4 +1,4 @@
-export { Missing, MISSING, Environment, Undefined } from "./environment";
+export { Environment } from "./environment";
 export { Template } from "./template";
 export * from "./loaders";
 // export { EvalContext, Frame } from "./frame";

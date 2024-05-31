@@ -169,7 +169,7 @@ export interface FilterBuilder {
     node: types.Expr | null,
     name: string,
     args: types.Expr[],
-    kwargs: types.Pair[],
+    kwargs: types.Keyword[],
     dynArgs?: types.Expr | null,
     dynKwargs?: types.Expr | null
   ): types.Filter;
@@ -177,7 +177,7 @@ export interface FilterBuilder {
     args: types.Expr[];
     dynArgs?: types.Expr | null;
     dynKwargs?: types.Expr | null;
-    kwargs: types.Pair[];
+    kwargs: types.Keyword[];
     loc?: types.SourceLocation | null;
     name: string;
     node: types.Expr | null;
@@ -188,7 +188,7 @@ export interface TestBuilder {
     node: types.Expr,
     name: string,
     args: types.Expr[],
-    kwargs: types.Pair[],
+    kwargs: types.Keyword[],
     dynArgs?: types.Expr | null,
     dynKwargs?: types.Expr | null
   ): types.Test;
@@ -196,7 +196,7 @@ export interface TestBuilder {
     args: types.Expr[];
     dynArgs?: types.Expr | null;
     dynKwargs?: types.Expr | null;
-    kwargs: types.Pair[];
+    kwargs: types.Keyword[];
     loc?: types.SourceLocation | null;
     name: string;
     node: types.Expr;
