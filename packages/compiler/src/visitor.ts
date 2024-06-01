@@ -14,6 +14,7 @@ import generate from "@babel/generator";
 import ast from "@pregenerator/template";
 import { EvalContext, MISSING } from "@nunjucks/runtime";
 import type { IfAsync } from "@nunjucks/runtime";
+import { escape } from "@nunjucks/runtime";
 import { Environment } from "@nunjucks/environment";
 import { Frame } from "./frame";
 // import { EvalContext, Frame } from "./frame";
@@ -29,9 +30,6 @@ import toConst from "./const";
 type Bookmark = n.EmptyStatement & {
   _isBookmark: true;
 };
-
-// TODO: implement
-const escape = (s: unknown): string => `${s}`;
 
 const OPERATORS = {
   eq: "==",
@@ -1995,7 +1993,7 @@ export class CodeGenerator<IsAsync extends boolean> {
     // undefined at compile time and only raise an error if it's
     // actually called at runtime. See pull_dependencies.
     if (!func && !frame.softFrame) {
-      this.fail(`No ${node.type.toLowerCase()} named ${node.name}.`);
+      this.fail(`No ${node.type.toLowerCase()} named '${node.name}' found.`);
     }
     // TODO: PassArg functionality?
     // TODO kwargs, dynargs and dynkwargs?
@@ -2063,7 +2061,7 @@ export class CodeGenerator<IsAsync extends boolean> {
               // dep: id(`${dependency}s`),
               name: b.stringLiteral(name),
               exc: runtimeExpr("TemplateRuntimeError"),
-              msg: b.stringLiteral(`No ${dependency} named "${name}" found.`),
+              msg: b.stringLiteral(`No ${dependency} named '${name}' found.`),
             }
           )
         );

@@ -1,5 +1,5 @@
 import { Environment, ObjectSourceLoader } from "@nunjucks/environment";
-import { TemplateRuntimeError } from "@nunjucks/runtime";
+import { TemplateRuntimeError, markSafe } from "@nunjucks/runtime";
 import { describe, expect, test } from "@jest/globals";
 import { TemplateSyntaxError } from "@nunjucks/parser";
 
@@ -472,5 +472,538 @@ describe("filters", () => {
       ].join("|")
     );
     expect(tmpl.render()).toBe("20|30|20");
+  });
+
+  describe.skip("sort", () => {
+    it("sort1", () => {
+      const tmpl = env.fromString(
+        "{{ [2, 3, 1]|sort }}|{{ [2, 3, 1]|sort(true) }}"
+      );
+      expect(tmpl.render()).toBe("[1, 2, 3]|[3, 2, 1]");
+    });
+    it("sort2", () => {
+      const tmpl = env.fromString('{{ "".join(["c", "A", "b", "D"]|sort) }}');
+      expect(tmpl.render()).toBe("AbcD");
+    });
+    it("sort3", () => {
+      const tmpl = env.fromString(`{{ ['foo', 'Bar', 'blah']|sort }}`);
+      expect(tmpl.render()).toBe("['Bar', 'blah', 'foo']");
+    });
+    it("sort4", () => {
+      const tmpl = env.fromString(`{{ items|sort(attribute='value')|join }}`);
+      const items = [3, 2, 4, 1].map((v) => new Magic(v));
+      expect(tmpl.render({ items })).toBe("1234");
+    });
+    it("sort5", () => {
+      const tmpl = env.fromString(`{{ items|sort(attribute='value.0')|join }}`);
+      const items = [3, 2, 4, 1].map((v) => new Magic(v));
+      expect(tmpl.render({ items })).toBe("[1][2][3][4]");
+    });
+    it("sort6", () => {
+      const tmpl = env.fromString(
+        `{{ items|sort(attribute='value1,value2')|join }}`
+      );
+      const items = [
+        [3, 1],
+        [2, 2],
+        [2, 1],
+        [2, 5],
+      ].map(([x, y]) => new Magic2(x, y));
+      expect(tmpl.render({ items })).toBe("(2,1)(2,2)(2,5)(3,1)");
+    });
+    it("sort7", () => {
+      const tmpl = env.fromString(
+        `{{ items|sort(attribute='value2,value1')|join }}`
+      );
+      const items = [
+        [3, 1],
+        [2, 2],
+        [2, 1],
+        [2, 5],
+      ].map(([x, y]) => new Magic2(x, y));
+      expect(
+        tmpl.render({
+          items,
+        })
+      ).toBe("(2,1)(3,1)(2,2)(2,5)");
+    });
+    it("sort8", () => {
+      const tmpl = env.fromString(
+        `{{ items|sort(attribute='value1.0,value2.0')|join }}`
+      );
+      const items = [
+        [3, 1],
+        [2, 2],
+        [2, 1],
+        [2, 5],
+      ].map(([x, y]) => new Magic2(x, y));
+      expect(
+        tmpl.render({
+          items,
+        })
+      ).toBe("([2],[1])([2],[2])([2],[5])([3],[1])");
+    });
+  });
+
+  describe.skip("unique", () => {
+    it("basic", () => {
+      const tmpl = env.fromString('{{ "".join(["b", "A", "a", "b"]|unique) }}');
+      expect(tmpl.render()).toBe("bA");
+    });
+    it("case sensitive", () => {
+      const tmpl = env.fromString(
+        '{{ "".join(["b", "A", "a", "b"]|unique(true)) }}'
+      );
+      expect(tmpl.render()).toBe("bAa");
+    });
+    it("attribute", () => {
+      const items = [3, 2, 4, 1, 2].map((val) => new Magic(val));
+      const tmpl = env.fromString("{{ items|unique(attribute='value')|join }}");
+      expect(tmpl.render({ items })).toBe("3241");
+    });
+  });
+
+  describe.skip("min", () => {
+    it("basic", () => {
+      const tmpl = env.fromString('{{ ["a", "B"]|min }}');
+      expect(tmpl.render()).toBe("a");
+    });
+    it("case sensitive", () => {
+      const tmpl = env.fromString('{{ ["a", "B"]|min(case_sensitive=true) }}');
+      expect(tmpl.render()).toBe("B");
+    });
+    it("empty", () => {
+      const tmpl = env.fromString("{{ []|min }}");
+      expect(tmpl.render()).toBe("");
+    });
+    it("attribute", () => {
+      const items = [5, 1, 9].map((val) => new Magic(val));
+      const tmpl = env.fromString('{{ items | min(attribute="value") }}');
+      expect(tmpl.render({ items })).toBe("1");
+    });
+  });
+
+  describe.skip("max", () => {
+    it("basic", () => {
+      const tmpl = env.fromString('{{ ["a", "B"]|max }}');
+      expect(tmpl.render()).toBe("B");
+    });
+    it("case sensitive", () => {
+      const tmpl = env.fromString('{{ ["a", "B"]|max(case_sensitive=true) }}');
+      expect(tmpl.render()).toBe("a");
+    });
+    it("empty", () => {
+      const tmpl = env.fromString("{{ []|max }}");
+      expect(tmpl.render()).toBe("");
+    });
+    it("attribute", () => {
+      const items = [5, 1, 9].map((val) => new Magic(val));
+      const tmpl = env.fromString('{{ items | max(attribute="value") }}');
+      expect(tmpl.render({ items })).toBe("9");
+    });
+  });
+
+  describe.skip("groupby", () => {
+    it("basic", () => {
+      const tmpl = env.fromString(`
+        {%- for grouper, list in [{'foo': 1, 'bar': 2},
+                                  {'foo': 2, 'bar': 3},
+                                  {'foo': 1, 'bar': 1},
+                                  {'foo': 3, 'bar': 4}]|groupby('foo') -%}
+          {{ grouper }}
+          {%- for x in list %}: {{ x.foo }}, {{ x.bar }}{% endfor %}|
+        {%- endfor -%}
+      `);
+      expect(tmpl.render().split("|")).toStrictEqual([
+        "1: 1, 2: 1, 1",
+        "2: 2, 3",
+        "3: 3, 4",
+        "",
+      ]);
+    });
+
+    it("index", () => {
+      const tmpl = env.fromString(`
+    {%- for grouper, list in [('a', 1), ('a', 2), ('b', 1)]|groupby(0) -%}
+        {{ grouper }}{% for x in list %}:{{ x.1 }}{% endfor %}|
+    {%- endfor -%}
+    `);
+      expect(tmpl.render()).toBe("a:1:2|b:1|");
+    });
+
+    it("multidot", () => {
+      class Date_ {
+        constructor(
+          public day: number,
+          public month: number,
+          public year: number
+        ) {}
+      }
+      class Article {
+        constructor(
+          public title: string,
+          public date: Date_
+        ) {}
+      }
+
+      const articles = [
+        new Article("aha", new Date_(1, 1, 1970)),
+        new Article("interesting", new Date_(2, 1, 1970)),
+        new Article("really?", new Date_(3, 1, 1970)),
+        new Article("totally not", new Date_(1, 1, 1971)),
+      ];
+
+      const tmpl = env.fromString(`
+        {%- for year, list in articles|groupby('date.year') -%}
+          {{ year }}{% for x in list %}[{{ x.title }}]{% endfor %}|
+        {%- endfor %}`);
+      expect(tmpl.render({ articles }).split("|")).toStrictEqual([
+        "1970[aha][interesting][really?]",
+        "1971[totally not]",
+        "",
+      ]);
+    });
+
+    it("default", () => {
+      const tmpl = env.fromString(
+        [
+          "{% for city, items in users|groupby('city', default='NY') %}",
+          "{{ city }}: {{ items|map(attribute='name')|join(', ') }}\n",
+          "{% endfor %}",
+        ].join("")
+      );
+      expect(
+        tmpl.render({
+          users: [
+            { name: "emma", city: "NY" },
+            { name: "smith", city: "WA" },
+            { name: "john" },
+          ],
+        })
+      ).toBe("NY: emma, john\nWA: smith\n");
+    });
+
+    it.each([
+      [false, "a: 1, 3\nb: 2\n"],
+      [true, "A: 3\na: 1\nb: 2\n"],
+    ])("case_sensitive=%s", (cs, expected) => {
+      const tmpl = env.fromString(
+        [
+          "{% for k, vs in data|groupby('k', case_sensitive=cs) %}",
+          "{{ k }}: {{ vs|join(', ', attribute='v') }}\n",
+          "{% endfor %}",
+        ].join("")
+      );
+      expect(
+        tmpl.render({
+          data: [
+            { k: "a", v: 1 },
+            { k: "b", v: 2 },
+            { k: "A", v: 3 },
+          ],
+          cs,
+        })
+      ).toBe(expected);
+    });
+  });
+
+  it("filter tag", () => {
+    const tmpl = env.fromString(
+      "{% filter upper|replace('FOO', 'foo') %}foobar{% endfilter %}"
+    );
+    expect(tmpl.render()).toBe("fooBAR");
+  });
+
+  it("replace", () => {
+    let tmpl;
+    tmpl = env.fromString('{{ string|replace("o", 42) }}');
+    expect(tmpl.render({ string: "<foo>" })).toBe("<f4242>");
+    env.autoescape = true;
+    tmpl = env.fromString('{{ string|replace("o", 42) }}');
+    expect(tmpl.render({ string: "<foo>" })).toBe("&lt;f4242&gt;");
+    tmpl = env.fromString('{{ string|replace("<", 42) }}');
+    expect(tmpl.render({ string: "<foo>" })).toBe("42foo&gt;");
+    tmpl = env.fromString('{{ string|replace("o", ">x<") }}');
+    expect(tmpl.render({ string: markSafe("foo") })).toBe(
+      "f&gt;x&lt;&gt;x&lt;"
+    );
+  });
+
+  it.skip("forceescape", () => {
+    const tmpl = env.fromString("{{ x|forceescape }}");
+    expect(tmpl.render({ x: markSafe("<div />") })).toBe("&lt;div /&gt;");
+  });
+
+  it("safe", () => {
+    env.autoescape = true;
+    let tmpl;
+    tmpl = env.fromString('{{ "<div>foo</div>"|safe }}');
+    expect(tmpl.render()).toBe("<div>foo</div>");
+    tmpl = env.fromString('{{ "<div>foo</div>" }}');
+    expect(tmpl.render()).toBe("&lt;div&gt;foo&lt;/div&gt;");
+  });
+
+  it("urlencode", () => {
+    env.autoescape = true;
+    const tmpl = env.fromString("{{ value | urlencode }}");
+    const values = [
+      ["Hello, world!", "Hello%2C%20world%21"],
+      ["Hello, world\u203d", "Hello%2C%20world%E2%80%BD"],
+      [{ f: 1 }, "f=1"],
+      [
+        [
+          ["f", 1],
+          ["z", 2],
+        ],
+        "f=1&amp;z=2",
+      ],
+      [{ "\u203d": 1 }, "%E2%80%BD=1"],
+      [{ 0: 1 }, "0=1"],
+      [[["a b/c", "a b/c"]], "a+b%2Fc=a+b%2Fc"],
+      ["a b/c", "a%20b/c"],
+    ];
+    const results = values.map(([value]) => [value, tmpl.render({ value })]);
+    expect(values).toStrictEqual(results);
+  });
+
+  describe.skip("map", () => {
+    it("simple", () => {
+      const tmpl = env.fromString('{{ ["1", "2", "3"]|map("int")|sum }}');
+      expect(tmpl.render()).toBe("6");
+    });
+
+    it("sum", () => {
+      const tmpl = env.fromString(
+        '{{ [[1,2], [3], [4,5,6]]|map("sum")|list }}'
+      );
+      expect(tmpl.render()).toBe("[3, 3, 15]");
+    });
+
+    it("attribute", () => {
+      const users = ["john", "jane", "mike"].map((name) => ({ name }));
+      const tmpl = env.fromString(
+        '{{ users|map(attribute="name")|join("|") }}'
+      );
+      expect(tmpl.render({ users })).toBe("john|jane|mike");
+    });
+
+    it("empty", () => {
+      const tmpl = env.fromString('{{ none|map("upper")|list }}');
+      expect(tmpl.render()).toBe("[]");
+    });
+
+    it("default", () => {
+      class Fullname {
+        constructor(
+          public firstname: string,
+          public lastname: string | null
+        ) {}
+      }
+      class Firstname {
+        constructor(public firstname: string) {}
+      }
+      const users = [
+        new Fullname("john", "lennon"),
+        new Fullname("jane", "edwards"),
+        new Fullname("jon", null),
+        new Firstname("mike"),
+      ];
+
+      const tmpl = env.fromString(
+        '{{ users|map(attribute="lastname", default="smith")|join(", ") }}'
+      );
+      const test_list = env.fromString(
+        '{{ users|map(attribute="lastname", default=["smith","x"])|join(", ") }}'
+      );
+      const test_str = env.fromString(
+        '{{ users|map(attribute="lastname", default="")|join(", ") }}'
+      );
+
+      expect(tmpl.render({ users })).toBe("lennon, edwards, None, smith");
+      expect(test_list.render({ users })).toBe(
+        "lennon, edwards, null, ['smith', 'x']"
+      );
+      expect(test_str.render({ users })).toBe("lennon, edwards, None, ");
+    });
+  });
+
+  describe.skip("select", () => {
+    it("simple", () => {
+      const tmpl = env.fromString(
+        '{{ [1, 2, 3, 4, 5]|select("odd")|join("|") }}'
+      );
+      expect(tmpl.render()).toBe("1|3|5");
+    });
+
+    it("bool", () => {
+      const tmpl = env.fromString(
+        '{{ [none, false, 0, 1, 2, 3, 4, 5]|select|join("|") }}'
+      );
+      expect(tmpl.render()).toBe("1|2|3|4|5");
+    });
+  });
+
+  describe.skip("reject", () => {
+    it("simple", () => {
+      const tmpl = env.fromString(
+        '{{ [1, 2, 3, 4, 5]|reject("odd")|join("|") }}'
+      );
+      expect(tmpl.render()).toBe("2|4");
+    });
+
+    it("bool", () => {
+      const tmpl = env.fromString(
+        '{{ [null, false, 0, 1, 2, 3, 4, 5]|reject|join("|") }}'
+      );
+      expect(tmpl.render()).toBe("null|false|0");
+    });
+  });
+
+  describe.skip("selectattr", () => {
+    it("simple", () => {
+      class User {
+        constructor(
+          public name: string,
+          public isActive: boolean
+        ) {}
+      }
+      const users = [
+        new User("john", true),
+        new User("jane", true),
+        new User("mike", false),
+      ];
+      const tmpl = env.fromString(
+        '{{ users|selectattr("is_active")|map(attribute="name")|join("|") }}'
+      );
+      expect(tmpl.render({ users })).toBe("john|jane");
+    });
+
+    it("function", () => {
+      class User {
+        constructor(
+          public id: number,
+          public name: string
+        ) {}
+      }
+      const users = [
+        new User(1, "john"),
+        new User(2, "jane"),
+        new User(3, "mike"),
+      ];
+      const tmpl = env.fromString(
+        '{{ users|selectattr("id", "odd")|map(attribute="name")|join("|") }}'
+      );
+      expect(tmpl.render({ users })).toBe("john|mike");
+    });
+  });
+
+  describe.skip("rejectattr", () => {
+    it("simple", () => {
+      class User {
+        constructor(
+          public name: string,
+          public isActive: boolean
+        ) {}
+      }
+      const users = [
+        new User("john", true),
+        new User("jane", true),
+        new User("mike", false),
+      ];
+      const tmpl = env.fromString(
+        '{{ users|rejectattr("is_active")|map(attribute="name")|join("|") }}'
+      );
+      expect(tmpl.render({ users })).toBe("mike");
+    });
+
+    it("function", () => {
+      class User {
+        constructor(
+          public id: number,
+          public name: string
+        ) {}
+      }
+      const users = [
+        new User(1, "john"),
+        new User(2, "jane"),
+        new User(3, "mike"),
+      ];
+      const tmpl = env.fromString(
+        '{{ users|rejectattr("id", "odd")|map(attribute="name")|join("|") }}'
+      );
+      expect(tmpl.render({ users })).toBe("jane");
+    });
+  });
+
+  it.skip("tojson", () => {
+    const tmpl = env.fromString("{{ x | tojson }}");
+    expect(tmpl.render({ x: { foo: "bar" } })).toBe('{"foo": "bar"}');
+  });
+
+  it.skip("wordwrap", () => {
+    const s = "Hello!\nThis is nunjucks saying something.";
+    const tmpl = env.fromString("{{ s | wordwrap(25) }}");
+    expect(tmpl.render({ s })).toBe(
+      "Hello!\nThis is nunjucks saying\nsomething."
+    );
+  });
+
+  describe("filter undefined", () => {
+    it("basic", () => {
+      expect(() => env.fromString("{{ var|f }}")).toThrow(
+        "No filter named 'f'"
+      );
+    });
+
+    it("inside if", () => {
+      const tmpl = env.fromString(
+        "{%- if x is defined -%}{{ x|f }}{%- else -%}x{% endif %}"
+      );
+      expect(tmpl.render()).toBe("x");
+      expect(() => tmpl.render({ x: 42 })).toThrow("No filter named 'f'");
+    });
+
+    it("inside elif", () => {
+      const tmpl = env.fromString(
+        [
+          "{%- if x is defined -%}{{ x }}{%- elif y is defined -%}",
+          "{{ y|f }}{%- else -%}foo{%- endif -%}",
+        ].join("")
+      );
+      expect(tmpl.render()).toBe("foo");
+      expect(() => tmpl.render({ y: 42 })).toThrow("No filter named 'f'");
+    });
+
+    it("inside else", () => {
+      const tmpl = env.fromString(
+        "{%- if x is not defined -%}foo{%- else -%}{{ x|f }}{%- endif -%}"
+      );
+      expect(tmpl.render()).toBe("foo");
+      expect(() => tmpl.render({ x: 42 })).toThrow("No filter named 'f'");
+    });
+
+    it("inside nested if", () => {
+      const tmpl = env.fromString(
+        [
+          "{%- if x is not defined -%}foo{%- else -%}{%- if y ",
+          "is defined -%}{{ y|f }}{%- endif -%}{{ x }}{%- endif -%}",
+        ].join("")
+      );
+      expect(tmpl.render()).toBe("foo");
+      expect(tmpl.render({ x: 42 })).toBe("42");
+      expect(() => tmpl.render({ x: 42, y: 42 })).toThrow(
+        "No filter named 'f'"
+      );
+    });
+
+    it.skip("inside condexpr", () => {
+      const t1 = env.fromString("{{ x|f if x is defined else 'foo' }}");
+      const t2 = env.fromString("{{ 'foo' if x is not defined else x|f }}");
+      expect(t1.render()).toBe("foo");
+      expect(t2.render()).toBe("foo");
+
+      expect(() => t1.render({ x: 42 })).toThrow("No filter named 'f'");
+      expect(() => t2.render({ x: 42 })).toThrow("No filter named 'f'");
+    });
   });
 });

@@ -329,7 +329,7 @@ export class Environment<
     const typeName = isFilter ? "filter" : "test";
     const func = name instanceof Undefined ? undefined : envMap[name];
     if (func === undefined) {
-      let msg = `No ${typeName} named ${name}`;
+      let msg = `No ${typeName} named '${name}' found.`;
       if (name instanceof Undefined) {
         try {
           name._failWithUndefinedError();

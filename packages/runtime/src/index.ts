@@ -556,7 +556,6 @@ export class Context<IsAsync extends boolean> {
     delete kwargs._blockVars;
     delete kwargs._loopVars;
 
-
     if (
       func instanceof Macro ||
       Object.prototype.toString.call(func) === "[object Macro]" ||
@@ -828,6 +827,15 @@ export class Markup extends String {
   }
   padEnd(maxLength: number, padString?: string | undefined): MarkupType {
     return markSafe(super.padEnd(maxLength, padString));
+  }
+
+  replace(...args: unknown[]): MarkupType {
+    return markSafe(
+      super.replace.apply(
+        this,
+        args.map((arg) => escape(arg))
+      )
+    );
   }
 }
 

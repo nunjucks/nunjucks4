@@ -272,7 +272,7 @@ function syncJoin(
   evalCtx: EvalContext,
   value: unknown,
   d: string = "",
-  attribute: string | int | null = null
+  attribute: string | number | null = null
 ): string {
   let arr = syncList(value);
 
@@ -308,7 +308,7 @@ async function asyncJoin(
   evalCtx: EvalContext,
   value: unknown,
   d: string = "",
-  attribute: string | int | null = null
+  attribute: string | number | null = null
 ): Promise<string> {
   let arr = await asyncList(value);
   if (attribute !== null) {
@@ -337,7 +337,7 @@ const doJoin: {
   evalCtx: EvalContext,
   value: unknown,
   d: string = "",
-  attribute: string | int | null = null
+  attribute: string | number | null = null
 ): any =>
   evalCtx.isAsync()
     ? asyncJoin(evalCtx, value, d, attribute)
@@ -489,6 +489,11 @@ function replaceCount(
   }
 
   let res = ""; // Output
+
+  if (isMarkup(str)) {
+    old = escape(old);
+    new_ = escape(new_);
+  }
 
   let nextIndex = str.indexOf(old);
   // if # of replacements to perform is 0, or the string to does
@@ -711,18 +716,32 @@ export function upper(str: unknown): string {
   return `${str}`.toUpperCase();
 }
 
+function urlquote(
+  str: string,
+  { query = false }: { query?: boolean } = {}
+): string {
+  const encode = query ? encodeURIComponent : encodeURI;
+  const ret = encode(str)
+    .replace(/%5B/g, "[")
+    .replace(/%5D/g, "]")
+    .replace(
+      /[!'()*,]/g,
+      (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`
+    );
+  return query ? ret.replace(/%20/g, "+") : ret;
+}
+
 export function urlencode(
   obj: [string, string][] | Record<PropertyKey, unknown> | string
 ): string {
-  var enc = encodeURIComponent;
   if (isString(obj)) {
-    return enc(obj);
+    return urlquote(obj);
   } else {
     let keyvals = Array.isArray(obj) ? obj : [...Object.entries(obj)];
     return keyvals
       .map(([k, v]) => {
         const val = `${v}`;
-        return `${enc(k)}=${enc(val)}`;
+        return `${urlquote(k, { query: true })}=${urlquote(val, { query: true })}`;
       })
       .join("&");
   }
