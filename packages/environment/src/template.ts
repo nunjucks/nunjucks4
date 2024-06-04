@@ -1,7 +1,12 @@
 import { Environment } from "./environment";
 import runtime from "@nunjucks/runtime";
 import type { Block, Markup } from "@nunjucks/runtime";
-import { newContext, Context, Undefined, isUndefinedInstance } from "@nunjucks/runtime";
+import {
+  newContext,
+  Context,
+  Undefined,
+  isUndefinedInstance,
+} from "@nunjucks/runtime";
 import setDifference from "set.prototype.difference";
 
 export type Runtime = typeof runtime;
@@ -10,12 +15,12 @@ export type RenderFunc<IsAsync extends boolean> = IsAsync extends true
   ? (
       runtime: Runtime,
       environment: Environment<true>,
-      context: Context<true>,
+      context: Context<true>
     ) => AsyncGenerator<string>
   : (
       runtime: Runtime,
       environment: Environment<false>,
-      context: Context<false>,
+      context: Context<false>
     ) => Generator<string>;
 
 type NewContextOpts = {
@@ -33,7 +38,7 @@ export class TemplateNotFound extends Error {
   constructor(
     name: string | Undefined,
     message: string | null = null,
-    options?: ErrorOptions,
+    options?: ErrorOptions
   ) {
     if (isUndefinedInstance(name)) {
       return name._failWithUndefinedError();
@@ -92,7 +97,7 @@ export class Template<IsAsync extends true | false> {
       : () => boolean;
   }) {
     this.async = !!environment.isAsync() as IsAsync;
-    this.globals = globals;
+    this.globals = Object.assign({}, globals, environment.globals);
     this.name = name;
     this.filename = filename;
     this.environment = environment;
@@ -100,7 +105,7 @@ export class Template<IsAsync extends true | false> {
       Object.entries(blocks).map(([name, func]) => [
         name,
         func.bind(null, runtime, environment),
-      ]),
+      ])
     );
     if (root) {
       this.rootRenderFunc = root;
@@ -118,12 +123,12 @@ export class Template<IsAsync extends true | false> {
 
   _renderAsync(
     this: Template<true>,
-    context: Record<string, any>,
+    context: Record<string, any>
   ): Promise<string>;
   _renderAsync(this: Template<false>, context: Record<string, any>): never;
   _renderAsync(
     this: Template<IsAsync>,
-    context: Record<string, any>,
+    context: Record<string, any>
   ): IsAsync extends true ? Promise<string> : never;
 
   async _renderAsync(context: Record<string, any>): Promise<string> {
@@ -170,7 +175,7 @@ export class Template<IsAsync extends true | false> {
     this._rootRenderFunc = func.bind(
       Object.create(null),
       runtime,
-      this.environment,
+      this.environment
     );
   }
 
@@ -178,7 +183,7 @@ export class Template<IsAsync extends true | false> {
   render(this: Template<false>, context?: Record<string, any>): string;
   render(
     this: Template<IsAsync>,
-    context?: Record<string, any>,
+    context?: Record<string, any>
   ): Promise<string> | string;
   render(context: Record<string, any> = {}): Promise<string> | string {
     if (this.isAsync()) {
@@ -194,7 +199,7 @@ export class Template<IsAsync extends true | false> {
   newContext(this: Template<false>, opts: NewContextOpts): Context<false>;
   newContext(
     this: Template<IsAsync>,
-    opts: NewContextOpts,
+    opts: NewContextOpts
   ): IsAsync extends true ? Context<true> : Context<false>;
   newContext({
     vars = {},
@@ -221,15 +226,15 @@ export class Template<IsAsync extends true | false> {
 
   makeModule(
     this: Template<false>,
-    opts?: NewContextOpts,
+    opts?: NewContextOpts
   ): TemplateModule<false>;
   makeModule(
     this: Template<true>,
-    opts?: NewContextOpts,
+    opts?: NewContextOpts
   ): Promise<TemplateModule<true>>;
   makeModule(
     this: Template<IsAsync>,
-    opts?: NewContextOpts,
+    opts?: NewContextOpts
   ): IsAsync extends true
     ? Promise<TemplateModule<true>>
     : TemplateModule<false>;
@@ -257,20 +262,20 @@ export class Template<IsAsync extends true | false> {
 
   _getDefaultModule(
     this: Template<true>,
-    ctx?: Context<true>,
+    ctx?: Context<true>
   ): Promise<TemplateModule<true>>;
   _getDefaultModule(
     this: Template<false>,
-    ctx?: Context<false>,
+    ctx?: Context<false>
   ): TemplateModule<false>;
   _getDefaultModule(
     this: Template<IsAsync>,
-    ctx?: Context<IsAsync>,
+    ctx?: Context<IsAsync>
   ): IsAsync extends true
     ? Promise<TemplateModule<true>>
     : TemplateModule<false>;
   _getDefaultModule<IsAsync extends boolean>(
-    ctx?: Context<IsAsync>,
+    ctx?: Context<IsAsync>
   ): Promise<TemplateModule<true>> | TemplateModule<false> {
     if (ctx) {
       const keys = [
@@ -353,7 +358,7 @@ export class TemplateModule<IsAsync extends true | false> {
             "Async mode requires a body stream to be passed to",
             " a template module. Use the async methods of the",
             " API you are using.",
-          ].join(""),
+          ].join("")
         );
       }
       this._bodyStream = [...template.rootRenderFunc(context)];

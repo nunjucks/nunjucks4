@@ -185,7 +185,7 @@ describe("uncategorized", () => {
           { a: 3, b: [{ a: "a" }] },
         ],
       })
-    ).toBe("[x.1.2<[x.1.2][x.2.x]>][x.2.3<[x.1.2][x.2.x]>][x.3.x<[x.a.x]>]");
+    ).toBe("[x.1.2<[x.1.2][1.2.x]>][1.2.3<[x.1.2][1.2.x]>][2.3.x<[x.a.x]>]");
   });
 
   test("recursive lookaround async", async () => {
@@ -206,7 +206,7 @@ describe("uncategorized", () => {
           { a: 3, b: [{ a: "a" }] },
         ],
       })
-    ).toBe("[x.1.2<[x.1.2][x.2.x]>][x.2.3<[x.1.2][x.2.x]>][x.3.x<[x.a.x]>]");
+    ).toBe("[x.1.2<[x.1.2][1.2.x]>][1.2.3<[x.1.2][1.2.x]>][2.3.x<[x.a.x]>]");
   });
 
   test("recursive depth0", () => {

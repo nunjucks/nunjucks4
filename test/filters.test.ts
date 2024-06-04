@@ -108,7 +108,7 @@ describe("filters", () => {
     expect(tmpl.render()).toBe("&lt;&#34;&gt;&amp;");
   });
 
-  describe.skip("trim", () => {
+  describe("trim", () => {
     it.each`
       args      | expected
       ${""}     | ${"..stays.."}

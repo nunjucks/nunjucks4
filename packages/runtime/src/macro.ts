@@ -1,5 +1,5 @@
 import { Environment } from "@nunjucks/environment";
-import { EvalContext, markSafe, MISSING } from ".";
+import { EvalContext, markSafe, MISSING, isVarargs, isKwargs } from ".";
 import type { IfAsync } from "./types";
 import { isPlainObject } from "./utils";
 
@@ -11,7 +11,7 @@ export class Macro<IsAsync extends boolean> extends Function {
   _func: (...args: any[]) => IfAsync<IsAsync, Promise<string> | string, string>;
   _argCount: number;
   _name: string;
-  _args: string[];
+  args: string[];
   catchKwargs: boolean;
   catchVarargs: boolean;
   _caller: boolean;
@@ -26,14 +26,14 @@ export class Macro<IsAsync extends boolean> extends Function {
     catchKwargs: boolean,
     catchVarargs: boolean,
     caller: boolean,
-    defaultAutoescape: boolean,
+    defaultAutoescape: boolean
   ) {
     super();
     this._environment = environment;
     this._func = func;
     this._argCount = args.length + (caller ? 1 : 0);
     this._name = name;
-    this._args = args;
+    this.args = args;
     this.catchKwargs = catchKwargs;
     this.catchVarargs = catchVarargs;
     this._caller = caller;
@@ -43,6 +43,9 @@ export class Macro<IsAsync extends boolean> extends Function {
     return new Proxy(this, {
       apply(target, thisArg, argArray) {
         return target.__call__(...argArray);
+      },
+      get(target, prop, receiver) {
+        return Reflect.get(target, prop === "name" ? "_name" : prop, receiver);
       },
     });
   }
@@ -62,16 +65,19 @@ export class Macro<IsAsync extends boolean> extends Function {
       args.shift();
     }
     // const kwargs = args.pop();
-    let kwargs: Map<string, any>;
-    const lastArg = args.pop();
-    if (!isPlainObject(lastArg)) {
-      throw new Error("Expected kwargs to be a plain object");
-    } else {
-      kwargs = new Map(Object.entries(lastArg));
-    }
-    const varargs: any[] = args.pop();
-    if (!Array.isArray(varargs)) {
-      throw new Error("Expected varargs to be an array");
+    let kwargs: Map<string, any> = new Map();
+    let varargs: any[] = [];
+    if (args.length) {
+      const kwargsIndex = args.findIndex((o) => isKwargs(o));
+      if (kwargsIndex > -1) {
+        kwargs = new Map(Object.entries(args.splice(kwargsIndex, 1)[0]));
+        kwargs.delete("__isKwargs");
+      }
+
+      const varargsIndex = args.findIndex((o) => isVarargs(o));
+      if (varargsIndex > -1) {
+        [varargs] = args.splice(varargsIndex, 1);
+      }
     }
 
     // Try to consume the positional arguments
@@ -79,13 +85,13 @@ export class Macro<IsAsync extends boolean> extends Function {
 
     let foundCaller = false;
 
-    if (macroArgs.length === this._args.length) {
-      foundCaller = this._args.includes("caller");
+    if (macroArgs.length === this.args.length) {
+      foundCaller = this.args.includes("caller");
     } else {
       // if the number of arguments consumed is not the number of
       // arguments expected we start filling in keyword arguments
       // and defaults.
-      const rest = this._args.slice(macroArgs.length);
+      const rest = this.args.slice(macroArgs.length);
       for (const name of rest) {
         if (name === "caller") foundCaller = true;
         macroArgs.push(kwargs.has(name) ? kwargs.get(name) : MISSING);
@@ -102,7 +108,7 @@ export class Macro<IsAsync extends boolean> extends Function {
         kwargs.delete("caller");
       } else {
         macroArgs.push(
-          this._environment.undef("No caller defined", { name: "caller" }),
+          this._environment.undef("No caller defined", { name: "caller" })
         );
       }
     }
@@ -115,22 +121,22 @@ export class Macro<IsAsync extends boolean> extends Function {
           [
             `macro '${this._name}' was invoked with two values for the special caller argument. `,
             `This is most likely a bug.`,
-          ].join(""),
+          ].join("")
         );
       } else {
         const nextKwarg = Array.from(kwargs.keys())[0];
         throw new Error(
-          `macro '${this._name}' takes no keyword argument '${nextKwarg}'`,
+          `macro '${this._name}' takes no keyword argument '${nextKwarg}'`
         );
       }
     }
 
     if (this.catchVarargs) {
-      macroArgs.push(...varargs.slice(this._argCount));
+      macroArgs.push([...args.slice(this._argCount), ...varargs]);
     } else if (macroArgs.length > this._argCount) {
       const s = this._argCount == 1 ? "" : "s";
       throw new Error(
-        `macro '${this._name}' takes no more than ${this._argCount} argument${s}`,
+        `macro '${this._name}' takes no more than ${this._argCount} argument${s}`
       );
     }
 
@@ -138,7 +144,7 @@ export class Macro<IsAsync extends boolean> extends Function {
   }
   _invoke(
     args: any[],
-    autoescape: boolean,
+    autoescape: boolean
   ): IfAsync<IsAsync, Promise<string>, string> {
     return (
       this._environment.isAsync()

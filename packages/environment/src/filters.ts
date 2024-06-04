@@ -146,9 +146,9 @@ exports.center = center;
 
 export function default_<T, U>(val: T, def: U, bool?: boolean): T | U {
   if (bool) {
-    return val || def;
+    return isUndefinedInstance(val) ? def : val || def;
   } else {
-    return val !== undefined ? val : def;
+    return val !== undefined && !isUndefinedInstance(val) ? val : def;
   }
 }
 
@@ -833,6 +833,24 @@ export { escape };
 export { default_ as d };
 export { escape as e };
 
+function regexEscape(str: string): string {
+  return str.replace(/[.*+\-?^${}()|[\]\\]/g, "\\$&");
+}
+
+const trim = nunjucksFunction(["value", "chars"])(function trim(
+  value: unknown,
+  chars: string | null = null
+): string {
+  if (chars === null) return copySafeness(value, str(value).trim());
+  const regexChars = regexEscape(chars);
+  const startRegex = new RegExp(`^[${regexChars}]+`);
+  const endRegex = new RegExp(`[${regexChars}]+$`);
+  return copySafeness(
+    value,
+    str(value).replace(startRegex, "").replace(endRegex, "")
+  );
+});
+
 export default {
   abs,
   // attr,
@@ -877,7 +895,7 @@ export default {
   // striptags,
   sum,
   // title,
-  // trim,
+  trim,
   // truncate,
   // unique,
   upper,

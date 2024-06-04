@@ -5,12 +5,12 @@ import type {
   ConditionalAsync,
 } from "./types";
 
-import { MISSING, Undefined } from ".";
+import { MISSING, Missing, Undefined } from ".";
 
 type LoopRenderFunc<V> = (
   reciter: Iterable<V>,
   loopRenderFunc: LoopRenderFunc<V>,
-  depth?: number,
+  depth?: number
 ) => string;
 
 /**
@@ -25,7 +25,7 @@ const LoopContextFunc = function LoopContext<
 >(this: LoopContext<IsAsync, V>, iterable: Iterable<V>): string {
   if (this._recurse === null) {
     throw new TypeError(
-      "The loop must have the 'recursive' marker to be called recursively.",
+      "The loop must have the 'recursive' marker to be called recursively."
     );
   }
   return this._recurse(iterable, this._recurse, this.depth);
@@ -81,7 +81,7 @@ export class LoopContext<
     undef: typeof Undefined,
     recurse: LoopRenderFunc<V> | null = null,
     depth0 = 0,
-    async: IsAsync,
+    async: IsAsync
   ) {
     this.index0 = -1;
     this._length = null;
@@ -122,7 +122,7 @@ export class LoopContext<
       IsAsync,
       AsyncIterable<UnwrapPromise<V>> | Iterable<UnwrapPromise<V>>,
       Iterable<V>
-    >,
+    >
   ): IfAsync<
     IsAsync,
     AsyncIterator<UnwrapPromise<V>> | Iterator<UnwrapPromise<V>>,
@@ -404,14 +404,16 @@ export class LoopContext<
   }
 
   _nextSync(): IteratorResult<[V, this]> {
-    const after = this._after;
     const iterator = this._iterator as Iterator<V>;
-    if (after !== MISSING) {
-      const value = after as V;
+    let rv: IteratorResult<V>;
+
+    if (this._after !== MISSING) {
+      rv = { value: this._after as V, done: false };
       this._after = MISSING;
-      return { value: [value, this], done: false };
+    } else {
+      rv = iterator.next();
     }
-    const rv = iterator.next();
+
     this.index0++;
     this._before = this._current;
     this._current = rv.value ?? MISSING;
@@ -423,12 +425,16 @@ export class LoopContext<
     const iterator = this._iterator as
       | Iterator<UnwrapPromise<V>>
       | AsyncIterator<UnwrapPromise<V>>;
+
+    let rv: IteratorResult<UnwrapPromise<V>>;
+
     if (after !== MISSING) {
-      const value = after as UnwrapPromise<V>;
+      rv = { value: this._after as UnwrapPromise<V>, done: false };
       this._after = MISSING;
-      return Promise.resolve({ value: [value, this], done: false });
+    } else {
+      rv = await iterator.next();
     }
-    const rv = await iterator.next();
+
     this.index0++;
     this._before = this._current;
     this._current = rv.value ?? MISSING;

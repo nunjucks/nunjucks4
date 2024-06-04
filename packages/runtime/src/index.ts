@@ -80,7 +80,10 @@ export class Undefined extends Function {
         }
         return target._failWithUndefinedError();
       },
-      set(target) {
+      set(target, prop, value) {
+        if (prop === "__isVarargs" || prop === "__isKwargs") {
+          return Reflect.set(target, prop, value);
+        }
         return target._failWithUndefinedError();
       },
       apply(target) {
@@ -165,7 +168,13 @@ export type NunjucksFunction = ((...args: any[]) => any) & {
   __nunjucksArgs?: NunjuckArgsInfo;
 };
 
-function isKwargs(o: unknown): o is Record<string, any> & { __isKwargs: true } {
+export function isVarargs(o: unknown): o is any[] & { __isVarargs: true } {
+  return Array.isArray(o) && hasOwn(o, "__isVarargs") && !!o.__isVarargs;
+}
+
+export function isKwargs(
+  o: unknown
+): o is Record<string, any> & { __isKwargs: true } {
   return isPlainObject(o) && hasOwn(o, "__isKwargs") && !!o.__isKwargs;
 }
 
@@ -206,6 +215,7 @@ export function nunjucksFunction(
       const rest = posargs.slice(varNames.length);
 
       Object.entries(kwargsArg || {}).forEach(([name, value]) => {
+        if (name === "__isKwargs") return;
         const index = varNames.indexOf(name);
         if (index >= 0) {
           if (args[index] !== undefined) {
@@ -218,6 +228,9 @@ export function nunjucksFunction(
           throw new TypeError(`got an unexpected keyword argument ${name}`);
         }
       });
+      if (options.kwargs) {
+        args.push({ ...kwargs, __isKwargs: true });
+      }
       if (options.varargs) {
         args.push(...rest);
       }
@@ -518,21 +531,17 @@ export class Context<IsAsync extends boolean> {
   }
 
   call(func: NunjucksFunction, args: any[]): any {
+    let varargs: any[] = [];
     let kwargs: Record<string, any> = {};
     if (args.length) {
-      const lastArg = args[args.length - 1];
-      if (
-        isPlainObject(lastArg) &&
-        hasOwn(lastArg, "__isKwargs") &&
-        lastArg.__isKwargs
-      ) {
-        kwargs = Object.fromEntries(
-          Array.from(
-            Object.entries(args.pop()).filter(
-              ([k]) => typeof k === "string" && k !== "__isKwargs"
-            )
-          )
-        );
+      const kwargsIndex = args.findIndex((o) => isKwargs(o));
+      if (kwargsIndex > -1) {
+        [kwargs] = args.splice(kwargsIndex, 1);
+      }
+
+      const varargsIndex = args.findIndex((o) => isVarargs(o));
+      if (varargsIndex > -1) {
+        [varargs] = args.splice(varargsIndex, 1);
       }
     }
 
@@ -561,10 +570,17 @@ export class Context<IsAsync extends boolean> {
       Object.prototype.toString.call(func) === "[object Macro]" ||
       func.__nunjucksArgs?.kwargs
     ) {
+      if (
+        func instanceof Macro ||
+        Object.prototype.toString.call(func) === "[object Macro]"
+      ) {
+        args.push(varargs);
+        varargs = [];
+      }
       Object.defineProperty(kwargs, "__isKwargs", { value: true });
       args.push(kwargs);
     }
-    return func(...args);
+    return func(...args, ...varargs);
   }
 
   isAsync(): this is Context<true> {
@@ -700,7 +716,7 @@ export function str(o: unknown): string {
       // do nothing
     }
   }
-  return `${o}`;
+  return copySafeness(o, `${o}`);
 }
 
 function call(func: (...args: any[]) => any, args: any[]) {
@@ -950,6 +966,37 @@ export class TemplateRuntimeError extends Error {
   name = "TemplateRuntimeError";
 }
 
+type Namespace = Record<string, any> & { __isNamespace: true };
+
+export const namespace = nunjucksFunction(["__init"], { kwargs: true })(
+  function namespace(...args): Namespace {
+    let kwargs: Record<string, any> = {};
+    if (args.length) {
+      const kwargsIndex = args.findIndex((o) => isKwargs(o));
+      if (kwargsIndex > -1) {
+        const kwargs_ = args.splice(kwargsIndex, 1)[0];
+        if (isKwargs(kwargs_)) kwargs = kwargs_;
+      }
+    }
+    const attrs: Record<string, any> = args.length
+      ? Object.fromEntries(Object.entries(args[0] as any))
+      : {};
+    return Object.assign(Object.create(null), {
+      __isNamespace: true,
+      ...attrs,
+      ...kwargs,
+    });
+  }
+);
+
+function assertNamespace(obj: unknown): asserts obj is Namespace {
+  if (!isPlainObject(obj) || !("__isNamespace" in obj && obj.__isNamespace)) {
+    throw new TemplateRuntimeError(
+      "Cannot assign attribute on non-namespace object"
+    );
+  }
+}
+
 export default {
   str,
   call,
@@ -974,4 +1021,6 @@ export default {
   TemplateRuntimeError,
   nunjucksFunction,
   escape,
+  namespace,
+  assertNamespace,
 };

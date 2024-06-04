@@ -10,6 +10,7 @@ import {
   Undefined,
   MISSING,
   UndefinedOpts,
+  namespace,
 } from "@nunjucks/runtime";
 import { types } from "@nunjucks/ast";
 import { parse } from "@nunjucks/parser";
@@ -19,8 +20,8 @@ import { Template, TemplateNotFound } from "./template";
 import generate from "@babel/generator";
 import { RenderFunc } from "./template";
 import type { Loader, AsyncLoader, SyncLoader } from "./loaders";
-import { asyncFind, chainMap, mapFind } from "./utils";
-import DEFAULT_FILTERS from "./filters"
+import { chainMap, range, dict, joiner, cycler, lipsum } from "./utils";
+import DEFAULT_FILTERS from "./filters";
 
 type ParserOptions = {
   blockStart: string;
@@ -45,12 +46,18 @@ const DEFAULT_TESTS: Record<string, Test> = {
     return !(value instanceof Undefined) && value !== MISSING;
   },
 };
-const DEFAULT_NAMESPACE: Record<string, any> = {};
+const DEFAULT_NAMESPACE: Record<string, any> = {
+  namespace,
+  range,
+  dict,
+  lipsum,
+  cycler,
+  joiner,
+};
 
 const PASS_ARG_EVAL_CONTEXT = Symbol.for("PASS_ARG_EVAL_CONTEXT");
 const PASS_ARG_CONTEXT = Symbol.for("PASS_ARG_CONTEXT");
 const PASS_ARG_ENVIRONMENT = Symbol.for("PASS_ARG_ENVIRONMENT");
-
 
 // const nativeFunc = "[native code] }";
 // const nativeFuncLength = nativeFunc.length;
@@ -171,7 +178,7 @@ export class Environment<
     parserOpts = {},
     filters = DEFAULT_FILTERS,
     tests = DEFAULT_TESTS,
-    globals = DEFAULT_NAMESPACE,
+    globals = {},
     undef = _undef,
     /**
      *
@@ -216,7 +223,7 @@ export class Environment<
     this.autoescape = autoescape;
     this.filters = filters;
     this.tests = tests;
-    this.globals = globals;
+    this.globals = Object.assign({}, DEFAULT_NAMESPACE, globals);
     this.undef = undef;
     this.cache = createCache<Template<IsAsync>>({ maxSize: cacheSize });
   }

@@ -54,6 +54,8 @@ export class SyncLoader extends BaseLoader {
     name: string,
     globals: Record<string, any> = {},
   ): Template<EnvAsync> {
+    globals = Object.assign({}, environment.globals, globals);
+
     const { source, filename, uptodate } = this.getSource(environment, name);
     // TODO add compiled code cache?
 
@@ -94,6 +96,7 @@ export class AsyncLoader extends BaseLoader {
       environment,
       name,
     );
+    globals = Object.assign({}, environment.globals, globals);
     // TODO add compiled code cache?
 
     const { root, blocks } = environment.compile(source, { name, filename });

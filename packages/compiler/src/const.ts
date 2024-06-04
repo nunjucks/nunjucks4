@@ -1,5 +1,5 @@
 import { types as t } from "@nunjucks/ast";
-import { EvalContext } from "@nunjucks/runtime";
+import { EvalContext, Markup } from "@nunjucks/runtime";
 
 export type Serializable =
   | string
@@ -7,7 +7,7 @@ export type Serializable =
   | boolean
   | null
   | undefined
-  | SafeString
+  | Markup
   | Serializable[]
   | { [key: string]: Serializable };
 
@@ -53,23 +53,6 @@ const cmpopToFunc: Record<string, (a: any, b: any) => boolean> = {
   },
 };
 
-class SafeString extends String {
-  val: string;
-  _escape: boolean;
-  constructor(val: unknown) {
-    const strVal = `${val}`;
-    super(strVal);
-    this.val = strVal;
-    this._escape = true;
-  }
-  valueOf() {
-    return this.val;
-  }
-  toString() {
-    return this.val;
-  }
-}
-
 function toConst<IsAsync extends boolean>(
   evalCtx: EvalContext<IsAsync>,
   node: t.Pair | t.Keyword
@@ -109,7 +92,7 @@ function toConst<IsAsync extends boolean>(
       if (evalCtx.volatile) {
         throw new Impossible();
       }
-      return evalCtx.autoescape ? new SafeString(node.data) : node.data;
+      return evalCtx.autoescape ? new Markup(node.data) : node.data;
     } else if (t.Tuple.check(node) || t.List.check(node)) {
       return node.items.map((x) => toConst(evalCtx, x));
     } else if (t.Dict.check(node)) {
