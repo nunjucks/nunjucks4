@@ -129,7 +129,7 @@ function toConst<IsAsync extends boolean>(
       if (!(node.name in environment.tests)) {
         throw new Impossible();
       }
-      const func = environment.filters[node.name];
+      const func = environment.tests[node.name];
       const [args, kwargs] = argsAsConst(evalCtx, node);
       args.unshift(toConst(evalCtx, node.node!)); // TODO: check type here
       return func(...args, {

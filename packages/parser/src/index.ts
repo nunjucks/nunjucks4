@@ -11,7 +11,7 @@ export interface Extension {
     self: Parser,
     types: typeof t,
     builders: typeof b,
-    lexer: any,
+    lexer: any
   ): t.Node | t.Node[];
 }
 
@@ -150,7 +150,7 @@ export class Parser {
       lineno = tok.lineno;
       colno = tok.colno;
     }
-    return new TemplateSyntaxError(msg, {lineno });
+    return new TemplateSyntaxError(msg, { lineno });
   }
 
   fail(msg: string, lineno?: number, colno?: number): never {
@@ -197,14 +197,14 @@ export class Parser {
         this.fail(
           `expected ${tokenType}", got ${tok.type}`,
           tok.lineno,
-          tok.colno,
+          tok.colno
         );
       } else if (typeof tokenValue !== "undefined") {
         if (tok.value !== tokenValue) {
           this.fail(
             `expected ${tokenType} to have value ${tokenValue}", got ${tok.value}`,
             tok.lineno,
-            tok.colno,
+            tok.colno
           );
         }
       }
@@ -229,7 +229,7 @@ export class Parser {
     const source = endToken
       ? this.stream.str.substr(
           token.pos,
-          endToken.pos + endToken.value.length - token.pos,
+          endToken.pos + endToken.value.length - token.pos
         )
       : token.value;
     let endLine = token.lineno;
@@ -420,14 +420,14 @@ export class Parser {
           b.operand.from({
             op: tokenType,
             expr: this.parseMath1(),
-          }),
+          })
         );
       } else if (this.skip("name:in")) {
         ops.push(
           b.operand.from({
             op: "in",
             expr: this.parseMath1(),
-          }),
+          })
         );
       } else if (this.skip("name:not")) {
         if (!this.test(this.peekToken(), "name:in")) {
@@ -439,7 +439,7 @@ export class Parser {
             b.operand.from({
               op: "notin",
               expr: this.parseMath1(),
-            }),
+            })
           );
         }
       } else {
@@ -670,7 +670,7 @@ export class Parser {
   }
 
   parseDict(): t.Dict {
-    const token = this.expect(lexer.TOKEN_LBRACE);
+    const token = this.current;
     const items: t.Pair[] = [];
     while (this.peekToken().type !== lexer.TOKEN_RBRACE) {
       if (items.length) {
@@ -687,7 +687,7 @@ export class Parser {
           key,
           value,
           loc: this.tokToLoc(token, this.current),
-        }),
+        })
       );
     }
     this.expect(lexer.TOKEN_RBRACE);
@@ -882,7 +882,7 @@ export class Parser {
               key,
               value,
               loc: this.tokToLoc(argToken, this.current),
-            }),
+            })
           );
         } else {
           // Parsing an arg
@@ -911,7 +911,7 @@ export class Parser {
 
   parseFilter<T extends t.Expr | null>(
     node: T,
-    { startInline = false }: { startInline?: boolean } = {},
+    { startInline = false }: { startInline?: boolean } = {}
   ): T {
     while (this.peekToken().type === lexer.TOKEN_PIPE || startInline) {
       if (!startInline) {
@@ -1008,7 +1008,7 @@ export class Parser {
 
   parseStatements(
     endTokens: string[],
-    { dropNeedle = false }: { dropNeedle?: boolean } = {},
+    { dropNeedle = false }: { dropNeedle?: boolean } = {}
   ): t.Node[] {
     this.skip(lexer.TOKEN_COLON);
     this.expect(lexer.TOKEN_BLOCK_END);
@@ -1129,7 +1129,7 @@ export class Parser {
 
     if (this.skip("sub")) {
       this.fail(
-        "Block names may not contain hyphens, use an underscore instead.",
+        "Block names may not contain hyphens, use an underscore instead."
       );
     }
 
@@ -1140,9 +1140,7 @@ export class Parser {
         !body.every(
           (b) =>
             t.Output.check(b) &&
-            b.nodes.every(
-              (c) => t.TemplateData.check(c) && !c.data.match(/\S/),
-            ),
+            b.nodes.every((c) => t.TemplateData.check(c) && !c.data.match(/\S/))
         )
       ) {
         this.fail("Required blocks can only contain comments or whitespace");
@@ -1246,7 +1244,7 @@ export class Parser {
           this.fail(
             "names starting with an underline can not be imported",
             lineno,
-            colno,
+            colno
           );
         }
         if (this.skip("name:as")) {
@@ -1477,7 +1475,7 @@ export class Parser {
           b.output.from({
             nodes: dataBuffer.slice(),
             loc: this.tokToLoc(this.current),
-          }),
+          })
         );
         dataBuffer = [];
       }
@@ -1492,7 +1490,7 @@ export class Parser {
               b.templateData.from({
                 data: token.value,
                 loc: this.tokToLoc(token),
-              }),
+              })
             );
           }
           this.nextToken();
@@ -1545,7 +1543,7 @@ export class Parser {
 export function parse(
   src: string,
   extensions?: Extension[],
-  opts?: lexer.TokenizerOptions,
+  opts?: lexer.TokenizerOptions
 ): t.Template {
   const p = new Parser(lexer.lex(src, opts));
   if (extensions !== undefined) {

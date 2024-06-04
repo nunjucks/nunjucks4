@@ -744,7 +744,7 @@ const escapeRegex = new RegExp(
 export function isMarkup(obj: unknown): obj is MarkupType {
   return (
     Object.prototype.toString.call(obj) === "[object String]" &&
-    (obj as any).__isMarkup
+    !!(obj as any).__isMarkup
   );
 }
 

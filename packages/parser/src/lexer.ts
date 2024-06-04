@@ -122,7 +122,7 @@ export class TemplateSyntaxError extends Error {
       lineno,
       name = null,
       filename = null,
-    }: { lineno: number; name?: string | null; filename?: string | null },
+    }: { lineno: number; name?: string | null; filename?: string | null }
   ) {
     super(message);
     this.lineno = lineno;
@@ -145,7 +145,7 @@ function token<T extends TokenType = TokenType>(
   value: string,
   lineno: number,
   colno: number,
-  pos: number,
+  pos: number
 ): Token<T> {
   return {
     type,
@@ -158,7 +158,7 @@ function token<T extends TokenType = TokenType>(
 
 function hasProp<K extends string>(
   value: unknown,
-  prop: K,
+  prop: K
 ): value is Record<K, any> {
   return Object.prototype.hasOwnProperty.call(value, prop);
 }
@@ -226,7 +226,7 @@ export class Tokenizer {
       "",
       this.lineno,
       this.colno,
-      this.index,
+      this.index
     );
 
     this.inCode = false;
@@ -327,6 +327,13 @@ export class Tokenizer {
         (tok = this._extractString(this.tags.VARIABLE_END)) ||
         (tok = this._extractString("-" + this.tags.VARIABLE_END))
       ) {
+        // Check that this isn't actually a close rbracket adjacent to a
+        // variable end (i.e. "}}}")
+        if (this._extractString("}")) {
+          this.backN(3);
+          tok = this._extractString("}");
+          return token(TOKEN_RBRACE, tok, lineno, colno, pos);
+        }
         // Special check for variable end tag (see above)
         this.inCode = false;
         return token(TOKEN_VARIABLE_END, tok, lineno, colno, pos);
@@ -372,8 +379,8 @@ export class Tokenizer {
               regexFlags,
               flagStartPos.lineno,
               flagStartPos.colno,
-              flagStartPos.pos,
-            ),
+              flagStartPos.pos
+            )
           );
         }
 
@@ -517,7 +524,7 @@ export class Tokenizer {
         } else {
           throw new TemplateSyntaxError(
             "Unexpected value while parsing: " + tok,
-            { lineno: this.lineno },
+            { lineno: this.lineno }
           );
         }
       }
@@ -611,7 +618,7 @@ export class Tokenizer {
         if (data === null && inComment) {
           throw new TemplateSyntaxError(
             "expected end of comment, got end of file",
-            { lineno: this.lineno },
+            { lineno: this.lineno }
           );
         }
 
@@ -628,7 +635,7 @@ export class Tokenizer {
           tok,
           lineno,
           colno,
-          pos,
+          pos
         );
       }
     }

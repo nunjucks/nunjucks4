@@ -22,6 +22,7 @@ import { RenderFunc } from "./template";
 import type { Loader, AsyncLoader, SyncLoader } from "./loaders";
 import { chainMap, range, dict, joiner, cycler, lipsum } from "./utils";
 import DEFAULT_FILTERS from "./filters";
+import DEFAULT_TESTS from "./tests";
 
 type ParserOptions = {
   blockStart: string;
@@ -41,11 +42,6 @@ type ParserOptions = {
 type Filter = (...args: any[]) => any;
 type Test = (...args: any[]) => boolean;
 
-const DEFAULT_TESTS: Record<string, Test> = {
-  defined(value: any) {
-    return !(value instanceof Undefined) && value !== MISSING;
-  },
-};
 const DEFAULT_NAMESPACE: Record<string, any> = {
   namespace,
   range,
