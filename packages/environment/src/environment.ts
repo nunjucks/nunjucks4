@@ -11,11 +11,13 @@ import {
   MISSING,
   UndefinedOpts,
   namespace,
+  isUndefinedInstance,
+  UndefinedError,
 } from "@nunjucks/runtime";
 import { types } from "@nunjucks/ast";
 import { parse } from "@nunjucks/parser";
 import { CodeGenerator } from "@nunjucks/compiler";
-import { Template, TemplateNotFound } from "./template";
+import { Template, TemplateNotFound, TemplatesNotFound } from "./template";
 // import { generate } from "astring";
 import generate from "@babel/generator";
 import { RenderFunc } from "./template";
@@ -459,9 +461,12 @@ export class Environment<
     return jsSource;
   }
 
-  fromString(source: string): Template<IsAsync> {
+  fromString(
+    source: string,
+    { globals }: { globals?: Record<string, unknown> } = {}
+  ): Template<IsAsync> {
     const { root, blocks } = this.compile(source);
-    return new Template<IsAsync>({ environment: this, root, blocks });
+    return new Template<IsAsync>({ environment: this, root, blocks, globals });
   }
 
   _loadTemplate(
@@ -534,16 +539,24 @@ export class Environment<
 
   getTemplate(
     this: Environment<true>,
-    name: string | Template<true>
+    name: string | Template<true> | Undefined,
+    opts?: {
+      parent?: string | null;
+      globals?: Record<string, unknown>;
+    }
   ): Promise<Template<true>>;
   getTemplate(
     this: Environment<false>,
-    name: string | Template<false>
+    name: string | Template<false> | Undefined,
+    opts?: {
+      parent?: string | null;
+      globals?: Record<string, unknown>;
+    }
   ): Template<false>;
 
   getTemplate(
     this: Environment<true> | Environment<false>,
-    name: string | Template<true> | Template<false>,
+    name: string | Template<true> | Template<false> | Undefined,
     {
       parent = null,
       globals = {},
@@ -552,6 +565,9 @@ export class Environment<
       globals?: Record<string, unknown>;
     } = {}
   ): Promise<Template<true>> | Template<false> {
+    if (isUndefinedInstance(name)) {
+      throw name._failWithUndefinedError();
+    }
     if (this.isSync()) {
       if (name instanceof Template) {
         if (!name.isSync())
@@ -568,6 +584,181 @@ export class Environment<
       }
       return this._asyncGetTemplate(name, parent, globals);
     }
+  }
+
+  async _asyncSelectTemplate(
+    this: Environment<true>,
+    names:
+      | Iterable<string | Template<true>>
+      | AsyncIterable<string | Template<true>>,
+    {
+      parent = null,
+      globals = {},
+    }: {
+      parent?: string | null;
+      globals?: Record<string, unknown>;
+    } = {}
+  ): Promise<Template<true>> {
+    const templateNames: (string | Template<true>)[] = [];
+    for await (const name of names) {
+      templateNames.push(name);
+    }
+    if (!templateNames.length) {
+      throw new TemplatesNotFound(
+        [],
+        "Tried to select from an empty list of templates."
+      );
+    }
+
+    for (let name of templateNames) {
+      if (name instanceof Template) {
+        return name;
+      }
+      if (parent !== null) {
+        name = this.joinPath(name, parent);
+      }
+      try {
+        return await this._asyncLoadTemplate(name, { globals });
+      } catch (err) {
+        if (err instanceof TemplateNotFound || err instanceof UndefinedError) {
+          continue;
+        } else {
+          throw err;
+        }
+      }
+    }
+    throw new TemplatesNotFound(templateNames as string[]);
+  }
+
+  selectTemplate(
+    this: Environment<true>,
+    names:
+      | Iterable<string | Template<true>>
+      | AsyncIterable<string | Template<true>>
+      | Undefined,
+    opts?: {
+      parent?: string | null;
+      globals?: Record<string, unknown>;
+    }
+  ): Promise<Template<true>>;
+  selectTemplate(
+    this: Environment<false>,
+    names: Iterable<string | Template<false>> | Undefined,
+    opts?: {
+      parent?: string | null;
+      globals?: Record<string, unknown>;
+    }
+  ): Template<false>;
+
+  selectTemplate(
+    names:
+      | Iterable<string | Template<true> | Template<false>>
+      | Undefined
+      | Iterable<string | Template<true>>
+      | AsyncIterable<string | Template<true>>,
+    {
+      parent = null,
+      globals = {},
+    }: {
+      parent?: string | null;
+      globals?: Record<string, unknown>;
+    } = {}
+  ): Template<false> | Promise<Template<true>> {
+    if (isUndefinedInstance(names)) {
+      throw names._failWithUndefinedError();
+    } else if (this.isAsync()) {
+      return this._asyncSelectTemplate(
+        names as
+          | Iterable<string | Template<true>>
+          | AsyncIterable<string | Template<true>>,
+        { parent, globals }
+      );
+    } else if (!this.isSync()) {
+      throw new Error("unreachable");
+    }
+    const templateNames = [...(names as Iterable<string | Template<false>>)];
+    if (!templateNames.length) {
+      throw new TemplatesNotFound(
+        [],
+        "Tried to select from an empty list of templates."
+      );
+    }
+
+    for (let name of templateNames) {
+      if (name instanceof Template) {
+        return name as Template<false>;
+      }
+      if (parent !== null) {
+        name = this.joinPath(name, parent);
+      }
+      try {
+        return this._loadTemplate(name, { globals });
+      } catch (err) {
+        if (err instanceof TemplateNotFound || err instanceof UndefinedError) {
+          continue;
+        } else {
+          throw err;
+        }
+      }
+    }
+    throw new TemplatesNotFound(templateNames as string[]);
+  }
+
+  getOrSelectTemplate(
+    this: Environment<false>,
+    templateNameOrList:
+      | Iterable<string | Template<false>>
+      | Undefined
+      | string
+      | Template<false>,
+    opts?: {
+      parent?: string | null;
+      globals?: Record<string, unknown>;
+    }
+  ): Template<false> | Promise<Template<true>>;
+
+  getOrSelectTemplate(
+    this: Environment<true>,
+    templateNameOrList:
+      | Iterable<string | Template<true>>
+      | Undefined
+      | Iterable<string | Template<true>>
+      | AsyncIterable<string | Template<true>>
+      | string
+      | Template<true>,
+    opts?: {
+      parent?: string | null;
+      globals?: Record<string, unknown>;
+    }
+  ): Promise<Template<true>>;
+
+  getOrSelectTemplate(
+    templateNameOrList:
+      | Iterable<string | Template<true> | Template<false>>
+      | Undefined
+      | Iterable<string | Template<true>>
+      | AsyncIterable<string | Template<true>>
+      | string
+      | Template<false>
+      | Template<true>,
+    {
+      parent = null,
+      globals = {},
+    }: {
+      parent?: string | null;
+      globals?: Record<string, unknown>;
+    } = {}
+  ): Template<false> | Promise<Template<true>> {
+    if (
+      typeof templateNameOrList === "string" ||
+      isUndefinedInstance(templateNameOrList)
+    ) {
+      return (this as any).getTemplate(templateNameOrList, { parent, globals });
+    }
+    return (this as any).selectTemplate(templateNameOrList, {
+      parent,
+      globals,
+    });
   }
 
   async _asyncGetTemplate(

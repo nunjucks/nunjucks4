@@ -254,12 +254,15 @@ export class Tokenizer {
 
   peekToken(): Token {
     let peeked;
-    if (this._pushed.length) {
-      peeked = this._pushed[0];
-    } else {
-      peeked = this._nextToken();
-      this.pushToken(peeked);
+
+    for (peeked of this._pushed) {
+      if (peeked.type !== TOKEN_WHITESPACE) return peeked;
     }
+    while ((peeked = this._nextToken())) {
+      this.pushToken(peeked);
+      if (peeked.type !== TOKEN_WHITESPACE) break;
+    }
+
     return peeked;
   }
 

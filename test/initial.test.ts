@@ -1,62 +1,6 @@
 import { Environment, ObjectSourceLoader } from "@nunjucks/environment";
 import { describe, expect, test } from "@jest/globals";
 
-describe("sync imports", () => {
-  let env: Environment<false>;
-
-  beforeEach(() => {
-    env = new Environment({
-      async: false,
-      globals: { bar: 23 },
-      loaders: [
-        new ObjectSourceLoader({
-          module: "{% macro test() %}[{{ foo }}|{{ bar }}]{% endmacro %}",
-          header: "[{{ foo }}|{{ 23 }}]",
-          o_printer: "({{ o }})",
-        }),
-      ],
-    });
-  });
-
-  test("sync import macro", () => {
-    const t = env.fromString('{% import "module" as m %}{{ m.test() }}');
-    expect(t.render({ foo: 42 })).toBe("[|23]");
-  });
-
-  test("sync import macro without context", () => {
-    const t = env.fromString(
-      '{% import "module" as m without context %}{{ m.test() }}'
-    );
-    expect(t.render({ foo: 42 })).toBe("[|23]");
-  });
-
-  test("sync import macro with context", () => {
-    const t = env.fromString(
-      '{% import "module" as m with context %}{{ m.test() }}'
-    );
-    expect(t.render({ foo: 42 })).toBe("[42|23]");
-  });
-
-  test("sync from import macro", () => {
-    const t = env.fromString('{% from "module" import test %}{{ test() }}');
-    expect(t.render({ foo: 42 })).toBe("[|23]");
-  });
-
-  test("sync from import macro without context", () => {
-    const t = env.fromString(
-      '{% from "module" import test without context %}{{ test() }}'
-    );
-    expect(t.render({ foo: 42 })).toBe("[|23]");
-  });
-
-  test("sync from import macro with context", () => {
-    const t = env.fromString(
-      '{% from "module" import test with context %}{{ test() }}'
-    );
-    expect(t.render({ foo: 42 })).toBe("[42|23]");
-  });
-});
-
 describe("async imports", () => {
   let env: Environment<true>;
 
@@ -110,6 +54,82 @@ describe("async imports", () => {
       '{% from "module" import test with context %}{{ test() }}'
     );
     expect(await t.render({ foo: 42 })).toBe("[42|23]");
+  });
+
+  it("import with globals", async () => {
+    const t = env.fromString('{% import "module" as m %}{{ m.test() }}', {
+      globals: { foo: 42 },
+    });
+    expect(await t.render()).toBe("[42|23]");
+  });
+
+  it("import with globals override", async () => {
+    const t = env.fromString(
+      '{% set foo = 41 %}{% import "module" as m %}{{ m.test() }}',
+      { globals: { foo: 42 } }
+    );
+    expect(await t.render()).toBe("[42|23]");
+  });
+
+  it("from import with globals", async () => {
+    const t = env.fromString('{% from "module" import test %}{{ test() }}', {
+      globals: { foo: 42 },
+    });
+    expect(await t.render()).toBe("[42|23]");
+  });
+});
+
+describe("sync includes", () => {
+  let env: Environment<false>;
+
+  beforeEach(() => {
+    env = new Environment({
+      async: false,
+      globals: { bar: 23 },
+      loaders: [
+        new ObjectSourceLoader({
+          module: "{% macro test() %}[{{ foo }}|{{ bar }}]{% endmacro %}",
+          header: "[{{ foo }}|{{ 23 }}]",
+          o_printer: "({{ o }})",
+        }),
+      ],
+    });
+  });
+
+  it("context include", () => {
+    let t = env.fromString('{% include "header" %}');
+    expect(t.render({ foo: 42 })).toBe("[42|23]");
+    t = env.fromString('{% include "header" with context %}');
+    expect(t.render({ foo: 42 })).toBe("[42|23]");
+    t = env.fromString('{% include "header" without context %}');
+    expect(t.render({ foo: 42 })).toBe("[|23]");
+  });
+});
+
+describe("async includes", () => {
+  let env: Environment<true>;
+
+  beforeEach(() => {
+    env = new Environment({
+      async: true,
+      globals: { bar: 23 },
+      loaders: [
+        new ObjectSourceLoader({
+          module: "{% macro test() %}[{{ foo }}|{{ bar }}]{% endmacro %}",
+          header: "[{{ foo }}|{{ 23 }}]",
+          o_printer: "({{ o }})",
+        }),
+      ],
+    });
+  });
+
+  it("context include", async () => {
+    let t = env.fromString('{% include "header" %}');
+    expect(await t.render({ foo: 42 })).toBe("[42|23]");
+    t = env.fromString('{% include "header" with context %}');
+    expect(await t.render({ foo: 42 })).toBe("[42|23]");
+    t = env.fromString('{% include "header" without context %}');
+    expect(await t.render({ foo: 42 })).toBe("[|23]");
   });
 });
 

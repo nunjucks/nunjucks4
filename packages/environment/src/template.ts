@@ -36,7 +36,7 @@ export class TemplateNotFound extends Error {
   name: string;
   templates: string[];
   constructor(
-    name: string | Undefined,
+    name: string | Undefined | null,
     message: string | null = null,
     options?: ErrorOptions
   ) {
@@ -46,15 +46,33 @@ export class TemplateNotFound extends Error {
     if (!message) {
       message = name;
     }
-    super(message, options);
+    super(message || "unknown", options);
     if (Error.captureStackTrace) {
       Error.captureStackTrace(this, TemplateNotFound);
     }
-    this.name = name;
-    this.templates = [name];
+    this.name = name || "<unknown>";
+    if (name) this.templates = [name];
   }
   get [Symbol.toStringTag]() {
     return "TemplateNotFound";
+  }
+}
+
+export class TemplatesNotFound extends TemplateNotFound {
+  type = "TemplatesNotFound";
+  constructor(
+    names: (string | Undefined)[] = [],
+    message: string | null = null
+  ) {
+    const templates = names.map((name) =>
+      isUndefinedInstance(name) ? name._undefinedMessage : name
+    );
+    if (message === null) {
+      message =
+        "none of the templates given were found: " + templates.join(", ");
+    }
+    super(templates?.length ? templates[templates.length - 1] : null, message);
+    this.templates = templates;
   }
 }
 
@@ -205,7 +223,7 @@ export class Template<IsAsync extends true | false> {
     vars = {},
     shared = false,
     locals = {},
-  }: NewContextOpts): Context<true | false> {
+  }: NewContextOpts = {}): Context<true | false> {
     return newContext<IsAsync>({
       async: this.async,
       environment: this.environment,

@@ -11,7 +11,7 @@ export class Missing {}
 
 export const MISSING = Object.freeze(new Missing());
 
-class UndefinedError extends Error {
+export class UndefinedError extends Error {
   name = "UndefinedError";
 }
 

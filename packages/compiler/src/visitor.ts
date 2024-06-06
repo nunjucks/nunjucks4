@@ -588,7 +588,7 @@ export class CodeGenerator<IsAsync extends boolean> {
         const templateExpr = self.visitExpression(node.template, state, decls);
         statements.push(...decls);
         const template = self.awaitIfAsync(
-          ast.expression`environment.%%funcName%%(%%template%%)`({
+          ast.expression`env.%%funcName%%(%%template%%)`({
             funcName,
             template: templateExpr,
           })
@@ -605,7 +605,7 @@ export class CodeGenerator<IsAsync extends boolean> {
                     try {
                       return %%template%%;
                     } catch (e) {
-                      if (e.name !== "TemplateNotFound") throw e;
+                      if (e.type !== "TemplateNotFound" && e.type !== "TemplatesNotFound") throw e;
                     }
                   `({ template })
                 ),
@@ -631,27 +631,39 @@ export class CodeGenerator<IsAsync extends boolean> {
         // let skipEventYield = false;
         const context = node.withContext
           ? ast.expression`
-        template.newContext(context.getAll(), true, %%locals%%)
+        template.newContext({ vars: context.getAll(), shared: true, locals: %%locals%% })
         `({ locals: self.dumpLocalContext(frame) })
-          : ast.expression`template.newContext()`;
+          : ast.expression`template.newContext()`();
 
         const renderCall: n.Expression = self.awaitIfAsync(
           ast.expression`template.rootRenderFunc(%%context%%)`({
             context,
           })
         );
+
+        let doRender: n.Statement;
+
+        if (frame.buffer === null) {
+          doRender = b.expressionStatement(b.yieldExpression(renderCall, true));
+        } else {
+          doRender = b.forOfStatement.from({
+            left: b.variableDeclaration("const", [
+              b.variableDeclarator(id("event")),
+            ]),
+            right: renderCall,
+            body: self.write(id("event"), frame),
+            await: this.isAsync,
+          });
+        }
+
         if (node.ignoreMissing) {
           statements.push(
             ast.statement`if (template) %%consequent%%`({
-              consequent: b.blockStatement([
-                b.expressionStatement(b.yieldExpression(renderCall, true)),
-              ]),
+              consequent: b.blockStatement([doRender]),
             })
           );
         } else {
-          statements.push(
-            b.expressionStatement(b.yieldExpression(renderCall, true))
-          );
+          statements.push(doRender);
         }
 
         return statements;
@@ -1681,7 +1693,6 @@ export class CodeGenerator<IsAsync extends boolean> {
             "parsing error: mismatched number of with targets and expressions"
           );
         }
-        debugger;
         let decls: n.VariableDeclaration[] = [];
         for (let i = 0; i < len; i++) {
           const target = node.targets[i];

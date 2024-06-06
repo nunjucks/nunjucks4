@@ -190,19 +190,19 @@ export class Parser {
   expect(rule: string): lexer.Token {
     const tok = this.nextToken();
     if (!tok) {
-      this.fail("expected " + rule + ", got end of stream");
+      this.fail("expected '" + rule + "', got end of stream");
     } else {
       const [tokenType, tokenValue] = rule.split(":");
       if (tok.type !== tokenType) {
         this.fail(
-          `expected ${tokenType}", got ${tok.type}`,
+          `expected '${tokenType}', got '${tok.type}'`,
           tok.lineno,
           tok.colno
         );
       } else if (typeof tokenValue !== "undefined") {
         if (tok.value !== tokenValue) {
           this.fail(
-            `expected ${tokenType} to have value ${tokenValue}", got ${tok.value}`,
+            `expected '${tokenType}' to have value '${tokenValue}', got '${tok.value}'`,
             tok.lineno,
             tok.colno
           );
@@ -429,19 +429,18 @@ export class Parser {
             expr: this.parseMath1(),
           })
         );
-      } else if (this.skip("name:not")) {
-        if (!this.test(this.peekToken(), "name:in")) {
-          this.pushToken(this.current);
-          break;
-        } else {
-          this.nextToken();
-          ops.push(
-            b.operand.from({
-              op: "notin",
-              expr: this.parseMath1(),
-            })
-          );
-        }
+      } else if (
+        this.test(this.stream.currentToken, "name:not") &&
+        this.test(this.stream.peekToken(), "name:in")
+      ) {
+        this.skip("name:not");
+        this.skip("name:in");
+        ops.push(
+          b.operand.from({
+            op: "notin",
+            expr: this.parseMath1(),
+          })
+        );
       } else {
         break;
       }
@@ -1169,7 +1168,10 @@ export class Parser {
     const peek = this.peekToken();
     let withContext = default_;
 
-    if (this.testAny(peek, ["name:with", "name:without"])) {
+    if (
+      this.testAny(peek, ["name:with", "name:without"]) &&
+      this.test(this.stream.peekToken(), "name:context")
+    ) {
       withContext = this.nextToken().value === "with";
       this.expect("name:context");
     }
@@ -1183,7 +1185,10 @@ export class Parser {
     const peek = this.peekToken();
     // const look = this.stream.peekToken();
     let ignoreMissing = false;
-    if (this.test(peek, "name:ignore")) {
+    if (
+      this.test(peek, "name:ignore") &&
+      this.test(this.stream.peekToken(), "name:missing")
+    ) {
       ignoreMissing = true;
       this.expect("name:ignore");
       this.expect("name:missing");
@@ -1220,9 +1225,11 @@ export class Parser {
     const parseContext: () => boolean = () => {
       const peek = this.peekToken();
       if (this.testAny(peek, ["name:with", "name:without"])) {
-        withContext = this.nextToken().value === "with";
-        this.expect("name:context");
-        return true;
+        if (this.test(this.stream.peekToken(), "name:context")) {
+          withContext = this.nextToken().value === "with";
+          this.expect("name:context");
+          return true;
+        }
       }
 
       return false;
