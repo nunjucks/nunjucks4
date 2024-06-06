@@ -1,6 +1,5 @@
 /** @type {import('ts-jest').JestConfigWithTsJest} */
 module.exports = {
-  preset: "ts-jest/presets/default-esm",
   extensionsToTreatAsEsm: [".ts"],
   testEnvironment: "node",
   testMatch: [
@@ -9,11 +8,14 @@ module.exports = {
     "<rootDir>/packages/**/*.{spec,test}.{js,ts}",
   ],
   testPathIgnorePatterns: ["/node_modules/"],
-  globals: {
-    "ts-jest": {
-      useESM: true,
-      isolatedModules: true,
-    },
+  transform: {
+    "^.+\\.tsx?$": [
+      "ts-jest",
+      {
+        useESM: true,
+        isolatedModules: true,
+      },
+    ],
   },
   moduleNameMapper: {
     "^@nunjucks/(.*)$": "<rootDir>/packages/$1/src/index.ts",
