@@ -276,4 +276,10 @@ describe("syntax", () => {
       );
     }
   });
+  });
+
+  test("trailing_comma", () => {
+    const tmpl = env.fromString("{{ (1, 2,) }}|{{ [1, 2,] }}|{{ {1: 2,} }}");
+    expect(tmpl.render()).toBe("[1, 2]|[1, 2]|{'1': 2}");
+  });
 });

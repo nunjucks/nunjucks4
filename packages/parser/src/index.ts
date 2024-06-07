@@ -678,7 +678,7 @@ export class Parser {
       if (items.length) {
         this.expect(lexer.TOKEN_COMMA);
       }
-      if (this.peekToken().type === lexer.TOKEN_RBRACKET) {
+      if (this.peekToken().type === lexer.TOKEN_RBRACE) {
         break;
       }
       const key = this.parseExpression();
