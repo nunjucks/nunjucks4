@@ -553,14 +553,22 @@ export class Parser {
     const token = this.peekToken();
     const loc = this.tokToLoc(token);
     if (this.skip("name")) {
-      if (["true", "false", "True", "False"].indexOf(token.value) !== -1) {
+      if (
+        ["true", "false", "True", "False", "TRUE", "FALSE"].indexOf(
+          token.value
+        ) !== -1
+      ) {
         return b.const.from({
-          value: token.value === "true" || token.value === "True",
+          value:
+            token.value === "true" ||
+            token.value === "True" ||
+            token.value === "TRUE",
           loc,
         });
       } else if (
         token.value === "none" ||
         token.value === "None" ||
+        token.value === "NONE" ||
         token.value === "null"
       ) {
         return b.const.from({ value: null, loc });

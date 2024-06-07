@@ -282,4 +282,17 @@ describe("syntax", () => {
     const tmpl = env.fromString("{{ (1, 2,) }}|{{ [1, 2,] }}|{{ {1: 2,} }}");
     expect(tmpl.render()).toBe("[1, 2]|[1, 2]|{'1': 2}");
   });
+
+  test.each([["True"], ["False"], ["None"]])(
+    "constant casing for '%s'",
+    (title) => {
+      const upper = title.toUpperCase();
+      const lower = title.toLowerCase();
+      const tmpl = env.fromString(
+        `{{ ${title} }}|{{ ${upper} }}|{{ ${lower} }}`
+      );
+      const expected = lower === "none" ? "null" : lower;
+      expect(tmpl.render()).toBe(`${expected}|${expected}|${expected}`);
+    }
+  );
 });
