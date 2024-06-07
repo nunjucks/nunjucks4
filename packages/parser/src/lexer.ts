@@ -180,14 +180,12 @@ export function assertToken(value: unknown): asserts value is Token {
 }
 
 export type TokenizerOptions = {
-  tags?: {
-    blockStart?: string;
-    blockEnd?: string;
-    variableStart?: string;
-    variableEnd?: string;
-    commentStart?: string;
-    commentEnd?: string;
-  };
+  blockStart?: string;
+  blockEnd?: string;
+  variableStart?: string;
+  variableEnd?: string;
+  commentStart?: string;
+  commentEnd?: string;
   trimBlocks?: boolean;
   lstripBlocks?: boolean;
 };
@@ -201,6 +199,8 @@ export class Tokenizer {
   currentToken: Token;
 
   inCode: boolean;
+  inVariable: boolean;
+  inTag: boolean;
   trimBlocks: boolean;
   lstripBlocks: boolean;
 
@@ -230,18 +230,19 @@ export class Tokenizer {
     );
 
     this.inCode = false;
+    this.inVariable = false;
+    this.inTag = false;
     this._pushed = [];
 
     const opts: TokenizerOptions = options || {};
 
-    const tags = opts.tags || {};
     this.tags = {
-      BLOCK_START: tags.blockStart || BLOCK_START,
-      BLOCK_END: tags.blockEnd || BLOCK_END,
-      VARIABLE_START: tags.variableStart || VARIABLE_START,
-      VARIABLE_END: tags.variableEnd || VARIABLE_END,
-      COMMENT_START: tags.commentStart || COMMENT_START,
-      COMMENT_END: tags.commentEnd || COMMENT_END,
+      BLOCK_START: opts.blockStart || BLOCK_START,
+      BLOCK_END: opts.blockEnd || BLOCK_END,
+      VARIABLE_START: opts.variableStart || VARIABLE_START,
+      VARIABLE_END: opts.variableEnd || VARIABLE_END,
+      COMMENT_START: opts.commentStart || COMMENT_START,
+      COMMENT_END: opts.commentEnd || COMMENT_END,
     };
 
     this.trimBlocks = !!opts.trimBlocks;
@@ -295,8 +296,9 @@ export class Tokenizer {
         // We hit some whitespace
         return token(TOKEN_WHITESPACE, tok, lineno, colno, pos);
       } else if (
-        (tok = this._extractString(this.tags.BLOCK_END)) ||
-        (tok = this._extractString("-" + this.tags.BLOCK_END))
+        this.inTag &&
+        ((tok = this._extractString(this.tags.BLOCK_END)) ||
+          (tok = this._extractString("-" + this.tags.BLOCK_END)))
       ) {
         // Special check for the block end tag
         //
@@ -305,6 +307,7 @@ export class Tokenizer {
         // breaks on delimiters so we can assume the token parsing
         // doesn't consume these elsewhere
         this.inCode = false;
+        this.inTag = false;
         if (this.trimBlocks) {
           cur = this.current();
           if (cur === "\n") {
@@ -327,8 +330,9 @@ export class Tokenizer {
         }
         return token(TOKEN_BLOCK_END, tok, lineno, colno, pos);
       } else if (
-        (tok = this._extractString(this.tags.VARIABLE_END)) ||
-        (tok = this._extractString("-" + this.tags.VARIABLE_END))
+        this.inVariable &&
+        ((tok = this._extractString(this.tags.VARIABLE_END)) ||
+          (tok = this._extractString("-" + this.tags.VARIABLE_END)))
       ) {
         // Check that this isn't actually a close rbracket adjacent to a
         // variable end (i.e. "}}}")
@@ -339,6 +343,7 @@ export class Tokenizer {
         }
         // Special check for variable end tag (see above)
         this.inCode = false;
+        this.inVariable = false;
         return token(TOKEN_VARIABLE_END, tok, lineno, colno, pos);
       } else if (cur === "r" && this.str.charAt(this.index + 1) === "/") {
         // Skip past 'r/'.
@@ -499,12 +504,29 @@ export class Tokenizer {
       } else {
         // We are not at whitespace or a delimiter, so extract the
         // text and parse it
-        tok = this._extractUntil(whitespaceChars + delimChars);
-
-        if (tok.match(/^[-+]?[0-9]+$/)) {
+        tok = this._extractUntil(whitespaceChars + "()[]{}%*~/#,:|.<>=!");
+        // if (tok.match)
+        // if (tok.match(/^[-+]?[0-9]+$/)) {
+        if (
+          tok.match(
+            /^[-+]?(0b(_?[0-1])+|0o(_?[0-7])+|0x(_?[\da-f])+|[1-9](_?\d)*|0(_?0)*)(e[+\-]?(\d+_)*\d+)?$/i
+          )
+        ) {
           if (this.current() === ".") {
             this.forward();
-            const dec = this._extract(intChars);
+            if (!tok.match(/^[_\d]+$/)) {
+              throw new TemplateSyntaxError(
+                "Unexpected value while parsing: " + tok,
+                { lineno: this.lineno }
+              );
+            }
+            const dec = this._extract(intChars + "e_-+");
+            if (!dec.match(/^(((\d+_)*\d+)?e[+\-]?(\d+_)*\d+|(\d+_)*\d+)$/)) {
+              throw new TemplateSyntaxError(
+                "Unexpected value while parsing: " + dec,
+                { lineno: this.lineno }
+              );
+            }
             return token(TOKEN_FLOAT, tok + "." + dec, lineno, colno, pos);
           } else {
             return token(TOKEN_INT, tok, lineno, colno, pos);
@@ -541,20 +563,28 @@ export class Tokenizer {
         this.tags.COMMENT_START.charAt(0) +
         this.tags.COMMENT_END.charAt(0);
 
+      // true if BLOCK_START is a substring of COMMENT_START
+      const commentBlockSameStart = this.tags.COMMENT_START.startsWith(
+        this.tags.BLOCK_START
+      );
+
       if (this.isFinished()) {
         return token(TOKEN_EOF, "", lineno, colno, pos);
-      } else if (
-        (tok = this._extractString(this.tags.BLOCK_START + "-")) ||
-        (tok = this._extractString(this.tags.BLOCK_START))
-      ) {
-        this.inCode = true;
-        return token(TOKEN_BLOCK_START, tok, lineno, colno, pos);
       } else if (
         (tok = this._extractString(this.tags.VARIABLE_START + "-")) ||
         (tok = this._extractString(this.tags.VARIABLE_START))
       ) {
         this.inCode = true;
+        this.inVariable = true;
         return token(TOKEN_VARIABLE_START, tok, lineno, colno, pos);
+      } else if (
+        !(commentBlockSameStart && this._matches(this.tags.COMMENT_START)) &&
+        ((tok = this._extractString(this.tags.BLOCK_START + "-")) ||
+          (tok = this._extractString(this.tags.BLOCK_START)))
+      ) {
+        this.inCode = true;
+        this.inTag = true;
+        return token(TOKEN_BLOCK_START, tok, lineno, colno, pos);
       } else {
         tok = "";
         let data;

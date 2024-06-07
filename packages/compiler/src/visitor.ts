@@ -208,6 +208,7 @@ type State<IsAsync extends boolean> = {
   frame: Frame<IsAsync>;
   astPath: JSNodePath;
   forwardCaller?: boolean;
+  decls: n.VariableDeclaration[];
 };
 
 function runtimeTest(expr: n.Expression): n.CallExpression {
@@ -331,6 +332,7 @@ export class CodeGenerator<IsAsync extends boolean> {
           }
           inner.push(extendsYield);
         }
+        inner.unshift(...state.decls.splice(0));
         const rootStatements: n.Statement[] = [
           b.expressionStatement(b.stringLiteral("use strict")),
         ];
@@ -399,6 +401,7 @@ export class CodeGenerator<IsAsync extends boolean> {
               ...self.visit(block.body, { ...state, frame: blockFrame }),
             ])
           );
+          blockStatements.unshift(...state.decls.splice(0));
         });
         // TODO allow commonjs and ESM support
         rootStatements.push(
@@ -641,20 +644,7 @@ export class CodeGenerator<IsAsync extends boolean> {
           })
         );
 
-        let doRender: n.Statement;
-
-        if (frame.buffer === null) {
-          doRender = b.expressionStatement(b.yieldExpression(renderCall, true));
-        } else {
-          doRender = b.forOfStatement.from({
-            left: b.variableDeclaration("const", [
-              b.variableDeclarator(id("event")),
-            ]),
-            right: renderCall,
-            body: self.write(id("event"), frame),
-            await: this.isAsync,
-          });
-        }
+        let doRender: n.Statement = self.delegateGenerator(renderCall, frame);
 
         if (node.ignoreMissing) {
           statements.push(
@@ -851,6 +841,8 @@ export class CodeGenerator<IsAsync extends boolean> {
         }
         const innerNodes: n.Statement[] = [];
 
+        const decls: n.VariableDeclaration[] = [];
+
         if (frame.buffer !== null) {
           const args: n.Expression[] = [];
           for (const item of body) {
@@ -858,9 +850,15 @@ export class CodeGenerator<IsAsync extends boolean> {
               const val = item.map((i) => `${i}`).join("");
               args.push(b.stringLiteral(val));
             } else {
-              args.push(
-                self.wrapChildPre(self.visit(item, { ...state }), frame)
-              );
+              const itemNodes = self.visit(item, state).filter((node) => {
+                if (node.type === "VariableDeclaration") {
+                  decls.push(node);
+                  return false;
+                } else {
+                  return true;
+                }
+              });
+              args.push(self.wrapChildPre(itemNodes, decls, frame));
             }
           }
           const callee = memberExpr(`${frame.buffer}.push`);
@@ -884,17 +882,23 @@ export class CodeGenerator<IsAsync extends boolean> {
                 b.expressionStatement(b.yieldExpression(b.stringLiteral(val)))
               );
             } else {
+              const itemNodes = self.visit(item, state).filter((node) => {
+                if (node.type === "VariableDeclaration") {
+                  decls.push(node);
+                  return false;
+                } else {
+                  return true;
+                }
+              });
               innerNodes.push(
                 b.expressionStatement(
-                  b.yieldExpression(
-                    self.wrapChildPre(self.visit(item, { ...state }), frame)
-                  )
+                  b.yieldExpression(self.wrapChildPre(itemNodes, decls, frame))
                 )
               );
             }
           }
         }
-        return innerNodes;
+        return [...decls, ...innerNodes];
       },
       visitConst(path) {
         const { node } = path;
@@ -925,25 +929,36 @@ export class CodeGenerator<IsAsync extends boolean> {
       },
       visitGetitem(path, state) {
         const { node } = path;
-        const { self } = state;
+        const { self, frame } = state;
         const target = self.visitExpression(path.get("node"), state);
         if (t.Slice.check(node.arg)) {
           const slice = path.get("arg") as Path<t.Slice, t.Slice>;
           const start = node.arg.start
             ? self.visitExpression(slice.get("start") as Path, state)
-            : b.numericLiteral(0);
+            : node.arg.stop || node.arg.step
+              ? id("undefined")
+              : undefined;
           const stop = node.arg.stop
             ? self.visitExpression(slice.get("stop") as Path, state)
-            : id("Infinity");
+            : node.arg.step
+              ? id("undefined")
+              : undefined;
           const step = node.arg.step
             ? self.visitExpression(slice.get("step") as Path, state)
-            : b.numericLiteral(1);
-          return self.awaitIfAsync(
+            : undefined;
+          const args: n.Expression[] = [target];
+          if (typeof start !== "undefined") args.push(start);
+          if (typeof stop !== "undefined") args.push(stop);
+          if (typeof step !== "undefined") args.push(step);
+
+          const callSlice = self.awaitIfAsync(
             b.callExpression(
               runtimeExpr(this.isAsync ? "asyncSlice" : "slice"),
-              [target, start, stop, step]
+              args
             )
           );
+
+          return self.toArrayExpression(callSlice);
         }
         const attr = self.visitExpression(node.arg, state);
         return self.awaitIfAsync(
@@ -1028,7 +1043,11 @@ export class CodeGenerator<IsAsync extends boolean> {
         }
         return ast.expression`%%funcName%%(%%args%%)`({
           funcName,
-          args: node.nodes.map((child) => self.visitExpression(child, state)),
+          args: [
+            b.arrayExpression(
+              node.nodes.map((child) => self.visitExpression(child, state))
+            ),
+          ],
         });
       },
       visitUnaryExpr({ node }, state) {
@@ -1753,6 +1772,9 @@ export class CodeGenerator<IsAsync extends boolean> {
     state: State<IsAsync>,
     decls?: n.VariableDeclaration[]
   ): n.Expression {
+    if (typeof decls === "undefined") {
+      decls = state.decls;
+    }
     return forceExpression(this.visit(nodeOrPath, state), decls);
   }
   visit<T extends t.Node>(
@@ -1835,6 +1857,7 @@ export class CodeGenerator<IsAsync extends boolean> {
       self: this,
       frame,
       astPath: astPath,
+      decls: [],
     });
     astPath.push(...res);
     return astNode;
@@ -2012,7 +2035,11 @@ export class CodeGenerator<IsAsync extends boolean> {
     return runtimeStr(val);
   }
 
-  wrapChildPre(argument: n.Node[], frame: Frame<IsAsync>) {
+  wrapChildPre(
+    argument: n.Node[],
+    decls: n.VariableDeclaration[],
+    frame: Frame<IsAsync>
+  ) {
     const callee: n.Expression = frame.evalCtx.volatile
       ? ast.expression`(context.evalCtx.autoescape ? runtime.escape : runtime.str)`()
       : frame.evalCtx.autoescape
@@ -2020,7 +2047,7 @@ export class CodeGenerator<IsAsync extends boolean> {
         : runtimeExpr("str");
     return b.callExpression(
       callee,
-      argument.map((arg) => forceExpression(arg))
+      argument.map((arg) => forceExpression(arg, decls))
     );
   }
 
@@ -2030,7 +2057,8 @@ export class CodeGenerator<IsAsync extends boolean> {
     rhs: n.Expression
   ): n.Expression {
     if (op === "in" || op === "notin") {
-      const callExpr = ast.expression`runtime.includes(%%lhs%%, %%rhs%%)`({
+      const callExpr = ast.expression`%%func%%(%%rhs%%, %%lhs%%)`({
+        func: runtimeExpr(this.isAsync ? "asyncIncludes" : "includes"),
         lhs,
         rhs,
       });
@@ -2337,6 +2365,29 @@ export class CodeGenerator<IsAsync extends boolean> {
     return this.isAsync
       ? ast.expression`await (async () => %%body%%)()`({ body })
       : ast.expression`(() => %%body%%)()`({ body });
+  }
+  delegateGenerator(expr: n.Expression, frame: Frame<IsAsync>): n.Statement {
+    if (frame.buffer === null) {
+      return b.expressionStatement(b.yieldExpression(expr, true));
+    } else {
+      return b.forOfStatement.from({
+        left: b.variableDeclaration("const", [
+          b.variableDeclarator(id("item")),
+        ]),
+        right: expr,
+        body: this.write(id("item"), frame),
+        await: this.isAsync,
+      });
+    }
+  }
+  toArrayExpression(node: n.Expression): n.Expression {
+    if (this.isAsync) {
+      return b.awaitExpression(
+        b.callExpression(runtimeExpr("arrayFromAsync"), [node])
+      );
+    } else {
+      return b.arrayExpression([b.spreadElement(node)]);
+    }
   }
   _importCommon(
     node: t.Import | t.FromImport,

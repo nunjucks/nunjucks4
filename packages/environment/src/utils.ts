@@ -2,10 +2,11 @@ import {
   nunjucksFunction,
   isKwargs,
   isVarargs,
-  MarkupType,
-  isMarkup,
   markSafe,
   escape,
+  isIterable,
+  isString,
+  isObject,
 } from "@nunjucks/runtime";
 import { TemplateError } from "@nunjucks/utils";
 
@@ -101,67 +102,6 @@ export function chainMap(
       return undefined;
     },
   });
-}
-
-const INFINITY = 1 / 0;
-
-function toFinite(value: number): number {
-  if (value === INFINITY || value === -INFINITY) {
-    const sign = value < 0 ? -1 : 1;
-    return sign * Number.MAX_SAFE_INTEGER;
-  }
-  return value === value ? value : 0;
-}
-
-export function* range(start: number, end?: number, step = 1) {
-  if (step === 0) {
-    throw new Error("range() arg 3 must not be zero");
-  }
-  start = toFinite(start);
-  if (end === undefined) {
-    end = start;
-    start = 0;
-  } else {
-    end = toFinite(end);
-  }
-  step = step === undefined ? (start < end ? 1 : -1) : toFinite(step);
-
-  let value = start;
-  while ((step < 0 && end < value) || value < end) {
-    yield value;
-    value += step;
-  }
-}
-
-function isArrayOfTwoTuples(obj: unknown): obj is [unknown, unknown][] {
-  if (!Array.isArray(obj)) return false;
-  return obj.every((o) => Array.isArray(o) && o.length === 2);
-}
-
-function isIterable(o: unknown): o is Iterable<unknown> {
-  return (
-    typeof o === "object" &&
-    !!o &&
-    Symbol.iterator in o &&
-    typeof o[Symbol.iterator] === "function"
-  );
-}
-
-function isAsyncIterable(o: unknown): o is AsyncIterable<unknown> {
-  return (
-    typeof o === "object" &&
-    !!o &&
-    Symbol.asyncIterator in o &&
-    typeof o[Symbol.asyncIterator] === "function"
-  );
-}
-
-function isString(o: unknown): o is MarkupType {
-  return typeof o === "string" || isMarkup(o);
-}
-
-function isObject(o: unknown): o is Record<string, unknown> {
-  return typeof o === "object" || (typeof o === "function" && !!o);
 }
 
 export function list(value: unknown): unknown[] {

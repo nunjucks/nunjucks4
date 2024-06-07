@@ -59,16 +59,8 @@ function toConst<IsAsync extends boolean>(
 ): [Serializable, Serializable];
 function toConst<IsAsync extends boolean>(
   evalCtx: EvalContext<IsAsync>,
-  node: t.Slice
-): { start: number | null; stop: number | null; step: number | null };
-function toConst<IsAsync extends boolean>(
-  evalCtx: EvalContext<IsAsync>,
   node: t.Keyword
 ): [string, Serializable];
-function toConst<IsAsync extends boolean>(
-  evalCtx: EvalContext<IsAsync>,
-  node: t.Concat
-): string;
 function toConst<IsAsync extends boolean>(
   evalCtx: EvalContext<IsAsync>,
   node: t.Node
@@ -145,17 +137,6 @@ function toConst<IsAsync extends boolean>(
       );
     } else if (t.Getattr.check(node)) {
       return environment.getattr(toConst(evalCtx, node.node), node.attr);
-    } else if (t.Slice.check(node)) {
-      const [start, stop, step] = [node.start, node.stop, node.step]
-        .map((n) => (n ? toConst(evalCtx, n) : null))
-        .map((n) => {
-          if (n !== null && typeof n !== "number") throw new Impossible();
-          return n;
-        });
-
-      return { start, stop, step };
-    } else if (t.Concat.check(node)) {
-      return node.nodes.map((expr) => `${toConst(evalCtx, expr)}`).join("");
     } else if (t.Compare.check(node)) {
       let value = toConst(evalCtx, node.expr);
       let result = value;

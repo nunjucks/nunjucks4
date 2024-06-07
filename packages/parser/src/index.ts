@@ -577,7 +577,10 @@ export class Parser {
         loc: this.tokToLoc(token, this.current),
       });
     } else if (this.skipAny(["int", "float"])) {
-      return b.const.from({ value: parseFloat(token.value), loc });
+      return b.const.from({
+        value: Number(token.value.replace(/_/g, "")),
+        loc,
+      });
     } else if (this.skip(lexer.TOKEN_LPAREN)) {
       const node = this.parseTuple({ explicitParentheses: true });
       this.expect(lexer.TOKEN_RPAREN);
@@ -863,7 +866,7 @@ export class Parser {
         ensure(dynArgs === null && dynKwargs === null);
         dynArgs = this.parseExpression();
       } else if (this.skip(lexer.TOKEN_POW)) {
-        ensure(dynArgs === null);
+        ensure(dynKwargs === null);
         dynKwargs = this.parseExpression();
       } else {
         const argToken = this.peekToken();
@@ -1559,3 +1562,5 @@ export function parse(
   return p.parse();
 }
 export { TemplateSyntaxError };
+
+export type TokenizerOptions = lexer.TokenizerOptions;

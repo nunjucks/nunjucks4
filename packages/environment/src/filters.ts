@@ -10,6 +10,10 @@ import {
   isUndefinedInstance,
   EvalContext,
   str,
+  isObject,
+  isString,
+  isIterable,
+  isAsyncIterable,
 } from "@nunjucks/runtime";
 import { TemplateError } from "@nunjucks/utils";
 import { Environment } from "./environment";
@@ -150,14 +154,6 @@ export function default_<T, U>(val: T, def: U, bool?: boolean): T | U {
   } else {
     return val !== undefined && !isUndefinedInstance(val) ? val : def;
   }
-}
-
-function isObject(o: unknown): o is Record<string, unknown> {
-  return typeof o === "object" || (typeof o === "function" && !!o);
-}
-
-function isString(o: unknown): o is string {
-  return isMarkup(o) || typeof o === "string";
 }
 
 export const dictsort = nunjucksFunction([
@@ -347,6 +343,7 @@ export const join = nunjucksFunction(["value", "d", "attribute"], {
   passArg: "evalContext",
 })(doJoin);
 
+// TODO support async
 export function last<T>(arr: T[]): T {
   return arr[arr.length - 1];
 }
@@ -368,24 +365,6 @@ export function length(
     return value.length;
   }
   return 0;
-}
-
-function isIterable(o: unknown): o is Iterable<unknown> {
-  return (
-    typeof o === "object" &&
-    !!o &&
-    Symbol.iterator in o &&
-    typeof o[Symbol.iterator] === "function"
-  );
-}
-
-function isAsyncIterable(o: unknown): o is AsyncIterable<unknown> {
-  return (
-    typeof o === "object" &&
-    !!o &&
-    Symbol.asyncIterator in o &&
-    typeof o[Symbol.asyncIterator] === "function"
-  );
 }
 
 function syncList(value: unknown): unknown[] {
@@ -813,7 +792,7 @@ export function wordcount(str: unknown): number | null {
 }
 
 export function float(val: string, def: number): number {
-  var res = parseFloat(val);
+  var res = Number(val);
   return isNaN(res) ? def : res;
 }
 

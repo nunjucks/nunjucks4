@@ -13,33 +13,22 @@ import {
   namespace,
   isUndefinedInstance,
   UndefinedError,
+  arrayFromAsync,
+  slice,
+  asyncSlice,
+  range,
 } from "@nunjucks/runtime";
 import { types } from "@nunjucks/ast";
-import { parse } from "@nunjucks/parser";
+import { parse, TokenizerOptions } from "@nunjucks/parser";
 import { CodeGenerator } from "@nunjucks/compiler";
 import { Template, TemplateNotFound, TemplatesNotFound } from "./template";
 // import { generate } from "astring";
 import generate from "@babel/generator";
 import { RenderFunc } from "./template";
 import type { Loader, AsyncLoader, SyncLoader } from "./loaders";
-import { chainMap, range, dict, joiner, cycler, lipsum } from "./utils";
+import { chainMap, dict, joiner, cycler, lipsum } from "./utils";
 import DEFAULT_FILTERS from "./filters";
 import DEFAULT_TESTS from "./tests";
-
-type ParserOptions = {
-  blockStart: string;
-  blockEnd: string;
-  variableStart: string;
-  variableEnd: string;
-  commentStart: string;
-  commentEnd: string;
-  lineStatementPrefix: string | null;
-  lineCommentPrefix: string | null;
-  trimBlocks: boolean;
-  lstripBlocks: boolean;
-  newlineSequence: "\n" | "\r\n" | "\r";
-  keepTrailingNewline: boolean;
-};
 
 type Filter = (...args: any[]) => any;
 type Test = (...args: any[]) => boolean;
@@ -136,7 +125,7 @@ export class Environment<
   autoescape: boolean | ((templateName?: string | null) => boolean);
   missing: Record<never, never>;
   async: IsAsync;
-  parserOpts: ParserOptions;
+  parserOpts: TokenizerOptions;
   filters: Record<string, Filter>;
   tests: Record<string, Test>;
   globals: Record<string, any>;
@@ -190,7 +179,7 @@ export class Environment<
   }: {
     async?: IsAsync;
     loaders?: (IsAsync extends true ? AsyncLoader | SyncLoader : SyncLoader)[];
-    parserOpts?: Partial<ParserOptions>;
+    parserOpts?: Partial<TokenizerOptions>;
     autoescape?: boolean | ((templateName?: string | null) => boolean);
     filters?: Record<string, Filter>;
     tests?: Record<string, Test>;
@@ -210,12 +199,8 @@ export class Environment<
       variableEnd: "}}",
       commentStart: "{#",
       commentEnd: "#}",
-      lineStatementPrefix: null,
-      lineCommentPrefix: null,
       trimBlocks: false,
       lstripBlocks: false,
-      newlineSequence: "\n",
-      keepTrailingNewline: false,
       ...parserOpts,
     };
     this.autoescape = autoescape;
@@ -262,6 +247,14 @@ export class Environment<
     //     return this.undef({ obj, name: argument });
     //   }
     // }
+
+    if (typeof argInt === "number" && argInt < 0) {
+      if (this.isAsync()) {
+        return arrayFromAsync(asyncSlice(obj, argInt)).then((val) => val[0]);
+      } else {
+        return Array.from(slice(obj, argInt))[0];
+      }
+    }
 
     if (
       Array.isArray(obj) &&
