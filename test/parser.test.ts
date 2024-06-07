@@ -232,4 +232,9 @@ describe("syntax", () => {
     const t = env.fromString(`{{ ${src} }}`);
     expect(t.render({ a: 4, b: 2, c: 3 })).toBe(expected);
   });
+  test("django_attr", () => {
+    const tmpl = env.fromString("{{ [1, 2, 3].0 }}|{{ [[1]].0.0 }}");
+    expect(tmpl.render()).toBe("1|1");
+  });
+
 });

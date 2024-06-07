@@ -197,6 +197,7 @@ export class Tokenizer {
   lineno: number;
   colno: number;
   currentToken: Token;
+  prevToken: Token | null;
 
   inCode: boolean;
   inVariable: boolean;
@@ -228,6 +229,7 @@ export class Tokenizer {
       this.colno,
       this.index
     );
+    this.prevToken = null;
 
     this.inCode = false;
     this.inVariable = false;
@@ -268,6 +270,7 @@ export class Tokenizer {
   }
 
   nextToken(): Token {
+    this.prevToken = this.currentToken;
     if (this._pushed.length) {
       this.currentToken = this._pushed.shift() as Token;
     } else {
@@ -505,14 +508,12 @@ export class Tokenizer {
         // We are not at whitespace or a delimiter, so extract the
         // text and parse it
         tok = this._extractUntil(whitespaceChars + "()[]{}%*~/#,:|.<>=!");
-        // if (tok.match)
-        // if (tok.match(/^[-+]?[0-9]+$/)) {
         if (
           tok.match(
             /^[-+]?(0b(_?[0-1])+|0o(_?[0-7])+|0x(_?[\da-f])+|[1-9](_?\d)*|0(_?0)*)(e[+\-]?(\d+_)*\d+)?$/i
           )
         ) {
-          if (this.current() === ".") {
+          if (this.current() === "." && this.prevToken?.type !== TOKEN_DOT) {
             this.forward();
             if (!tok.match(/^[_\d]+$/)) {
               throw new TemplateSyntaxError(
