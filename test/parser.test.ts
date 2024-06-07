@@ -237,4 +237,16 @@ describe("syntax", () => {
     expect(tmpl.render()).toBe("1|1");
   });
 
+  test("conditional_expression", () => {
+    const tmpl = env.fromString("{{ 0 if true else 1 }}");
+    expect(tmpl.render()).toBe("0");
+  });
+
+  test("short_conditional_expression", () => {
+    let tmpl = env.fromString("<{{ 1 if false }}>");
+    expect(tmpl.render()).toBe("<>");
+
+    tmpl = env.fromString("<{{ (1 if false).bar }}>");
+    expect(() => tmpl.render()).toThrow(UndefinedError);
+  });
 });

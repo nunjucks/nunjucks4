@@ -1213,8 +1213,11 @@ export class CodeGenerator<IsAsync extends boolean> {
           alternate = self.visitExpression(node.expr2, state);
         } else {
           const pos = self.position(node);
-          alternate =
-            ast.expression`undef("the inline if-expression on ${pos} evaluated to false and no else section was defined.")`();
+          alternate = ast.expression`undef(%%err%%)`({
+            err: str(
+              `the inline if-expression on ${pos} evaluated to false and no else section was defined.`
+            ),
+          });
         }
         return b.conditionalExpression(test, consequent, alternate);
       },
