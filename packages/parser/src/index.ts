@@ -875,7 +875,7 @@ export class Parser {
           this.stream.peekToken().type === lexer.TOKEN_ASSIGN
         ) {
           // Parsing a kwarg
-          ensure(dynArgs === null);
+          ensure(dynKwargs === null);
           const key = this.nextToken().value;
           this.expect(lexer.TOKEN_ASSIGN);
           const value = this.parseExpression();

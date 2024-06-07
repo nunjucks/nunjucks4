@@ -249,4 +249,31 @@ describe("syntax", () => {
     tmpl = env.fromString("<{{ (1 if false).bar }}>");
     expect(() => tmpl.render()).toThrow(UndefinedError);
   });
+
+  test.each`
+    args                           | expected
+    ${"*foo, bar"}                 | ${"invalid"}
+    ${"*foo, *bar"}                | ${"invalid"}
+    ${"**foo, *bar"}               | ${"invalid"}
+    ${"**foo, bar"}                | ${"invalid"}
+    ${"**foo, **bar"}              | ${"invalid"}
+    ${"**foo, bar=42"}             | ${"invalid"}
+    ${"foo, bar"}                  | ${"valid"}
+    ${"foo, bar=42"}               | ${"valid"}
+    ${"foo, bar=23, *args"}        | ${"valid"}
+    ${"foo, *args, bar=23"}        | ${"valid"}
+    ${"a, b=c, *d, **e"}           | ${"valid"}
+    ${"*foo, bar=42"}              | ${"valid"}
+    ${"*foo, **bar"}               | ${"valid"}
+    ${"*foo, bar=42, **baz"}       | ${"valid"}
+    ${"foo, *args, bar=23, **baz"} | ${"valid"}
+  `("function call fn($args) is $expected", ({ args, expected }) => {
+    if (expected === "valid") {
+      env.fromString(`{{ foo(${args}) }}`);
+    } else {
+      expect(() => env.fromString(`{{ foo(${args}) }}`)).toThrow(
+        TemplateSyntaxError
+      );
+    }
+  });
 });
