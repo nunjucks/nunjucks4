@@ -32,14 +32,14 @@ describe("imports", () => {
 
   test("without context", () => {
     const t = env.fromString(
-      '{% import "module" as m without context %}{{ m.test() }}'
+      '{% import "module" as m without context %}{{ m.test() }}',
     );
     expect(t.render({ foo: 42 })).toBe("[|23]");
   });
 
   test("with context", () => {
     const t = env.fromString(
-      '{% import "module" as m with context %}{{ m.test() }}'
+      '{% import "module" as m with context %}{{ m.test() }}',
     );
     expect(t.render({ foo: 42 })).toBe("[42|23]");
   });
@@ -51,14 +51,14 @@ describe("imports", () => {
 
   test("from import without context", () => {
     const t = env.fromString(
-      '{% from "module" import test without context %}{{ test() }}'
+      '{% from "module" import test without context %}{{ test() }}',
     );
     expect(t.render({ foo: 42 })).toBe("[|23]");
   });
 
   test("from import with context", () => {
     const t = env.fromString(
-      '{% from "module" import test with context %}{{ test() }}'
+      '{% from "module" import test with context %}{{ test() }}',
     );
     expect(t.render({ foo: 42 })).toBe("[42|23]");
   });
@@ -67,19 +67,19 @@ describe("imports", () => {
     env.fromString('{% from "foo" import bar %}');
     env.fromString('{% from "foo" import bar, baz %}');
     expect(() => env.fromString('{% from "foo" import %}')).toThrow(
-      TemplateSyntaxError
+      TemplateSyntaxError,
     );
   });
 
   test("no trailing comma", () => {
     expect(() => env.fromString('{% from "foo" import bar, %}')).toThrow(
-      TemplateSyntaxError
+      TemplateSyntaxError,
     );
     expect(() => env.fromString('{% from "foo" import bar,, %}')).toThrow(
-      TemplateSyntaxError
+      TemplateSyntaxError,
     );
     expect(() => env.fromString('{% from "foo" import, %}')).toThrow(
-      TemplateSyntaxError
+      TemplateSyntaxError,
     );
   });
 
@@ -91,11 +91,11 @@ describe("imports", () => {
     env.fromString('{% from "foo" import bar, with with context %}');
 
     expect(() =>
-      env.fromString('{% from "foo" import bar,, with context %}')
+      env.fromString('{% from "foo" import bar,, with context %}'),
     ).toThrow(TemplateSyntaxError);
 
     expect(() =>
-      env.fromString('{% from "foo" import bar with context, %}')
+      env.fromString('{% from "foo" import bar with context, %}'),
     ).toThrow(TemplateSyntaxError);
   });
 
@@ -108,7 +108,7 @@ describe("imports", () => {
         {% for item in [1] %}
             {% macro notthere() %}{% endmacro %}
         {% endfor %}
-    `
+    `,
     ).module as any;
     expect(module.toplevel()).toBe("...");
     expect(module.variable).toBe(42);
@@ -116,11 +116,11 @@ describe("imports", () => {
 
   test("not exported error", () => {
     const t = env.fromString(
-      "{% from 'module' import nothing %}{{ nothing() }}"
+      "{% from 'module' import nothing %}{{ nothing() }}",
     );
     expect(() => t.render()).toThrow(UndefinedError);
     expect(() => t.render()).toThrow(
-      "does not export the requested name 'nothing'"
+      "does not export the requested name 'nothing'",
     );
   });
 
@@ -134,17 +134,17 @@ describe("imports", () => {
   });
 
   test("import with globals override", () => {
-    let t = env.fromString(
+    const t = env.fromString(
       '{% set foo = 41 %}{% import "module" as m %}{{ m.test() }}',
       {
         globals: { foo: 42 },
-      }
+      },
     );
     expect(t.render()).toBe("[42|23]");
   });
 
   test("from import with globals", () => {
-    let t = env.fromString('{% from "module" import test %}{{ test() }}', {
+    const t = env.fromString('{% from "module" import test %}{{ test() }}', {
       globals: { foo: 42 },
     });
     expect(t.render()).toBe("[42|23]");
@@ -176,7 +176,7 @@ describe("includes", () => {
     t = env.fromString("{% include x %}");
     expect(t.render({ foo: 42, x: ["missing", "header"] })).toBe("[42|23]");
     expect(() => t.render({ foo: 42, x: ["missing", "missing2"] })).toThrow(
-      TemplatesNotFound
+      TemplatesNotFound,
     );
   });
 
@@ -233,7 +233,7 @@ describe("includes", () => {
       ],
     });
     const t = env.fromString(
-      "{% set foobar = 42 %}{% from 'a' import x with context %}{{ x() }}"
+      "{% set foobar = 42 %}{% from 'a' import x with context %}{{ x() }}",
     );
     expect(t.render()).toBe("42");
   });

@@ -35,12 +35,12 @@ export class Frame<IsAsync extends boolean> {
     {
       parent = null,
       level,
-    }: { parent?: Frame<IsAsync> | null; level?: number } = {}
+    }: { parent?: Frame<IsAsync> | null; level?: number } = {},
   ) {
     this.evalCtx = evalCtx;
-    this.parent = parent || null;
+    this.parent = parent ?? null;
     this.symbols = new Symbols(parent?.symbols, level);
-    this.requireOutputCheck = parent?.requireOutputCheck || false;
+    this.requireOutputCheck = parent?.requireOutputCheck ?? false;
     this.buffer = parent?.buffer ?? null;
     this.block = parent?.block ?? null;
     this.toplevel = false;

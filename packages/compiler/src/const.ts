@@ -22,7 +22,7 @@ const binopToFunc: Record<string, (a: any, b: any) => Serializable> = {
   "*": (a, b) => a * b,
   "/": (a, b) => a / b,
   "//": (a, b) => Math.floor(a / b),
-  "**": (a, b) => Math.pow(a, b),
+  "**": (a, b) => Math.pow(a as number, b as number),
   "%": (a, b) => a % b,
   "+": (a, b) => a + b,
   "-": (a, b) => a - b,
@@ -43,32 +43,24 @@ const cmpopToFunc: Record<string, (a: any, b: any) => boolean> = {
   gteq: (a, b) => a >= b,
   lt: (a, b) => a < b,
   lteq: (a, b) => a <= b,
-  in: (a, b) => {
-    // TODO
-    return a.includes(b);
-  },
-  notin: (a, b) => {
-    // TODO
-    return !a.includes(b);
-  },
 };
 
 function toConst<IsAsync extends boolean>(
   evalCtx: EvalContext<IsAsync>,
-  node: t.Pair | t.Keyword
+  node: t.Pair | t.Keyword,
 ): [Serializable, Serializable];
 function toConst<IsAsync extends boolean>(
   evalCtx: EvalContext<IsAsync>,
-  node: t.Keyword
+  node: t.Keyword,
 ): [string, Serializable];
 function toConst<IsAsync extends boolean>(
   evalCtx: EvalContext<IsAsync>,
-  node: t.Node
+  node: t.Node,
 ): Serializable;
 
 function toConst<IsAsync extends boolean>(
   evalCtx: EvalContext<IsAsync>,
-  node: t.Node
+  node: t.Node,
 ): Serializable {
   const { environment } = evalCtx;
   try {
@@ -89,7 +81,7 @@ function toConst<IsAsync extends boolean>(
       return node.items.map((x) => toConst(evalCtx, x));
     } else if (t.Dict.check(node)) {
       return Object.fromEntries(
-        node.items.map((pair) => toConst(evalCtx, pair))
+        node.items.map((pair) => toConst(evalCtx, pair)),
       );
     } else if (t.Pair.check(node)) {
       return [toConst(evalCtx, node.key), toConst(evalCtx, node.value)];
@@ -123,7 +115,7 @@ function toConst<IsAsync extends boolean>(
       }
       const func = environment.tests[node.name];
       const [args, kwargs] = argsAsConst(evalCtx, node);
-      args.unshift(toConst(evalCtx, node.node!)); // TODO: check type here
+      args.unshift(toConst(evalCtx, node.node)); // TODO: check type here
       return func(...args, {
         ...kwargs,
         __evalCtx: evalCtx,
@@ -133,7 +125,7 @@ function toConst<IsAsync extends boolean>(
       if (node.ctx !== "load") throw new Impossible();
       return environment.getitem(
         toConst(evalCtx, node.node),
-        toConst(evalCtx, node.arg)
+        toConst(evalCtx, node.arg),
       );
     } else if (t.Getattr.check(node)) {
       return environment.getattr(toConst(evalCtx, node.node), node.attr);
@@ -141,6 +133,7 @@ function toConst<IsAsync extends boolean>(
       let value = toConst(evalCtx, node.expr);
       let result = value;
       for (const op of node.ops) {
+        if (op.op === "in" || op.op === "notin") throw new Impossible();
         const newValue = toConst(evalCtx, op.expr);
         result = cmpopToFunc[op.op](value, newValue);
         if (!result) return false;
@@ -160,14 +153,14 @@ function isTwoTuple(val: Serializable): val is [Serializable, Serializable] {
 
 function argsAsConst<IsAsync extends boolean>(
   evalCtx: EvalContext<IsAsync>,
-  node: t.Filter | t.Test | t.Call
+  node: t.Filter | t.Test | t.Call,
 ): [Serializable[], Record<string, Serializable>] {
   const args = node.args.map((x) => toConst(evalCtx, x));
   const kwargs = Object.fromEntries(
     node.kwargs.map((x) => {
       const [k, v] = toConst(evalCtx, x);
       return [`${k}`, v];
-    })
+    }),
   );
   kwargs.__isKwargs = true;
   if (node.dynArgs) {

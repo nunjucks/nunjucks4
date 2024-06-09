@@ -23,9 +23,7 @@ export interface PathVisitor<S = Record<string, any>> {
 
 export type Visitor<S = Record<string, any>> = PathVisitor<S>;
 
-export interface VisitorMethods<S> {
-  [visitorMethod: string]: (path: Path, state?: S) => any;
-}
+export type VisitorMethods<S> = Record<string, (path: Path, state?: S) => any>;
 
 export interface Context<S = Record<string, any>>
   extends Omit<PathVisitor<S>, "visit" | "reset" | "reportChanged" | "abort"> {
@@ -91,7 +89,7 @@ export class PathVisitor<S = Record<string, any>> {
   }
 
   static fromMethodsObject<M = Record<string, any>>(
-    methods: import("./gen/visitor").Visitor<M>
+    methods: import("./gen/visitor").Visitor<M>,
   ): Visitor<M> {
     if (methods instanceof PathVisitor) {
       return methods;
@@ -115,13 +113,14 @@ export class PathVisitor<S = Record<string, any>> {
   }
 
   static visit<M = Record<string, any>>(
+    this: void,
     nodeOrPath: n.Node | Path,
     methods: import("./gen/visitor").Visitor<M>,
-    state?: M
+    state?: M,
   ): any {
     return PathVisitor.fromMethodsObject<M>(methods).visit(
       nodeOrPath,
-      state || {}
+      state ?? {},
     );
   }
 
@@ -129,7 +128,7 @@ export class PathVisitor<S = Record<string, any>> {
     if (this._visiting) {
       throw new Error(
         "Recursively calling visitor.visit(path) resets visitor state. " +
-          "Try this.visit(path) or this.traverse(path) instead."
+          "Try this.visit(path) or this.traverse(path) instead.",
       );
     }
 
@@ -203,7 +202,7 @@ export class PathVisitor<S = Record<string, any>> {
       // Since this.Context.prototype === this, there's a chance we
       // might accidentally call context.visitWithoutReset. If that
       // happens, re-invoke the method against context.visitor.
-      return this.visitor.visitWithoutReset(path, state || this.state);
+      return this.visitor.visitWithoutReset(path, state ?? this.state);
     }
 
     if (!(path instanceof Path)) {
@@ -229,7 +228,7 @@ export class PathVisitor<S = Record<string, any>> {
     } else {
       // If there was no visitor method to call, visit the children of
       // this node generically.
-      return visitChildren(path, this, state || this.state);
+      return visitChildren(path, this, state ?? this.state);
     }
   }
 
@@ -280,7 +279,7 @@ function makeContextConstructor<S>(visitor: PathVisitor<S>): typeof Context {
         this.currentPath = path;
         this.needToCallTraverse = true;
         if (state) this.state = state;
-        this.visitor.reset.call(this, path, state || this.state);
+        this.visitor.reset.call(this, path, state ?? this.state);
         return this;
       };
       Object.seal(this);
@@ -296,7 +295,7 @@ function makeContextConstructor<S>(visitor: PathVisitor<S>): typeof Context {
       const result = this.visitor[methodName].call(
         this,
         this.currentPath,
-        this.state
+        this.state,
       );
 
       if (result === false) {
@@ -318,12 +317,12 @@ function makeContextConstructor<S>(visitor: PathVisitor<S>): typeof Context {
 
       if (this.needToCallTraverse !== false) {
         throw new Error(
-          "Must either call this.traverse or return false in " + methodName
+          "Must either call this.traverse or return false in " + methodName,
         );
       }
 
       const path = this.currentPath;
-      return path && path.value;
+      return path?.value;
     }
 
     traverse(path: Path, state?: S, newVisitor?: Visitor<S>): any {
@@ -333,8 +332,8 @@ function makeContextConstructor<S>(visitor: PathVisitor<S>): typeof Context {
 
       return visitChildren(
         path,
-        PathVisitor.fromMethodsObject(newVisitor || this.visitor),
-        state || this.state
+        PathVisitor.fromMethodsObject(newVisitor ?? this.visitor),
+        state ?? this.state,
       );
     }
 
@@ -342,8 +341,8 @@ function makeContextConstructor<S>(visitor: PathVisitor<S>): typeof Context {
       this.needToCallTraverse = false;
 
       return PathVisitor.fromMethodsObject(
-        newVisitor || this.visitor
-      ).visitWithoutReset(path, (state || this.state) as S);
+        newVisitor ?? this.visitor,
+      ).visitWithoutReset(path, state ?? this.state);
     }
 
     reportChanged() {

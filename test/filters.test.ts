@@ -1,7 +1,6 @@
-import { Environment, ObjectSourceLoader } from "@nunjucks/environment";
-import { TemplateRuntimeError, markSafe } from "@nunjucks/runtime";
-import { describe, expect, test } from "@jest/globals";
-import { TemplateSyntaxError } from "@nunjucks/parser";
+import { Environment } from "@nunjucks/environment";
+import { markSafe } from "@nunjucks/runtime";
+import { describe, expect } from "@jest/globals";
 
 class Magic {
   value: any;
@@ -46,7 +45,7 @@ describe("filters", () => {
       [
         "{{ missing|default('no') }}|{{ false|default('no') }}|",
         "{{ false|default('no', true) }}|{{ given|default('no') }}",
-      ].join("")
+      ].join(""),
     );
     expect(tmpl.render({ given: "yes" })).toBe("no|False|no|yes");
   });
@@ -62,7 +61,7 @@ describe("filters", () => {
     ({ args, expected }) => {
       const tmpl = env.fromString(`{{ foo|dictsort(${args})}}`);
       expect(tmpl.render({ foo: { aa: 0, b: 1, c: 2, AB: 3 } })).toBe(expected);
-    }
+    },
   );
 
   describe("indent", () => {
@@ -81,25 +80,25 @@ describe("filters", () => {
 
   it("batch", () => {
     const tmpl = env.fromString(
-      "{{ foo|batch(3)|list }}|{{ foo|batch(3, 'X')|list }}"
+      "{{ foo|batch(3)|list }}|{{ foo|batch(3, 'X')|list }}",
     );
     expect(tmpl.render({ foo: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] })).toBe(
       [
         "[[0, 1, 2], [3, 4, 5], [6, 7, 8], [9]]",
         "[[0, 1, 2], [3, 4, 5], [6, 7, 8], [9, 'X', 'X']]",
-      ].join("|")
+      ].join("|"),
     );
   });
 
   it("slice", () => {
     const tmpl = env.fromString(
-      "{{ foo|slice(3)|list }}|{{ foo|slice(3, 'X')|list }}"
+      "{{ foo|slice(3)|list }}|{{ foo|slice(3, 'X')|list }}",
     );
     expect(tmpl.render({ foo: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] })).toBe(
       [
         "[[0, 1, 2, 3], [4, 5, 6], [7, 8, 9]]",
         "[[0, 1, 2, 3], [4, 5, 6, 'X'], [7, 8, 9, 'X']]",
-      ].join("|")
+      ].join("|"),
     );
   });
 
@@ -143,7 +142,7 @@ describe("filters", () => {
         "{{ 1000000|filesizeformat(true) }}",
         "{{ 1000000000|filesizeformat(true) }}",
         "{{ 1000000000000|filesizeformat(true) }}",
-      ].join("|")
+      ].join("|"),
     );
     expect(tmpl.render().split("|")).toStrictEqual([
       "100 Bytes",
@@ -222,7 +221,7 @@ describe("filters", () => {
     it("autoescape", () => {
       env.autoescape = true;
       const tmpl = env.fromString(
-        '{{ ["<foo>", "<span>foo</span>"|safe]|join }}'
+        '{{ ["<foo>", "<span>foo</span>"|safe]|join }}',
       );
       expect(tmpl.render()).toBe("&lt;foo&gt;<span>foo</span>");
     });
@@ -269,7 +268,7 @@ describe("filters", () => {
 
   it("reverse", () => {
     const tmpl = env.fromString(
-      "{{ 'foobar'|reverse|join }}|{{ [1, 2, 3]|reverse|list }}"
+      "{{ 'foobar'|reverse|join }}|{{ [1, 2, 3]|reverse|list }}",
     );
     expect(tmpl.render()).toBe("raboof|[3, 2, 1]");
   });
@@ -325,7 +324,7 @@ describe("filters", () => {
     });
     it("short string", () => {
       const tmpl = env.fromString(
-        '{{ "foo bar baz"|truncate(9) }}|{{ "foo bar baz"|truncate(9, true) }}'
+        '{{ "foo bar baz"|truncate(9) }}|{{ "foo bar baz"|truncate(9, true) }}',
       );
       expect(tmpl.render()).toBe("foo bar baz|foo bar baz");
     });
@@ -341,45 +340,45 @@ describe("filters", () => {
       let tmpl;
       tmpl = env.fromString('{{ "foo example.org bar"|urlize }}');
       expect(tmpl.render()).toBe(
-        `foo <a href="https://example.org" rel="noopener">example.org</a> bar`
+        `foo <a href="https://example.org" rel="noopener">example.org</a> bar`,
       );
       tmpl = env.fromString('{{ "foo http://www.example.com/ bar"|urlize }}');
       expect(tmpl.render()).toBe(
         [
           'foo <a href="http://www.example.com/" rel="noopener">',
           "http://www.example.com/</a> bar",
-        ].join("")
+        ].join(""),
       );
       tmpl = env.fromString('{{ "foo mailto:email@example.com bar"|urlize }}');
       expect(tmpl.render()).toBe(
-        'foo <a href="mailto:email@example.com">email@example.com</a> bar'
+        'foo <a href="mailto:email@example.com">email@example.com</a> bar',
       );
       tmpl = env.fromString('{{ "foo email@example.com bar"|urlize }}');
       expect(tmpl.render()).toBe(
-        'foo <a href="mailto:email@example.com">email@example.com</a> bar'
+        'foo <a href="mailto:email@example.com">email@example.com</a> bar',
       );
     });
 
     it("rel policy", () => {
       // env.policies["urlize.rel"] = null;
       const tmpl = env.fromString(
-        '{{ "foo http://www.example.com/ bar"|urlize }}'
+        '{{ "foo http://www.example.com/ bar"|urlize }}',
       );
       expect(tmpl.render()).toBe(
-        'foo <a href="http://www.example.com/">http://www.example.com/</a> bar'
+        'foo <a href="http://www.example.com/">http://www.example.com/</a> bar',
       );
     });
 
     it("target parameter", () => {
       const tmpl = env.fromString(
-        '{{ "foo http://www.example.com/ bar"|urlize(target="_blank") }}'
+        '{{ "foo http://www.example.com/ bar"|urlize(target="_blank") }}',
       );
       expect(tmpl.render()).toBe(
         [
           "foo ",
           '<a href="http://www.example.com/" rel="noopener" target="_blank">',
           "http://www.example.com/</a> bar",
-        ].join("")
+        ].join(""),
       );
     });
 
@@ -388,14 +387,14 @@ describe("filters", () => {
         [
           '{{ "foo tel:+1-514-555-1234 ftp://localhost bar"|',
           'urlize(extra_schemes=["tel:", "ftp:"]) }}',
-        ].join("")
+        ].join(""),
       );
       expect(tmpl.render()).toBe(
         [
           'foo <a href="tel:+1-514-555-1234" rel="noopener">',
           'tel:+1-514-555-1234</a> <a href="ftp://localhost" rel="noopener">',
           "ftp://localhost</a> bar",
-        ].join("")
+        ].join(""),
       );
     });
   });
@@ -408,7 +407,7 @@ describe("filters", () => {
 
   it("block syntax", () => {
     const tmpl = env.fromString(
-      "{% filter lower|escape %}<HEHE>{% endfilter %}"
+      "{% filter lower|escape %}<HEHE>{% endfilter %}",
     );
     expect(tmpl.render()).toBe("&lt;hehe&gt;");
   });
@@ -458,7 +457,7 @@ describe("filters", () => {
         "{{ 2.7|round }}|{{ 2.1|round }}",
         "{{ 2.1234|round(3, 'floor') }}",
         "{{ 2.1|round(0, 'ceil') }}",
-      ].join("|")
+      ].join("|"),
     );
     expect(tmpl.render()).toBe("3|2|2.123|3");
   });
@@ -469,7 +468,7 @@ describe("filters", () => {
         "{{ 21.3|round(-1)}}",
         "{{ 21.3|round(-1, 'ceil')}}",
         "{{ 21.3|round(-1, 'floor')}}",
-      ].join("|")
+      ].join("|"),
     );
     expect(tmpl.render()).toBe("20|30|20");
   });
@@ -477,7 +476,7 @@ describe("filters", () => {
   describe.skip("sort", () => {
     it("sort1", () => {
       const tmpl = env.fromString(
-        "{{ [2, 3, 1]|sort }}|{{ [2, 3, 1]|sort(true) }}"
+        "{{ [2, 3, 1]|sort }}|{{ [2, 3, 1]|sort(true) }}",
       );
       expect(tmpl.render()).toBe("[1, 2, 3]|[3, 2, 1]");
     });
@@ -501,7 +500,7 @@ describe("filters", () => {
     });
     it("sort6", () => {
       const tmpl = env.fromString(
-        `{{ items|sort(attribute='value1,value2')|join }}`
+        `{{ items|sort(attribute='value1,value2')|join }}`,
       );
       const items = [
         [3, 1],
@@ -513,7 +512,7 @@ describe("filters", () => {
     });
     it("sort7", () => {
       const tmpl = env.fromString(
-        `{{ items|sort(attribute='value2,value1')|join }}`
+        `{{ items|sort(attribute='value2,value1')|join }}`,
       );
       const items = [
         [3, 1],
@@ -524,12 +523,12 @@ describe("filters", () => {
       expect(
         tmpl.render({
           items,
-        })
+        }),
       ).toBe("(2,1)(3,1)(2,2)(2,5)");
     });
     it("sort8", () => {
       const tmpl = env.fromString(
-        `{{ items|sort(attribute='value1.0,value2.0')|join }}`
+        `{{ items|sort(attribute='value1.0,value2.0')|join }}`,
       );
       const items = [
         [3, 1],
@@ -540,7 +539,7 @@ describe("filters", () => {
       expect(
         tmpl.render({
           items,
-        })
+        }),
       ).toBe("([2],[1])([2],[2])([2],[5])([3],[1])");
     });
   });
@@ -552,7 +551,7 @@ describe("filters", () => {
     });
     it("case sensitive", () => {
       const tmpl = env.fromString(
-        '{{ "".join(["b", "A", "a", "b"]|unique(true)) }}'
+        '{{ "".join(["b", "A", "a", "b"]|unique(true)) }}',
       );
       expect(tmpl.render()).toBe("bAa");
     });
@@ -636,13 +635,13 @@ describe("filters", () => {
         constructor(
           public day: number,
           public month: number,
-          public year: number
+          public year: number,
         ) {}
       }
       class Article {
         constructor(
           public title: string,
-          public date: Date_
+          public date: Date_,
         ) {}
       }
 
@@ -670,7 +669,7 @@ describe("filters", () => {
           "{% for city, items in users|groupby('city', default='NY') %}",
           "{{ city }}: {{ items|map(attribute='name')|join(', ') }}\n",
           "{% endfor %}",
-        ].join("")
+        ].join(""),
       );
       expect(
         tmpl.render({
@@ -679,7 +678,7 @@ describe("filters", () => {
             { name: "smith", city: "WA" },
             { name: "john" },
           ],
-        })
+        }),
       ).toBe("NY: emma, john\nWA: smith\n");
     });
 
@@ -692,7 +691,7 @@ describe("filters", () => {
           "{% for k, vs in data|groupby('k', case_sensitive=cs) %}",
           "{{ k }}: {{ vs|join(', ', attribute='v') }}\n",
           "{% endfor %}",
-        ].join("")
+        ].join(""),
       );
       expect(
         tmpl.render({
@@ -702,14 +701,14 @@ describe("filters", () => {
             { k: "A", v: 3 },
           ],
           cs,
-        })
+        }),
       ).toBe(expected);
     });
   });
 
   it("filter tag", () => {
     const tmpl = env.fromString(
-      "{% filter upper|replace('FOO', 'foo') %}foobar{% endfilter %}"
+      "{% filter upper|replace('FOO', 'foo') %}foobar{% endfilter %}",
     );
     expect(tmpl.render()).toBe("fooBAR");
   });
@@ -725,7 +724,7 @@ describe("filters", () => {
     expect(tmpl.render({ string: "<foo>" })).toBe("42foo&gt;");
     tmpl = env.fromString('{{ string|replace("o", ">x<") }}');
     expect(tmpl.render({ string: markSafe("foo") })).toBe(
-      "f&gt;x&lt;&gt;x&lt;"
+      "f&gt;x&lt;&gt;x&lt;",
     );
   });
 
@@ -774,7 +773,7 @@ describe("filters", () => {
 
     it("sum", () => {
       const tmpl = env.fromString(
-        '{{ [[1,2], [3], [4,5,6]]|map("sum")|list }}'
+        '{{ [[1,2], [3], [4,5,6]]|map("sum")|list }}',
       );
       expect(tmpl.render()).toBe("[3, 3, 15]");
     });
@@ -782,7 +781,7 @@ describe("filters", () => {
     it("attribute", () => {
       const users = ["john", "jane", "mike"].map((name) => ({ name }));
       const tmpl = env.fromString(
-        '{{ users|map(attribute="name")|join("|") }}'
+        '{{ users|map(attribute="name")|join("|") }}',
       );
       expect(tmpl.render({ users })).toBe("john|jane|mike");
     });
@@ -796,7 +795,7 @@ describe("filters", () => {
       class Fullname {
         constructor(
           public firstname: string,
-          public lastname: string | null
+          public lastname: string | null,
         ) {}
       }
       class Firstname {
@@ -810,18 +809,18 @@ describe("filters", () => {
       ];
 
       const tmpl = env.fromString(
-        '{{ users|map(attribute="lastname", default="smith")|join(", ") }}'
+        '{{ users|map(attribute="lastname", default="smith")|join(", ") }}',
       );
       const test_list = env.fromString(
-        '{{ users|map(attribute="lastname", default=["smith","x"])|join(", ") }}'
+        '{{ users|map(attribute="lastname", default=["smith","x"])|join(", ") }}',
       );
       const test_str = env.fromString(
-        '{{ users|map(attribute="lastname", default="")|join(", ") }}'
+        '{{ users|map(attribute="lastname", default="")|join(", ") }}',
       );
 
       expect(tmpl.render({ users })).toBe("lennon, edwards, None, smith");
       expect(test_list.render({ users })).toBe(
-        "lennon, edwards, null, ['smith', 'x']"
+        "lennon, edwards, null, ['smith', 'x']",
       );
       expect(test_str.render({ users })).toBe("lennon, edwards, None, ");
     });
@@ -830,14 +829,14 @@ describe("filters", () => {
   describe.skip("select", () => {
     it("simple", () => {
       const tmpl = env.fromString(
-        '{{ [1, 2, 3, 4, 5]|select("odd")|join("|") }}'
+        '{{ [1, 2, 3, 4, 5]|select("odd")|join("|") }}',
       );
       expect(tmpl.render()).toBe("1|3|5");
     });
 
     it("bool", () => {
       const tmpl = env.fromString(
-        '{{ [none, false, 0, 1, 2, 3, 4, 5]|select|join("|") }}'
+        '{{ [none, false, 0, 1, 2, 3, 4, 5]|select|join("|") }}',
       );
       expect(tmpl.render()).toBe("1|2|3|4|5");
     });
@@ -846,14 +845,14 @@ describe("filters", () => {
   describe.skip("reject", () => {
     it("simple", () => {
       const tmpl = env.fromString(
-        '{{ [1, 2, 3, 4, 5]|reject("odd")|join("|") }}'
+        '{{ [1, 2, 3, 4, 5]|reject("odd")|join("|") }}',
       );
       expect(tmpl.render()).toBe("2|4");
     });
 
     it("bool", () => {
       const tmpl = env.fromString(
-        '{{ [null, false, 0, 1, 2, 3, 4, 5]|reject|join("|") }}'
+        '{{ [null, false, 0, 1, 2, 3, 4, 5]|reject|join("|") }}',
       );
       expect(tmpl.render()).toBe("null|false|0");
     });
@@ -864,7 +863,7 @@ describe("filters", () => {
       class User {
         constructor(
           public name: string,
-          public isActive: boolean
+          public isActive: boolean,
         ) {}
       }
       const users = [
@@ -873,7 +872,7 @@ describe("filters", () => {
         new User("mike", false),
       ];
       const tmpl = env.fromString(
-        '{{ users|selectattr("is_active")|map(attribute="name")|join("|") }}'
+        '{{ users|selectattr("is_active")|map(attribute="name")|join("|") }}',
       );
       expect(tmpl.render({ users })).toBe("john|jane");
     });
@@ -882,7 +881,7 @@ describe("filters", () => {
       class User {
         constructor(
           public id: number,
-          public name: string
+          public name: string,
         ) {}
       }
       const users = [
@@ -891,7 +890,7 @@ describe("filters", () => {
         new User(3, "mike"),
       ];
       const tmpl = env.fromString(
-        '{{ users|selectattr("id", "odd")|map(attribute="name")|join("|") }}'
+        '{{ users|selectattr("id", "odd")|map(attribute="name")|join("|") }}',
       );
       expect(tmpl.render({ users })).toBe("john|mike");
     });
@@ -902,7 +901,7 @@ describe("filters", () => {
       class User {
         constructor(
           public name: string,
-          public isActive: boolean
+          public isActive: boolean,
         ) {}
       }
       const users = [
@@ -911,7 +910,7 @@ describe("filters", () => {
         new User("mike", false),
       ];
       const tmpl = env.fromString(
-        '{{ users|rejectattr("is_active")|map(attribute="name")|join("|") }}'
+        '{{ users|rejectattr("is_active")|map(attribute="name")|join("|") }}',
       );
       expect(tmpl.render({ users })).toBe("mike");
     });
@@ -920,7 +919,7 @@ describe("filters", () => {
       class User {
         constructor(
           public id: number,
-          public name: string
+          public name: string,
         ) {}
       }
       const users = [
@@ -929,7 +928,7 @@ describe("filters", () => {
         new User(3, "mike"),
       ];
       const tmpl = env.fromString(
-        '{{ users|rejectattr("id", "odd")|map(attribute="name")|join("|") }}'
+        '{{ users|rejectattr("id", "odd")|map(attribute="name")|join("|") }}',
       );
       expect(tmpl.render({ users })).toBe("jane");
     });
@@ -944,20 +943,20 @@ describe("filters", () => {
     const s = "Hello!\nThis is nunjucks saying something.";
     const tmpl = env.fromString("{{ s | wordwrap(25) }}");
     expect(tmpl.render({ s })).toBe(
-      "Hello!\nThis is nunjucks saying\nsomething."
+      "Hello!\nThis is nunjucks saying\nsomething.",
     );
   });
 
   describe("filter undefined", () => {
     it("basic", () => {
       expect(() => env.fromString("{{ var|f }}")).toThrow(
-        "No filter named 'f'"
+        "No filter named 'f'",
       );
     });
 
     it("inside if", () => {
       const tmpl = env.fromString(
-        "{%- if x is defined -%}{{ x|f }}{%- else -%}x{% endif %}"
+        "{%- if x is defined -%}{{ x|f }}{%- else -%}x{% endif %}",
       );
       expect(tmpl.render()).toBe("x");
       expect(() => tmpl.render({ x: 42 })).toThrow("No filter named 'f'");
@@ -968,7 +967,7 @@ describe("filters", () => {
         [
           "{%- if x is defined -%}{{ x }}{%- elif y is defined -%}",
           "{{ y|f }}{%- else -%}foo{%- endif -%}",
-        ].join("")
+        ].join(""),
       );
       expect(tmpl.render()).toBe("foo");
       expect(() => tmpl.render({ y: 42 })).toThrow("No filter named 'f'");
@@ -976,7 +975,7 @@ describe("filters", () => {
 
     it("inside else", () => {
       const tmpl = env.fromString(
-        "{%- if x is not defined -%}foo{%- else -%}{{ x|f }}{%- endif -%}"
+        "{%- if x is not defined -%}foo{%- else -%}{{ x|f }}{%- endif -%}",
       );
       expect(tmpl.render()).toBe("foo");
       expect(() => tmpl.render({ x: 42 })).toThrow("No filter named 'f'");
@@ -987,12 +986,12 @@ describe("filters", () => {
         [
           "{%- if x is not defined -%}foo{%- else -%}{%- if y ",
           "is defined -%}{{ y|f }}{%- endif -%}{{ x }}{%- endif -%}",
-        ].join("")
+        ].join(""),
       );
       expect(tmpl.render()).toBe("foo");
       expect(tmpl.render({ x: 42 })).toBe("42");
       expect(() => tmpl.render({ x: 42, y: 42 })).toThrow(
-        "No filter named 'f'"
+        "No filter named 'f'",
       );
     });
 

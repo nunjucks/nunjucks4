@@ -11,13 +11,11 @@ export interface TemplateErrorType extends Error {
   // ): TemplateErrorType;
 }
 
-export interface TemplateErrorConstructor {
-  new (
-    message: Error | string,
-    lineno?: number,
-    colno?: number,
-  ): TemplateErrorType;
-}
+export type TemplateErrorConstructor = new (
+  message: Error | string,
+  lineno?: number,
+  colno?: number,
+) => TemplateErrorType;
 
 type GetStack = () => string | undefined;
 
@@ -41,6 +39,7 @@ const TemplateError = function TemplateError(
     err = new Error(msg) as TemplateErrorType;
     Object.setPrototypeOf(err, TemplateError.prototype);
   } else {
+    // eslint-disable-next-line @typescript-eslint/no-this-alias
     err = this;
     Object.defineProperty(err, "message", {
       enumerable: false,
@@ -61,11 +60,12 @@ const TemplateError = function TemplateError(
 
   if (cause) {
     const stackDescriptor = Object.getOwnPropertyDescriptor(cause, "stack");
-    getStack = (stackDescriptor &&
-      (stackDescriptor.get || (() => stackDescriptor.value))) as GetStack;
-    if (!getStack) {
-      getStack = () => (cause ? cause.stack : undefined) as string | undefined;
-    }
+    getStack =
+      typeof stackDescriptor?.get === "function"
+        ? () => stackDescriptor.get!()
+        : stackDescriptor?.value
+          ? () => stackDescriptor.value
+          : () => (cause ? cause.stack : undefined);
   } else {
     const stack = new Error(message as string).stack;
     getStack = () => stack;

@@ -28,7 +28,7 @@ import { Type } from "../src/types";
 import { types as t } from "./index";
 
 function getSupertypeToSubtypes() {
-  const supertypeToSubtypes: { [supertypeName: string]: string[] } = {};
+  const supertypeToSubtypes: Record<string, string[]> = {};
   Object.keys(t).map((typeName) => {
     Type.def(typeName).aliasNames.forEach((supertypeName) => {
       supertypeToSubtypes[supertypeName] =
@@ -40,8 +40,7 @@ function getSupertypeToSubtypes() {
   return supertypeToSubtypes;
 }
 
-const FLIPPED_ALIAS_KEYS: { [key: string]: string[] } =
-  getSupertypeToSubtypes();
+const FLIPPED_ALIAS_KEYS: Record<string, string[]> = getSupertypeToSubtypes();
 const TYPES = new Set<string>(...Object.keys(t).map((t) => `visit${t}`));
 
 /**

@@ -34,11 +34,11 @@ export function isNaN(num: unknown): boolean {
 function _prepareAttributeParts(attr: null | undefined): never[];
 function _prepareAttributeParts(attr: string): string[];
 function _prepareAttributeParts<T extends Exclude<unknown, string>>(
-  attr: T
+  attr: T,
 ): T[];
 
-function _prepareAttributeParts<T extends unknown>(
-  attr: T | string | undefined
+function _prepareAttributeParts<T>(
+  attr: T | string | undefined,
 ): T[] | (string | number)[] | never[] {
   if (!attr) {
     return [];
@@ -63,7 +63,7 @@ const ignoreCase: {
 function makeAttrGetter(
   environment: Environment,
   attribute: string | number,
-  options: { postprocess?: null | ((val: any) => any); default?: any } = {}
+  options: { postprocess?: null | ((val: any) => any); default?: any } = {},
 ): (value: any) => any {
   const parts = _prepareAttributeParts(attribute);
 
@@ -84,7 +84,7 @@ function makeAttrGetter(
 function makeMultiAttrGetter(
   environment: Environment,
   attribute: string | number,
-  options: { postprocess?: null | ((val: any) => any); default?: any } = {}
+  options: { postprocess?: null | ((val: any) => any); default?: any } = {},
 ): (value: any) => any {
   const split: (string | number | null)[] =
     typeof attribute === "string" ? attribute.split(",") : [attribute];
@@ -106,7 +106,7 @@ function makeMultiAttrGetter(
 export function* batch<V>(
   value: Iterable<V>,
   linecount: number,
-  fillWith: V | null = null
+  fillWith: V | null = null,
 ): Generator<V[]> {
   let tmp: V[] = [];
 
@@ -127,23 +127,22 @@ export function* batch<V>(
   }
 }
 
-export function capitalize(str: string): string {
-  const s = normalize(`${str}`, "");
-  const ret = s.toLowerCase();
-  return copySafeness(str, ret.charAt(0).toUpperCase() + ret.slice(1));
+export function capitalize(s: string): string {
+  const ret = normalize(str(s), "").toLowerCase();
+  return copySafeness(s, ret.charAt(0).toUpperCase() + ret.slice(1));
 }
 
-function center(str: string, width: number = 80): string {
-  str = `${str || ""}`;
+function center(s: string, width = 80): string {
+  const string = normalize(str(s), "");
 
-  if (str.length >= width) {
-    return str;
+  if (string.length >= width) {
+    return copySafeness(s, string);
   }
 
-  const spaces = width - str.length;
+  const spaces = width - string.length;
   const pre = " ".repeat(Math.floor(spaces / 2) - (spaces % 2));
   const post = " ".repeat(Math.floor(spaces / 2));
-  return copySafeness(str, pre + str + post);
+  return copySafeness(s, pre + string + post);
 }
 
 exports.center = center;
@@ -163,24 +162,23 @@ export const dictsort = nunjucksFunction([
   "reverse",
 ])(function dictsort<V>(
   value: Record<string, V>,
-  caseSensitive: boolean = false,
+  caseSensitive = false,
   by: "key" | "value" = "key",
-  reverse: boolean = false
+  reverse = false,
 ): [string, V][] {
   if (!isObject(value)) {
     throw new TemplateError("dictsort filter: value must be an object");
   }
 
-  let array: [string, V][] = [];
+  const array: [string, V][] = [];
   // deliberately include properties from the object's prototype
-  for (let k in value) {
-    // eslint-disable-line guard-for-in, no-restricted-syntax
+  for (const k in value) {
     array.push([k, value[k]]);
   }
   const pos = by === "key" ? 0 : by === "value" ? 1 : null;
   if (pos === null)
     throw new TemplateError(
-      "dictsort filter: You can only sort by either key or value"
+      "dictsort filter: You can only sort by either key or value",
     );
 
   array.sort((x, y) => {
@@ -206,7 +204,7 @@ export function safe(str: unknown): MarkupType {
   if (isMarkup(str)) {
     return str;
   }
-  str = str === null || str === undefined ? "" : str;
+  str = str ?? "";
   return markSafe(`${str}`);
 }
 
@@ -235,8 +233,8 @@ export const indent = nunjucksFunction(["str", "width", "first", "blank"])(
   function indent(
     str: unknown,
     width: number | string = 4,
-    first: boolean = false,
-    blank: boolean = false
+    first = false,
+    blank = false,
   ): string {
     str = normalize(str, "");
 
@@ -246,6 +244,7 @@ export const indent = nunjucksFunction(["str", "width", "first", "blank"])(
 
     const sp = typeof width === "string" ? width : " ".repeat(width);
 
+    // eslint-disable-next-line no-control-regex
     const lines = `${str}`.split(/\r\n|[\n\r\v\f\x1c\x1d\x1e\x85\u2028\u2029]/);
 
     let ret = "";
@@ -261,14 +260,14 @@ export const indent = nunjucksFunction(["str", "width", "first", "blank"])(
       ret = sp + ret;
     }
     return copySafeness(str, ret);
-  }
+  },
 );
 
 function syncJoin(
   evalCtx: EvalContext,
   value: unknown,
-  d: string = "",
-  attribute: string | number | null = null
+  d = "",
+  attribute: string | number | null = null,
 ): string {
   let arr = syncList(value);
 
@@ -303,10 +302,10 @@ function syncJoin(
 async function asyncJoin(
   evalCtx: EvalContext,
   value: unknown,
-  d: string = "",
-  attribute: string | number | null = null
+  d = "",
+  attribute: string | number | null = null,
 ): Promise<string> {
-  let arr = await asyncList(value);
+  const arr = await asyncList(value);
   if (attribute !== null) {
     const attrGetter = makeAttrGetter(evalCtx.environment, attribute);
     for (let i = 0; i < arr.length; i++) {
@@ -321,19 +320,19 @@ const doJoin: {
     evalCtx: EvalContext<true>,
     value: unknown,
     d?: string,
-    attribute?: string | number
+    attribute?: string | number,
   ): Promise<string>;
   (
     evalCtx: EvalContext<false>,
     value: unknown,
     d?: string,
-    attribute?: string | number
+    attribute?: string | number,
   ): string;
 } = (
   evalCtx: EvalContext,
   value: unknown,
-  d: string = "",
-  attribute: string | number | null = null
+  d = "",
+  attribute: string | number | null = null,
 ): any =>
   evalCtx.isAsync()
     ? asyncJoin(evalCtx, value, d, attribute)
@@ -349,9 +348,9 @@ export function last<T>(arr: T[]): T {
 }
 
 export function length(
-  val: string | unknown[] | undefined | Record<PropertyKey, unknown>
+  val: string | unknown[] | undefined | Record<PropertyKey, unknown>,
 ): number {
-  var value = normalize(val, "");
+  const value = normalize(val, "");
 
   if (value !== undefined) {
     if (value instanceof Map || value instanceof Set) {
@@ -404,7 +403,7 @@ const doList: {
   environment.isAsync() ? asyncList(value) : syncList(value);
 
 export const list = nunjucksFunction(["value"], { passArg: "environment" })(
-  doList
+  doList,
 );
 
 export function lower(str: unknown): string {
@@ -412,11 +411,12 @@ export function lower(str: unknown): string {
   return `${str}`.toLowerCase();
 }
 
-export function nl2br(str: unknown) {
-  if (str === null || str === undefined) {
+export function nl2br(string: unknown) {
+  if (string === null || string === undefined) {
     return "";
   }
-  return copySafeness(str, `${str}`.replace(/\r\n|\n/g, "<br />\n"));
+
+  return copySafeness(string, str(string).replace(/\r\n|\n/g, "<br />\n"));
 }
 
 export function random<T>(arr: T[]): T {
@@ -427,13 +427,13 @@ function replaceCount(
   str: string,
   old: RegExp | string | number,
   new_: string,
-  maxCount = -1
+  maxCount = -1,
 ): string {
   const originalStr = str;
 
   // Cast numbers in the replacement to string
   if (typeof str === "number") {
-    str = "" + str;
+    str = "" + (str as number);
   }
 
   // If by now, we don't have a string, throw it back
@@ -511,7 +511,7 @@ export const replace = nunjucksFunction(["s", "old", "new", "count"], {
   str: string,
   old: RegExp | string,
   new_: string,
-  maxCount?: number
+  maxCount?: number,
 ) {
   if (!evalContext.autoescape) {
     return replaceCount(str, old, new_, maxCount);
@@ -539,7 +539,7 @@ export const round = nunjucksFunction(["value", "precision", "method"])(
   function round(
     value: number,
     precision: number = 0,
-    method: "common" | "ceil" | "floor" = "common"
+    method: "common" | "ceil" | "floor" = "common",
   ): number {
     const factor = Math.pow(10, precision);
     const rounder =
@@ -549,13 +549,13 @@ export const round = nunjucksFunction(["value", "precision", "method"])(
           ? Math.floor
           : Math.round;
     return rounder(value * factor) / factor;
-  }
+  },
 );
 
 function syncDoSlice<T>(
   value: Iterable<T>,
   slices: number,
-  fillWith: T | null = null
+  fillWith: T | null = null,
 ): T[][] {
   const res: T[][] = [];
   const seq = [...value];
@@ -584,11 +584,11 @@ async function asyncDoSlice<T>(
     | AsyncIterable<T>
     | Promise<Iterable<T> | AsyncIterable<T>>,
   slices: number | Promise<number>,
-  fillWith: T | null | Promise<T | null> = null
+  fillWith: T | null | Promise<T | null> = null,
 ): Promise<T[][]> {
   const arr: T[] = [];
   for await (const x of await value) {
-    arr.push(await x);
+    arr.push(x);
   }
   return syncDoSlice(arr, await slices, await fillWith);
 }
@@ -597,13 +597,13 @@ function doSlice<T>(
   environment: Environment<false>,
   arr: Iterable<T>,
   slices: number,
-  fillWith?: T | null
+  fillWith?: T | null,
 ): T[][];
 function doSlice<T>(
   environment: Environment<true>,
   arr: Iterable<T> | AsyncIterable<T>,
   slices: number | Promise<number>,
-  fillWith?: T | null | Promise<T | null>
+  fillWith?: T | null | Promise<T | null>,
 ): Promise<T[][]>;
 
 function doSlice<T>(
@@ -613,7 +613,7 @@ function doSlice<T>(
     | AsyncIterable<T>
     | Promise<Iterable<T> | AsyncIterable<T>>,
   slices: number | Promise<number>,
-  fillWith: T | null | Promise<T | null> = null
+  fillWith: T | null | Promise<T | null> = null,
 ): T[][] | Promise<T[][]> {
   if (environment.isAsync()) {
     return asyncDoSlice(value, slices, fillWith);
@@ -641,7 +641,7 @@ function syncSum(
   environment: Environment,
   iterable: Iterable<any>,
   attribute: string | number | null = null,
-  start: number = 0
+  start = 0,
 ): number {
   let arr: any[] = [];
   for (const item of iterable) {
@@ -657,7 +657,7 @@ async function asyncSum(
   environment: Environment,
   iterable: Iterable<any>,
   attribute: string | number | null = null,
-  start: number = 0
+  start = 0,
 ): Promise<number> {
   const arr: any[] = [];
   for await (const item of iterable) {
@@ -671,13 +671,13 @@ export const sum: {
     environment: Environment<false>,
     iterable: Iterable<any>,
     attribute?: string | number | null,
-    start?: number
+    start?: number,
   ): number;
   (
     environment: Environment<true>,
     iterable: Iterable<any>,
     attribute?: string | number | null,
-    start?: number
+    start?: number,
   ): Promise<number>;
 } = nunjucksFunction(["iterable", "attribute", "start"], {
   passArg: "environment",
@@ -686,8 +686,8 @@ export const sum: {
     environment,
     iterable,
     attribute,
-    start
-  )
+    start,
+  ),
 );
 
 export function upper(str: unknown): string {
@@ -697,7 +697,7 @@ export function upper(str: unknown): string {
 
 function urlquote(
   str: string,
-  { query = false }: { query?: boolean } = {}
+  { query = false }: { query?: boolean } = {},
 ): string {
   const encode = query ? encodeURIComponent : encodeURI;
   const ret = encode(str)
@@ -705,18 +705,18 @@ function urlquote(
     .replace(/%5D/g, "]")
     .replace(
       /[!'()*,]/g,
-      (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`
+      (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`,
     );
   return query ? ret.replace(/%20/g, "+") : ret;
 }
 
 export function urlencode(
-  obj: [string, string][] | Record<PropertyKey, unknown> | string
+  obj: [string, string][] | Record<PropertyKey, unknown> | string,
 ): string {
   if (isString(obj)) {
     return urlquote(obj);
   } else {
-    let keyvals = Array.isArray(obj) ? obj : [...Object.entries(obj)];
+    const keyvals = Array.isArray(obj) ? obj : [...Object.entries(obj)];
     return keyvals
       .map(([k, v]) => {
         const val = `${v}`;
@@ -730,16 +730,16 @@ export function urlencode(
 // https://github.com/mitsuhiko/jinja2/blob/f15b814dcba6aa12bc74d1f7d0c881d55f7126be/jinja2/utils.py#L20-L23
 const puncRe = /^(?:\(|<|&lt;)?(.*?)(?:\.|,|\)|\n|&gt;)?$/;
 // from http://blog.gerv.net/2011/05/html5_email_address_regexp/
-const emailRe = /^[\w.!#$%&'*+\-\/=?\^`{|}~]+@[a-z\d\-]+(\.[a-z\d\-]+)+$/i;
+const emailRe = /^[\w.!#$%&'*+\-/=?^`{|}~]+@[a-z\d-]+(\.[a-z\d-]+)+$/i;
 const httpHttpsRe = /^https?:\/\/.*$/;
-const wwwRe = /^www\./;
-const tldRe = /\.(?:org|net|com)(?:\:|\/|$)/;
+// const wwwRe = /^www\./;
+const tldRe = /\.(?:org|net|com)(?::|\/|$)/;
 
 // TODO rewrite
 export function urlize(
   str: string,
   length: number,
-  nofollow?: boolean
+  nofollow?: boolean,
 ): string {
   if (isNaN(length)) {
     length = Infinity;
@@ -752,12 +752,12 @@ export function urlize(
     .filter((word) => {
       // If the word has no length, bail. This can happen for str with
       // trailing whitespace.
-      return word && word.length;
+      return word?.length;
     })
     .map((word) => {
-      var matches = word.match(puncRe);
-      var possibleUrl = matches ? matches[1] : word;
-      var shortUrl = possibleUrl.substr(0, length);
+      const matches = word.match(puncRe);
+      const possibleUrl = matches ? matches[1] : word;
+      const shortUrl = possibleUrl.substr(0, length);
 
       // url that starts with http or https
       if (httpHttpsRe.test(possibleUrl)) {
@@ -765,7 +765,7 @@ export function urlize(
       }
 
       // url that starts with www.
-      if (wwwRe.test(possibleUrl)) {
+      if (possibleUrl.startsWith("www.")) {
         return `<a href="http://${possibleUrl}"${noFollowAttr}>${shortUrl}</a>`;
       }
 
@@ -785,14 +785,14 @@ export function urlize(
   return words.join("");
 }
 
-export function wordcount(str: unknown): number | null {
-  str = normalize(str, "");
-  const words = str ? `${str}`.match(/\w+/g) : null;
+export function wordcount(string: unknown): number | null {
+  const s = str(normalize(string, ""));
+  const words = s ? `${s}`.match(/\w+/g) : null;
   return words ? words.length : null;
 }
 
 export function float(val: string, def: number): number {
-  var res = Number(val);
+  const res = Number(val);
   return isNaN(res) ? def : res;
 }
 
@@ -818,7 +818,7 @@ function regexEscape(str: string): string {
 
 const trim = nunjucksFunction(["value", "chars"])(function trim(
   value: unknown,
-  chars: string | null = null
+  chars: string | null = null,
 ): string {
   if (chars === null) return copySafeness(value, str(value).trim());
   const regexChars = regexEscape(chars);
@@ -826,7 +826,7 @@ const trim = nunjucksFunction(["value", "chars"])(function trim(
   const endRegex = new RegExp(`[${regexChars}]+$`);
   return copySafeness(
     value,
-    str(value).replace(startRegex, "").replace(endRegex, "")
+    str(value).replace(startRegex, "").replace(endRegex, ""),
   );
 });
 

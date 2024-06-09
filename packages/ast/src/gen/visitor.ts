@@ -12,25 +12,25 @@ export interface Visitor<M = Record<string, any>, T = Context<M>> {
   visitTemplate?(
     this: T,
     path: Path<types.Template, types.Template>,
-    state: M
+    state: M,
   ): any;
   visitOutput?(this: T, path: Path<types.Output, types.Output>, state: M): any;
   visitExtends?(
     this: T,
     path: Path<types.Extends, types.Extends>,
-    state: M
+    state: M,
   ): any;
   visitLoop?(this: T, path: Path<types.Loop, types.Loop>, state: M): any;
   visitFor?(this: T, path: Path<types.For, types.For>, state: M): any;
   visitAsyncEach?(
     this: T,
     path: Path<types.AsyncEach, types.AsyncEach>,
-    state: M
+    state: M,
   ): any;
   visitAsyncAll?(
     this: T,
     path: Path<types.AsyncAll, types.AsyncAll>,
-    state: M
+    state: M,
   ): any;
   visitIf?(this: T, path: Path<types.If, types.If>, state: M): any;
   visitName?(this: T, path: Path<types.Name, types.Name>, state: M): any;
@@ -38,13 +38,13 @@ export interface Visitor<M = Record<string, any>, T = Context<M>> {
   visitKeyword?(
     this: T,
     path: Path<types.Keyword, types.Keyword>,
-    state: M
+    state: M,
   ): any;
   visitCall?(this: T, path: Path<types.Call, types.Call>, state: M): any;
   visitCallBlock?(
     this: T,
     path: Path<types.CallBlock, types.CallBlock>,
-    state: M
+    state: M,
   ): any;
   visitPair?(this: T, path: Path<types.Pair, types.Pair>, state: M): any;
   visitFilter?(this: T, path: Path<types.Filter, types.Filter>, state: M): any;
@@ -52,90 +52,90 @@ export interface Visitor<M = Record<string, any>, T = Context<M>> {
   visitFilterBlock?(
     this: T,
     path: Path<types.FilterBlock, types.FilterBlock>,
-    state: M
+    state: M,
   ): any;
   visitWith?(this: T, path: Path<types.With, types.With>, state: M): any;
   visitBlock?(this: T, path: Path<types.Block, types.Block>, state: M): any;
   visitInclude?(
     this: T,
     path: Path<types.Include, types.Include>,
-    state: M
+    state: M,
   ): any;
   visitImport?(this: T, path: Path<types.Import, types.Import>, state: M): any;
   visitFromImport?(
     this: T,
     path: Path<types.FromImport, types.FromImport>,
-    state: M
+    state: M,
   ): any;
   visitExprStmt?(
     this: T,
     path: Path<types.ExprStmt, types.ExprStmt>,
-    state: M
+    state: M,
   ): any;
   visitAssign?(this: T, path: Path<types.Assign, types.Assign>, state: M): any;
   visitNSRef?(this: T, path: Path<types.NSRef, types.NSRef>, state: M): any;
   visitLiteral?(
     this: T,
     path: Path<types.Literal, types.Literal>,
-    state: M
+    state: M,
   ): any;
   visitTuple?(this: T, path: Path<types.Tuple, types.Tuple>, state: M): any;
   visitAssignBlock?(
     this: T,
     path: Path<types.AssignBlock, types.AssignBlock>,
-    state: M
+    state: M,
   ): any;
   visitBinExpr?(
     this: T,
     path: Path<types.BinExpr, types.BinExpr>,
-    state: M
+    state: M,
   ): any;
   visitUnaryExpr?(
     this: T,
     path: Path<types.UnaryExpr, types.UnaryExpr>,
-    state: M
+    state: M,
   ): any;
   visitConst?(this: T, path: Path<types.Const, types.Const>, state: M): any;
   visitTemplateData?(
     this: T,
     path: Path<types.TemplateData, types.TemplateData>,
-    state: M
+    state: M,
   ): any;
   visitList?(this: T, path: Path<types.List, types.List>, state: M): any;
   visitDict?(this: T, path: Path<types.Dict, types.Dict>, state: M): any;
   visitCondExpr?(
     this: T,
     path: Path<types.CondExpr, types.CondExpr>,
-    state: M
+    state: M,
   ): any;
   visitGetitem?(
     this: T,
     path: Path<types.Getitem, types.Getitem>,
-    state: M
+    state: M,
   ): any;
   visitGetattr?(
     this: T,
     path: Path<types.Getattr, types.Getattr>,
-    state: M
+    state: M,
   ): any;
   visitSlice?(this: T, path: Path<types.Slice, types.Slice>, state: M): any;
   visitConcat?(this: T, path: Path<types.Concat, types.Concat>, state: M): any;
   visitCompare?(
     this: T,
     path: Path<types.Compare, types.Compare>,
-    state: M
+    state: M,
   ): any;
   visitOperand?(
     this: T,
     path: Path<types.Operand, types.Operand>,
-    state: M
+    state: M,
   ): any;
   visitMul?(this: T, path: Path<types.Mul, types.Mul>, state: M): any;
   visitDiv?(this: T, path: Path<types.Div, types.Div>, state: M): any;
   visitFloorDiv?(
     this: T,
     path: Path<types.FloorDiv, types.FloorDiv>,
-    state: M
+    state: M,
   ): any;
   visitAdd?(this: T, path: Path<types.Add, types.Add>, state: M): any;
   visitSub?(this: T, path: Path<types.Sub, types.Sub>, state: M): any;
@@ -149,59 +149,59 @@ export interface Visitor<M = Record<string, any>, T = Context<M>> {
   visitEnvironmentAttribute?(
     this: T,
     path: Path<types.EnvironmentAttribute, types.EnvironmentAttribute>,
-    state: M
+    state: M,
   ): any;
   visitExtensionAttribute?(
     this: T,
     path: Path<types.ExtensionAttribute, types.ExtensionAttribute>,
-    state: M
+    state: M,
   ): any;
   visitImportedName?(
     this: T,
     path: Path<types.ImportedName, types.ImportedName>,
-    state: M
+    state: M,
   ): any;
   visitInternalName?(
     this: T,
     path: Path<types.InternalName, types.InternalName>,
-    state: M
+    state: M,
   ): any;
   visitMarkSafe?(
     this: T,
     path: Path<types.MarkSafe, types.MarkSafe>,
-    state: M
+    state: M,
   ): any;
   visitMarkSafeIfAutoescape?(
     this: T,
     path: Path<types.MarkSafeIfAutoescape, types.MarkSafeIfAutoescape>,
-    state: M
+    state: M,
   ): any;
   visitContextReference?(
     this: T,
     path: Path<types.ContextReference, types.ContextReference>,
-    state: M
+    state: M,
   ): any;
   visitDerivedContextReference?(
     this: T,
     path: Path<types.DerivedContextReference, types.DerivedContextReference>,
-    state: M
+    state: M,
   ): any;
   visitContinue?(
     this: T,
     path: Path<types.Continue, types.Continue>,
-    state: M
+    state: M,
   ): any;
   visitBreak?(this: T, path: Path<types.Break, types.Break>, state: M): any;
   visitScope?(this: T, path: Path<types.Scope, types.Scope>, state: M): any;
   visitOverlayScope?(
     this: T,
     path: Path<types.OverlayScope, types.OverlayScope>,
-    state: M
+    state: M,
   ): any;
   visitEvalContextModifier?(
     this: T,
     path: Path<types.EvalContextModifier, types.EvalContextModifier>,
-    state: M
+    state: M,
   ): any;
   visitScopedEvalContextModifier?(
     this: T,
@@ -209,6 +209,6 @@ export interface Visitor<M = Record<string, any>, T = Context<M>> {
       types.ScopedEvalContextModifier,
       types.ScopedEvalContextModifier
     >,
-    state: M
+    state: M,
   ): any;
 }

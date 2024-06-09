@@ -122,7 +122,7 @@ export class TemplateSyntaxError extends Error {
       lineno,
       name = null,
       filename = null,
-    }: { lineno: number; name?: string | null; filename?: string | null }
+    }: { lineno: number; name?: string | null; filename?: string | null },
   ) {
     super(message);
     this.lineno = lineno;
@@ -132,20 +132,20 @@ export class TemplateSyntaxError extends Error {
   }
 }
 
-export type Token<T extends TokenType = TokenType> = {
+export interface Token<T extends TokenType = TokenType> {
   type: T;
   value: string;
   lineno: number;
   colno: number;
   pos: number;
-};
+}
 
 function token<T extends TokenType = TokenType>(
   type: T,
   value: string,
   lineno: number,
   colno: number,
-  pos: number
+  pos: number,
 ): Token<T> {
   return {
     type,
@@ -158,7 +158,7 @@ function token<T extends TokenType = TokenType>(
 
 function hasProp<K extends string>(
   value: unknown,
-  prop: K
+  prop: K,
 ): value is Record<K, any> {
   return Object.prototype.hasOwnProperty.call(value, prop);
 }
@@ -179,7 +179,7 @@ export function assertToken(value: unknown): asserts value is Token {
   }
 }
 
-export type TokenizerOptions = {
+export interface TokenizerOptions {
   blockStart?: string;
   blockEnd?: string;
   variableStart?: string;
@@ -188,7 +188,7 @@ export type TokenizerOptions = {
   commentEnd?: string;
   trimBlocks?: boolean;
   lstripBlocks?: boolean;
-};
+}
 
 export class Tokenizer {
   str: string;
@@ -227,7 +227,7 @@ export class Tokenizer {
       "",
       this.lineno,
       this.colno,
-      this.index
+      this.index,
     );
     this.prevToken = null;
 
@@ -236,15 +236,15 @@ export class Tokenizer {
     this.inTag = false;
     this._pushed = [];
 
-    const opts: TokenizerOptions = options || {};
+    const opts: TokenizerOptions = options ?? {};
 
     this.tags = {
-      BLOCK_START: opts.blockStart || BLOCK_START,
-      BLOCK_END: opts.blockEnd || BLOCK_END,
-      VARIABLE_START: opts.variableStart || VARIABLE_START,
-      VARIABLE_END: opts.variableEnd || VARIABLE_END,
-      COMMENT_START: opts.commentStart || COMMENT_START,
-      COMMENT_END: opts.commentEnd || COMMENT_END,
+      BLOCK_START: opts.blockStart ?? BLOCK_START,
+      BLOCK_END: opts.blockEnd ?? BLOCK_END,
+      VARIABLE_START: opts.variableStart ?? VARIABLE_START,
+      VARIABLE_END: opts.variableEnd ?? VARIABLE_END,
+      COMMENT_START: opts.commentStart ?? COMMENT_START,
+      COMMENT_END: opts.commentEnd ?? COMMENT_END,
     };
 
     this.trimBlocks = !!opts.trimBlocks;
@@ -272,7 +272,7 @@ export class Tokenizer {
   nextToken(): Token {
     this.prevToken = this.currentToken;
     if (this._pushed.length) {
-      this.currentToken = this._pushed.shift() as Token;
+      this.currentToken = this._pushed.shift()!;
     } else {
       this.currentToken = this._nextToken();
     }
@@ -328,7 +328,7 @@ export class Tokenizer {
             }
           }
         }
-        if (tok[0] === "-") {
+        if (tok.startsWith("-")) {
           this._extract(whitespaceChars);
         }
         return token(TOKEN_BLOCK_END, tok, lineno, colno, pos);
@@ -390,8 +390,8 @@ export class Tokenizer {
               regexFlags,
               flagStartPos.lineno,
               flagStartPos.colno,
-              flagStartPos.pos
-            )
+              flagStartPos.pos,
+            ),
           );
         }
 
@@ -510,7 +510,7 @@ export class Tokenizer {
         tok = this._extractUntil(whitespaceChars + "()[]{}%*~/#,:|.<>=!");
         if (
           tok.match(
-            /^[-+]?(0b(_?[0-1])+|0o(_?[0-7])+|0x(_?[\da-f])+|[1-9](_?\d)*|0(_?0)*)(e[+\-]?(\d+_)*\d+)?$/i
+            /^[-+]?(0b(_?[0-1])+|0o(_?[0-7])+|0x(_?[\da-f])+|[1-9](_?\d)*|0(_?0)*)(e[+-]?(\d+_)*\d+)?$/i,
           )
         ) {
           if (this.current() === "." && this.prevToken?.type !== TOKEN_DOT) {
@@ -518,14 +518,14 @@ export class Tokenizer {
             if (!tok.match(/^[_\d]+$/)) {
               throw new TemplateSyntaxError(
                 "Unexpected value while parsing: " + tok,
-                { lineno: this.lineno }
+                { lineno: this.lineno },
               );
             }
             const dec = this._extract(intChars + "e_-+");
-            if (!dec.match(/^(((\d+_)*\d+)?e[+\-]?(\d+_)*\d+|(\d+_)*\d+)$/)) {
+            if (!dec.match(/^(((\d+_)*\d+)?e[+-]?(\d+_)*\d+|(\d+_)*\d+)$/)) {
               throw new TemplateSyntaxError(
                 "Unexpected value while parsing: " + dec,
-                { lineno: this.lineno }
+                { lineno: this.lineno },
               );
             }
             return token(TOKEN_FLOAT, tok + "." + dec, lineno, colno, pos);
@@ -550,7 +550,7 @@ export class Tokenizer {
         } else {
           throw new TemplateSyntaxError(
             "Unexpected value while parsing: " + tok,
-            { lineno: this.lineno }
+            { lineno: this.lineno },
           );
         }
       }
@@ -566,7 +566,7 @@ export class Tokenizer {
 
       // true if BLOCK_START is a substring of COMMENT_START
       const commentBlockSameStart = this.tags.COMMENT_START.startsWith(
-        this.tags.BLOCK_START
+        this.tags.BLOCK_START,
       );
 
       if (this.isFinished()) {
@@ -652,7 +652,7 @@ export class Tokenizer {
         if (data === null && inComment) {
           throw new TemplateSyntaxError(
             "expected end of comment, got end of file",
-            { lineno: this.lineno }
+            { lineno: this.lineno },
           );
         }
 
@@ -669,7 +669,7 @@ export class Tokenizer {
           tok,
           lineno,
           colno,
-          pos
+          pos,
         );
       }
     }
@@ -729,7 +729,7 @@ export class Tokenizer {
   _extractUntil(charString?: string): string {
     // Extract all non-matching chars, with the default matching set
     // to everything
-    return this._extractMatching(true, charString || "");
+    return this._extractMatching(true, charString ?? "");
   }
 
   _extract(charString: string): string {

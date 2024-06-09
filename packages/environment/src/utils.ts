@@ -12,21 +12,20 @@ import { TemplateError } from "@nunjucks/utils";
 
 export function asyncFind<T>(
   array: T[],
-  predicate: (item: T) => Promise<boolean>
+  predicate: (item: T) => Promise<boolean>,
 ): Promise<T | undefined> {
-  return new Promise((resolve) => {
-    let i = 0;
-    array.forEach(async (item) => {
-      if (await predicate(await item)) {
-        resolve(item);
-        return;
-      }
-      i++;
-      if (array.length == i) {
-        resolve(undefined);
-      }
-    });
-  });
+  const promises = array.map(
+    (item) =>
+      new Promise<T>((resolve, reject) => {
+        predicate(item).then((v) => {
+          if (v) resolve(item);
+        }, reject);
+      }),
+  );
+  return Promise.race([
+    ...promises,
+    Promise.all(promises).then(() => undefined),
+  ]);
 }
 
 function* map<T, U>(a: T[], fn: (x: T) => U) {
@@ -40,7 +39,7 @@ function find<T>(a: Generator<T, void, unknown>, fn: (x: T) => boolean) {
 export function mapFind<T, U>(
   collection: T[],
   mapper: (item: T) => U,
-  finder: (item: U) => boolean
+  finder: (item: U) => boolean,
 ): U | undefined {
   const mapperGenerator = map(collection, mapper);
 
@@ -130,14 +129,14 @@ function _seqToDictKeyVal(obj: unknown[]): [string, unknown][] {
     } catch (e) {
       if (e instanceof TemplateError) {
         throw new Error(
-          `cannot convert dictionary update sequence element #${i} to a sequence`
+          `cannot convert dictionary update sequence element #${i} to a sequence`,
         );
       } else throw e;
     }
     const len = l.length;
     if (len !== 2) {
       throw new Error(
-        `dictionary update sequence element #${i} has length ${len}; 2 is required`
+        `dictionary update sequence element #${i} has length ${len}; 2 is required`,
       );
     }
     return [`${l[0]}`, l[1]];
@@ -181,15 +180,15 @@ export const dict = nunjucksFunction([], { kwargs: true, varargs: true })(
     }
 
     if (kwargs !== null) {
-      delete kwargs["__isKwargs"];
+      delete kwargs.__isKwargs;
       Object.assign(dictObj, Object.fromEntries(Object.entries(kwargs)));
     }
 
     return dictObj;
-  }
+  },
 );
 
-export function joiner(sep: string = ", "): () => string {
+export function joiner(sep = ", "): () => string {
   let used = false;
 
   return () => {
@@ -267,7 +266,7 @@ export const lipsum = nunjucksFunction(["n", "html", "min", "max"])(
     n: number = 5,
     html: boolean = true,
     min: number = 20,
-    max: number = 100
+    max: number = 100,
   ): string {
     const words = [...LOREM_IPSUM_WORDS];
     const result: string[] = [];
@@ -282,6 +281,7 @@ export const lipsum = nunjucksFunction(["n", "html", "min", "max"])(
       // each paragraph contains between 20 and 100 words
       const numWords = randrange(min, max);
       for (let j = 0; j < numWords; j++) {
+        // eslint-disable-next-line no-constant-condition
         while (true) {
           word = choice(words);
           if (word !== last) {
@@ -322,5 +322,5 @@ export const lipsum = nunjucksFunction(["n", "html", "min", "max"])(
       return result.join("\n\n");
     }
     return markSafe(result.map((p) => `<p>${escape(p)}</p>`).join("\n"));
-  }
+  },
 );

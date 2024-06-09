@@ -17,17 +17,17 @@ function splitTemplatePath(template: string): string[] {
   return pieces;
 }
 
-export type SyncLoaderSource = {
+export interface SyncLoaderSource {
   source: string;
   filename: string;
   uptodate?: () => boolean;
-};
+}
 
-export type AsyncLoaderSource = {
+export interface AsyncLoaderSource {
   source: string;
   filename: string;
   uptodate?: (() => boolean) | (() => Promise<boolean> | boolean);
-};
+}
 
 export type LoaderSource = SyncLoaderSource | AsyncLoaderSource;
 
@@ -111,6 +111,7 @@ export class AsyncLoader extends BaseLoader {
     });
   }
 
+  // eslint-disable-next-line @typescript-eslint/require-await
   async getSource(
     environment: Environment<true>,
     name: string,
@@ -126,10 +127,10 @@ export class AsyncLoader extends BaseLoader {
 
 export type Loader = SyncLoader | AsyncLoader;
 
-export type FileSystemLoaderOpts = {
+export interface FileSystemLoaderOpts {
   watch?: boolean;
   noCache?: boolean;
-};
+}
 
 export class FileSystemLoader extends SyncLoader {
   pathsToNames: Record<string, string>;
@@ -153,7 +154,7 @@ export class FileSystemLoader extends SyncLoader {
     if (searchPaths) {
       searchPaths = Array.isArray(searchPaths) ? searchPaths : [searchPaths];
       // For windows, convert to forward slashes
-      this.searchPaths = searchPaths.map(path.normalize);
+      this.searchPaths = searchPaths.map((p) => path.normalize(p));
     } else {
       this.searchPaths = ["."];
     }
@@ -215,7 +216,7 @@ export class AsyncFileSystemLoader extends AsyncLoader {
     if (searchPaths) {
       searchPaths = Array.isArray(searchPaths) ? searchPaths : [searchPaths];
       // For windows, convert to forward slashes
-      this.searchPaths = searchPaths.map(path.normalize);
+      this.searchPaths = searchPaths.map((p) => path.normalize(p));
     } else {
       this.searchPaths = ["."];
     }
@@ -295,7 +296,7 @@ export class NodeResolveLoader extends SyncLoader {
       throw new TemplateNotFound(name, undefined, { cause: err });
     }
     // TODO add compiled code cache?
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
+
     const { root, blocks } = require(name);
     return new Template<EnvAsync>({
       environment,
@@ -326,10 +327,10 @@ export class NodeResolveSourceLoader extends SyncLoader {
   }
 }
 
-type CompiledTemplate<IsAsync extends boolean> = {
+interface CompiledTemplate<IsAsync extends boolean> {
   root: RenderFunc<IsAsync>;
   blocks: Record<string, RenderFunc<IsAsync>>;
-};
+}
 
 // function compiledTemplateIsAsync(compiled: { root: RenderFunc<boolean>; blocks: Record<string, RenderFunc<boolean>> })
 

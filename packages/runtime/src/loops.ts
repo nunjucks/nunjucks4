@@ -5,12 +5,12 @@ import type {
   ConditionalAsync,
 } from "./types";
 
-import { MISSING, Missing, Undefined } from ".";
+import { MISSING, Undefined } from ".";
 
 type LoopRenderFunc<V> = (
   reciter: Iterable<V>,
   loopRenderFunc: LoopRenderFunc<V>,
-  depth?: number
+  depth?: number,
 ) => string;
 
 /**
@@ -25,7 +25,7 @@ const LoopContextFunc = function LoopContext<
 >(this: LoopContext<IsAsync, V>, iterable: Iterable<V>): string {
   if (this._recurse === null) {
     throw new TypeError(
-      "The loop must have the 'recursive' marker to be called recursively."
+      "The loop must have the 'recursive' marker to be called recursively.",
     );
   }
   return this._recurse(iterable, this._recurse, this.depth);
@@ -59,7 +59,7 @@ export class LoopContext<
   >;
   _undefined: typeof Undefined;
   _recurse: LoopRenderFunc<V> | null;
-  _iteritems: Array<V>;
+  _iteritems: V[];
   /**
    * How many levels deep a recursive loop currently is, starting at 0.
    */
@@ -81,7 +81,7 @@ export class LoopContext<
     undef: typeof Undefined,
     recurse: LoopRenderFunc<V> | null = null,
     depth0 = 0,
-    async: IsAsync
+    async: IsAsync,
   ) {
     this.index0 = -1;
     this._length = null;
@@ -122,7 +122,7 @@ export class LoopContext<
       IsAsync,
       AsyncIterable<UnwrapPromise<V>> | Iterable<UnwrapPromise<V>>,
       Iterable<V>
-    >
+    >,
   ): IfAsync<
     IsAsync,
     AsyncIterator<UnwrapPromise<V>> | Iterator<UnwrapPromise<V>>,
@@ -234,7 +234,7 @@ export class LoopContext<
       }
     }
 
-    const iterable: IfAsync<IsAsync, Array<UnwrapPromise<V>>, Array<V>> = [];
+    const iterable: IfAsync<IsAsync, UnwrapPromise<V>[], V[]> = [];
     const iterator = this._iterator as Iterator<V>;
     let result = iterator.next();
     while (!result.done) {
@@ -361,7 +361,7 @@ export class LoopContext<
   async _getNextitemAsync(): Promise<
     V | UnwrapPromise<V> | typeof MISSING | Undefined
   > {
-    const rv = await this._peekNext();
+    const rv = await this._peekNextAsync();
     return rv === MISSING ? new this._undefined("there is no next item") : rv;
   }
 
@@ -453,6 +453,7 @@ export class LoopContext<
     >;
   }
   __repr__(): string {
-    return `${this.constructor.name} ${this.index}/${this.length}`;
+    const len = this._isAsync ? this._length ?? "?" : this._getLengthSync();
+    return `${this.constructor.name} ${this.index}/${len}`;
   }
 }

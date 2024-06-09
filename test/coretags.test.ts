@@ -1,5 +1,5 @@
 import { Environment, ObjectSourceLoader } from "@nunjucks/environment";
-import { describe, expect, test, it } from "@jest/globals";
+import { describe, expect, it } from "@jest/globals";
 import { TemplateSyntaxError } from "@nunjucks/parser";
 
 describe("for loop", () => {
@@ -17,21 +17,21 @@ describe("for loop", () => {
 
   it("else", () => {
     const tmpl = env.fromString(
-      "{% for item in seq %}XXX{% else %}...{% endfor %}"
+      "{% for item in seq %}XXX{% else %}...{% endfor %}",
     );
     expect(tmpl.render()).toBe("...");
   });
 
   it("else scoping", () => {
     const tmpl = env.fromString(
-      "{% for item in [] %}{% else %}{{ item }}{% endfor %}"
+      "{% for item in [] %}{% else %}{{ item }}{% endfor %}",
     );
     expect(tmpl.render({ item: 42 })).toBe("42");
   });
 
   it("empty blocks", () => {
     const tmpl = env.fromString(
-      "<{% for item in seq %}{% else %}{% endfor %}>"
+      "<{% for item in seq %}{% else %}{% endfor %}>",
     );
     expect(tmpl.render()).toBe("<>");
   });
@@ -101,7 +101,7 @@ describe("for loop", () => {
 
   it("loop.changed", () => {
     const tmpl = env.fromString(
-      `{% for item in seq -%}{{ loop.changed(item) }},{%- endfor %}`
+      `{% for item in seq -%}{{ loop.changed(item) }},{%- endfor %}`,
     );
     const output = tmpl.render({ seq: [null, null, 1, 2, 2, 3, 4, 4, 4] });
     expect(output).toBe("true,false,true,true,false,true,true,false,false,");
@@ -143,7 +143,7 @@ describe("for loop", () => {
       { a: 3, b: [{ a: "a" }] },
     ];
     expect(tmpl.render({ seq })).toBe(
-      "[x.1.2<[x.1.2][1.2.x]>][1.2.3<[x.1.2][1.2.x]>][2.3.x<[x.a.x]>]"
+      "[x.1.2<[x.1.2][1.2.x]>][1.2.3<[x.1.2][1.2.x]>][2.3.x<[x.a.x]>]",
     );
   });
 
@@ -158,7 +158,7 @@ describe("for loop", () => {
       { a: 3, b: [{ a: "a" }] },
     ];
     expect(tmpl.render({ seq })).toBe(
-      "[0:1<[1:1][1:2]>][0:2<[1:1][1:2]>][0:3<[1:a]>]"
+      "[0:1<[1:1][1:2]>][0:2<[1:1][1:2]>][0:3<[1:a]>]",
     );
   });
 
@@ -173,7 +173,7 @@ describe("for loop", () => {
       { a: 3, b: [{ a: "a" }] },
     ];
     expect(tmpl.render({ seq })).toBe(
-      "[1:1<[2:1][2:2]>][1:2<[2:1][2:2]>][1:3<[2:a]>]"
+      "[1:1<[2:1][2:2]>][1:2<[2:1][2:2]>][1:3<[2:a]>]",
     );
   });
 
@@ -190,18 +190,18 @@ describe("for loop", () => {
 
   it("loop errors", () => {
     let tmpl = env.fromString(
-      "{% for item in [1] if loop.index == 0 %}...{% endfor %}"
+      "{% for item in [1] if loop.index == 0 %}...{% endfor %}",
     );
     expect(() => tmpl.render()).toThrow('"loop" is undefined');
     tmpl = env.fromString(
-      "{% for item in [] %}...{% else %}{{ loop }}{% endfor %}"
+      "{% for item in [] %}...{% else %}{{ loop }}{% endfor %}",
     );
     expect(tmpl.render()).toBe("");
   });
 
   it.skip("loop filter", () => {
     let tmpl = env.fromString(
-      "{% for item in range(10) if item is even %}[{{ item }}]{% endfor %}"
+      "{% for item in range(10) if item is even %}[{{ item }}]{% endfor %}",
     );
     expect(tmpl.render()).toBe("[0][2][4][6][8]");
     tmpl = env.fromString(`
@@ -213,7 +213,7 @@ describe("for loop", () => {
 
   it("loop unassignable", () => {
     expect(() =>
-      env.fromString("{% for loop in seq %}...{% endfor %}")
+      env.fromString("{% for loop in seq %}...{% endfor %}"),
     ).toThrow("Cannot assign to special loop variable in for-loop");
   });
 
@@ -222,27 +222,27 @@ describe("for loop", () => {
       [
         "{% for s in seq %}[{{ loop.first }}{% for c in s %}",
         "{{ loop.first }}{% endfor %}]{% endfor %}",
-      ].join("|")
+      ].join("|"),
     );
     expect(tmpl.render({ seq: ["ab", "cd"] })).toBe(
-      "[true|true|false][false|true|false]"
+      "[true|true|false][false|true|false]",
     );
   });
 
   it("scoped loop var", () => {
     let tmpl = env.fromString(
-      "{% for x in seq %}{{ loop.first }}{% for y in seq %}{% endfor %}{% endfor %}"
+      "{% for x in seq %}{{ loop.first }}{% for y in seq %}{% endfor %}{% endfor %}",
     );
     expect(tmpl.render({ seq: "ab" })).toBe("truefalse");
     tmpl = env.fromString(
-      "{% for x in seq %}{% for y in seq %}{{ loop.first }}{% endfor %}{% endfor %}"
+      "{% for x in seq %}{% for y in seq %}{{ loop.first }}{% endfor %}{% endfor %}",
     );
     expect(tmpl.render({ seq: "ab" })).toBe("truefalsetruefalse");
   });
 
   it("recursive empty loop iter", () => {
-    let tmpl = env.fromString(
-      "{%- for item in foo recursive -%}{%- endfor -%}"
+    const tmpl = env.fromString(
+      "{%- for item in foo recursive -%}{%- endfor -%}",
     );
     expect(tmpl.render({ foo: [] })).toBe("");
   });
@@ -272,21 +272,21 @@ describe("for loop", () => {
 
   it("unpacking", () => {
     const tmpl = env.fromString(
-      "{% for a, b, c in [[1, 2, 3]] %}{{ a }}|{{ b }}|{{ c }}{% endfor %}"
+      "{% for a, b, c in [[1, 2, 3]] %}{{ a }}|{{ b }}|{{ c }}{% endfor %}",
     );
     expect(tmpl.render()).toBe("1|2|3");
   });
 
   it("intended scoping with set", () => {
     let tmpl = env.fromString(
-      "{% for item in seq %}{{ x }}{% set x = item %}{{ x }}{% endfor %}"
+      "{% for item in seq %}{{ x }}{% set x = item %}{{ x }}{% endfor %}",
     );
     expect(tmpl.render({ x: 0, seq: [1, 2, 3] })).toBe("010203");
     tmpl = env.fromString(
       [
         "{% set x = 9 %}{% for item in seq %}{{ x }}",
         "{% set x = item %}{{ x }}{% endfor %}",
-      ].join("")
+      ].join(""),
     );
     expect(tmpl.render({ x: 0, seq: [1, 2, 3] })).toBe("919293");
   });
@@ -306,7 +306,7 @@ describe("if condition", () => {
 
   it("elif", () => {
     const tmpl = env.fromString(
-      "{% if false %}XXX{% elif true %}...{% else %}XXX{% endif %}"
+      "{% if false %}XXX{% elif true %}...{% else %}XXX{% endif %}",
     );
     expect(tmpl.render()).toBe("...");
   });
@@ -316,7 +316,7 @@ describe("if condition", () => {
       .map((_, i) => `{% elif a == ${i} %}${i}`)
       .join("\n");
     const tmpl = env.fromString(
-      `{% if a == 0 %}0${elifs}{% else %}x{% endif %}`
+      `{% if a == 0 %}0${elifs}{% else %}x{% endif %}`,
     );
     expect(tmpl.render({ a: 0 }).trim()).toBe("0");
     expect(tmpl.render({ a: 10 }).trim()).toBe("10");
@@ -336,14 +336,14 @@ describe("if condition", () => {
 
   it("complete", () => {
     const tmpl = env.fromString(
-      "{% if a %}A{% elif b %}B{% elif c == d %}C{% else %}D{% endif %}"
+      "{% if a %}A{% elif b %}B{% elif c == d %}C{% else %}D{% endif %}",
     );
     expect(tmpl.render({ a: 0, b: false, c: 42, d: 42 })).toBe("C");
   });
 
   it("scope", () => {
     let tmpl = env.fromString(
-      "{% if a %}{% set foo = 1 %}{% endif %}{{ foo }}"
+      "{% if a %}{% set foo = 1 %}{% endif %}{{ foo }}",
     );
     expect(tmpl.render({ a: true })).toBe("1");
     tmpl = env.fromString("{% if true %}{% set foo = 1 %}{% endif %}{{ foo }}");
@@ -362,7 +362,7 @@ describe("macros", () => {
     const tmpl = env.fromString(
       `
 {% macro say_hello(name) %}Hello {{ name }}!{% endmacro %}
-{{ say_hello('Peter') }}`.trim()
+{{ say_hello('Peter') }}`.trim(),
     );
     expect(tmpl.render()).toBe("Hello Peter!");
   });
@@ -374,7 +374,7 @@ describe("macros", () => {
 {% macro level2(data2) %}{{ data1 }}|{{ data2 }}{% endmacro %}
 {{ level2('bar') }}{% endmacro %}
 {{ level1('foo') }}
-    `.trim()
+    `.trim(),
     );
     expect(tmpl.render()).toBe("foo|bar");
   });
@@ -384,7 +384,7 @@ describe("macros", () => {
       `
 {% macro m(a, b, c='c', d='d') %}{{ a }}|{{ b }}|{{ c }}|{{ d }}{% endmacro %}
 {{ m() }}|{{ m('a') }}|{{ m('a', 'b') }}|{{ m(1, 2, 3) }}
-    `.trim()
+    `.trim(),
     );
     expect(tmpl.render()).toBe("||c|d|a||c|d|a|b|c|d|1|2|3|d");
   });
@@ -394,7 +394,7 @@ describe("macros", () => {
       `
 {% macro test() %}{{ varargs|join('|') }}{% endmacro %}
 {{ test(1, 2, 3) }}
-    `.trim()
+    `.trim(),
     );
     expect(tmpl.render()).toBe("1|2|3");
   });
@@ -402,16 +402,16 @@ describe("macros", () => {
   it("arguments defaults nonsense", () => {
     expect(() =>
       env.fromString(
-        "{% macro m(a, b=1, c) %}a={{ a }}, b={{ b }}, c={{ c }}{% endmacro %}"
-      )
+        "{% macro m(a, b=1, c) %}a={{ a }}, b={{ b }}, c={{ c }}{% endmacro %}",
+      ),
     ).toThrow(TemplateSyntaxError);
   });
 
   it("caller defaults nonsense", () => {
     expect(() =>
       env.fromString(
-        "{% macro a() %}{{ caller() }}{% endmacro %}{% call(x, y=1, z) a() %}{% endcall %}"
-      )
+        "{% macro a() %}{{ caller() }}{% endmacro %}{% call(x, y=1, z) a() %}{% endcall %}",
+      ),
     ).toThrow(TemplateSyntaxError);
   });
 
@@ -450,7 +450,7 @@ describe("macros", () => {
       ],
     });
     const tmpl = env.fromString(
-      '{% from "include" import test %}{{ test("foo") }}'
+      '{% from "include" import test %}{{ test("foo") }}',
     );
     expect(tmpl.render()).toBe("[foo]");
   });
@@ -461,7 +461,7 @@ describe("macros", () => {
         "{% macro foo(a, b) %}{% endmacro %}",
         "{% macro bar() %}{{ varargs }}{{ kwargs }}{% endmacro %}",
         "{% macro baz() %}{{ caller() }}{% endmacro %}",
-      ].join("")
+      ].join(""),
     );
     expect((tmpl.module as any).foo.args).toStrictEqual(["a", "b"]);
     expect((tmpl.module as any).foo.name).toBe("foo");
@@ -475,7 +475,7 @@ describe("macros", () => {
         "{% macro foo(x) %}{{ x }}{% if x > 1 %}|",
         "{{ foo(x - 1) }}{% endif %}{% endmacro %}",
         "{{ foo(5) }}",
-      ].join("")
+      ].join(""),
     );
     expect(tmpl.render()).toBe("5|4|3|2|1");
   });
@@ -513,23 +513,23 @@ describe("set", () => {
   it("block escaping", () => {
     env.autoescape = true;
     const tmpl = env.fromString(
-      "{% set foo %}<em>{{ test }}</em>{% endset %}foo: {{ foo }}"
+      "{% set foo %}<em>{{ test }}</em>{% endset %}foo: {{ foo }}",
     );
     expect(tmpl.render({ test: "<unsafe>" })).toBe(
-      "foo: <em>&lt;unsafe&gt;</em>"
+      "foo: <em>&lt;unsafe&gt;</em>",
     );
   });
 
   it("namespace", () => {
     const tmpl = env.fromString(
-      "{% set ns = namespace() %}{% set ns.bar = '42' %}{{ ns.bar }}"
+      "{% set ns = namespace() %}{% set ns.bar = '42' %}{{ ns.bar }}",
     );
     expect(tmpl.render()).toBe("42");
   });
 
   it("namespace block", () => {
     const tmpl = env.fromString(
-      "{% set ns = namespace() %}{% set ns.bar %}42{% endset %}{{ ns.bar }}"
+      "{% set ns = namespace() %}{% set ns.bar %}42{% endset %}{{ ns.bar }}",
     );
     expect(tmpl.render()).toBe("42");
   });
@@ -540,7 +540,7 @@ describe("set", () => {
         "{% set ns = namespace(d, self=37) %}",
         "{% set ns.b = 42 %}",
         "{{ ns.a }}|{{ ns.self }}|{{ ns.b }}",
-      ].join("")
+      ].join(""),
     );
     expect(tmpl.render({ d: { a: 13 } })).toBe("13|37|42");
   });
@@ -555,7 +555,7 @@ describe("set", () => {
         "{% endif %}",
         "{% endfor %}",
         "{{ ns.found }}",
-      ].join("")
+      ].join(""),
     );
     expect(tmpl.render({ v: 3 })).toBe("true");
     expect(tmpl.render({ v: 4 })).toBe("false");
@@ -571,7 +571,7 @@ describe("set", () => {
         "{% endmacro %}",
         "{{ magic(ns) }}",
         "{{ ns.a }}|{{ ns.b }}",
-      ].join("")
+      ].join(""),
     );
     expect(tmpl.render()).toBe("13|37");
   });
@@ -579,16 +579,16 @@ describe("set", () => {
   it("block escaping filter", () => {
     env.autoescape = true;
     const tmpl = env.fromString(
-      "{% set foo | trim %}<em>{{ test }}</em>    {% endset %}foo: {{ foo }}"
+      "{% set foo | trim %}<em>{{ test }}</em>    {% endset %}foo: {{ foo }}",
     );
     expect(tmpl.render({ test: "<unsafe>" })).toBe(
-      "foo: <em>&lt;unsafe&gt;</em>"
+      "foo: <em>&lt;unsafe&gt;</em>",
     );
   });
 
   it("block filtered", () => {
     const tmpl = env.fromString(
-      "{% set foo | trim | length | string %} 42    {% endset %}{{ foo }}"
+      "{% set foo | trim | length | string %} 42    {% endset %}{{ foo }}",
     );
     expect(tmpl.render()).toBe("2");
     expect((tmpl.module as any).foo).toBe("2");
@@ -606,7 +606,7 @@ describe("set", () => {
         ' {% set b = " yy " %} 42 {{ a }}{{ b }}   ',
         "{% endset %}",
         "{{ foo }}",
-      ].join("")
+      ].join(""),
     );
     expect(tmpl.render()).toBe("11");
     expect((tmpl.module as any).foo).toBe("11");

@@ -2,15 +2,15 @@ import * as fs from "fs";
 import * as path from "path";
 import { EventEmitter } from "events";
 
-type LoaderOpts = {
+interface LoaderOpts {
   noCache?: boolean;
-};
+}
 
-type Source = {
+interface Source {
   src: string;
   path: string;
   noCache: boolean;
-};
+}
 
 export class Loader extends EventEmitter {
   resolve(from: string, to: string): string {
@@ -18,7 +18,7 @@ export class Loader extends EventEmitter {
   }
 
   isRelative(filename: string): boolean {
-    return filename.indexOf("./") === 0 || filename.indexOf("../") === 0;
+    return filename.startsWith("./") || filename.startsWith("../");
   }
 }
 
@@ -33,18 +33,18 @@ export class FileSystemLoader extends Loader {
       console.log(
         "[nunjucks] Warning: you passed a boolean as the second " +
           "argument to FileSystemLoader, but it now takes an options " +
-          "object. See http://mozilla.github.io/nunjucks/api.html#filesystemloader"
+          "object. See http://mozilla.github.io/nunjucks/api.html#filesystemloader",
       );
     }
 
-    opts = opts || {};
+    opts = opts ?? {};
     this.pathsToNames = {};
     this.noCache = !!opts.noCache;
 
     if (searchPaths) {
       searchPaths = Array.isArray(searchPaths) ? searchPaths : [searchPaths];
       // For windows, convert to forward slashes
-      this.searchPaths = searchPaths.map(path.normalize);
+      this.searchPaths = searchPaths.map((p) => path.normalize(p));
     } else {
       this.searchPaths = ["."];
     }
@@ -54,13 +54,12 @@ export class FileSystemLoader extends Loader {
     let fullpath = null;
     const paths = this.searchPaths;
 
-    for (let i = 0; i < paths.length; i++) {
-      const basePath = path.resolve(paths[i]);
-      const p = path.resolve(paths[i], name);
+    for (const basePath of paths) {
+      const p = path.resolve(basePath, name);
 
       // Only allow the current directory and anything
       // underneath it to be searched
-      if (p.indexOf(basePath) === 0 && fs.existsSync(p)) {
+      if (p.startsWith(basePath) && fs.existsSync(p)) {
         fullpath = p;
         break;
       }
@@ -88,7 +87,7 @@ export class NodeResolveLoader extends Loader {
 
   constructor(opts?: LoaderOpts) {
     super();
-    opts = opts || {};
+    opts = opts ?? {};
     this.pathsToNames = {};
     this.noCache = !!opts.noCache;
   }

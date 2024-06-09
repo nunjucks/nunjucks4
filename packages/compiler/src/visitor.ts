@@ -1,7 +1,13 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-/* eslint-disable no-debugger */
-import { Path, PathVisitor, visit, types as t, Type } from "@nunjucks/ast";
-import { Visitor } from "@nunjucks/ast";
+
+import {
+  Path,
+  PathVisitor,
+  visit,
+  types as t,
+  Type,
+  Visitor,
+} from "@nunjucks/ast";
 import {
   NodePath as JSNodePath,
   namedTypes,
@@ -11,9 +17,13 @@ import {
   cloneNode,
 } from "@pregenerator/ast-types";
 import ast from "@pregenerator/template";
-import { EvalContext, MISSING } from "@nunjucks/runtime";
+import {
+  EvalContext,
+  MISSING,
+  escape,
+  str as runtimeStr,
+} from "@nunjucks/runtime";
 import type { IfAsync } from "@nunjucks/runtime";
-import { escape, str as runtimeStr } from "@nunjucks/runtime";
 import { Environment } from "@nunjucks/environment";
 import { Frame } from "./frame";
 // import { EvalContext, Frame } from "./frame";
@@ -52,7 +62,7 @@ const memberExpr = (s: string) => {
   const second = parts.shift()!;
   let memberExpr: n.MemberExpression = b.memberExpression(
     id(first),
-    id(second)
+    id(second),
   );
   while (parts.length) {
     memberExpr = b.memberExpression(memberExpr, id(parts.shift()!));
@@ -70,7 +80,7 @@ function differenceUpdate<T>(a: Set<T>, b: Set<T>): void {
 
 function forceExpression(
   node: n.Node | n.Node[],
-  decls?: n.VariableDeclaration[]
+  decls?: n.VariableDeclaration[],
 ): n.Expression {
   if (Array.isArray(node)) {
     if (Array.isArray(decls)) {
@@ -100,7 +110,7 @@ function createBookmark(): Bookmark {
 
 const BookmarkType = new PredicateType(
   "Bookmark",
-  (value) => n.BlockStatement.check(value) && !!(value as any)._isBookmark
+  (value) => n.BlockStatement.check(value) && !!(value as any)._isBookmark,
 );
 
 function getBookmark(astPath: JSNodePath): JSNodePath | null {
@@ -123,8 +133,8 @@ function forceStatements(nodeOrNodes: n.Node | n.Node[]): n.Statement[] {
 }
 
 const findDependencies = (nodes: t.Node[]) => {
-  const filtersSet: Set<string> = new Set();
-  const testsSet: Set<string> = new Set();
+  const filtersSet = new Set<string>();
+  const testsSet = new Set<string>();
 
   const visitor: Visitor = {
     visitFilter(path) {
@@ -169,7 +179,7 @@ const setsAreEqual = <T>(a: Set<T>, b: Set<T>): boolean =>
 
 const findUndeclared = (nodes: t.Node[], names: string[]) => {
   const namesSet = new Set(names);
-  const undeclared: Set<string> = new Set();
+  const undeclared = new Set<string>();
   try {
     for (const node of nodes) {
       visit(node, {
@@ -198,18 +208,18 @@ const findUndeclared = (nodes: t.Node[], names: string[]) => {
   return undeclared;
 };
 
-type FinalizeInfo = {
+interface FinalizeInfo {
   const?: (...args: unknown[]) => string;
   src?: string | null;
-};
+}
 
-type State<IsAsync extends boolean> = {
+interface State<IsAsync extends boolean> {
   self: CodeGenerator<IsAsync>;
   frame: Frame<IsAsync>;
   astPath: JSNodePath;
   forwardCaller?: boolean;
   decls: n.VariableDeclaration[];
-};
+}
 
 function runtimeTest(expr: n.Expression): n.CallExpression {
   return b.callExpression(runtimeExpr("test"), [expr]);
@@ -239,15 +249,15 @@ export class CodeGenerator<IsAsync extends boolean> {
   tests: Record<string, string>;
   /** registry of all filters (global, not block local) */
   filters: Record<string, string>;
-  debugInfo: Array<[number, number]> | null;
+  debugInfo: [number, number][] | null;
   /** true if nothing was written so far */
   firstWrite: boolean;
   /** used by the `tempIdent` method to get new, unique temporary identifier */
   lastIdentifier: number;
   /** tracks toplevel assignments */
-  assignStack: Array<Set<string>>;
+  assignStack: Set<string>[];
   /** Tracks parameter definition blocks */
-  paramDefBlock: Array<Set<string>>;
+  paramDefBlock: Set<string>[];
   /**  Tracks the current context.*/
   contextReferenceStack: string[];
   visitor: PathVisitor<State<IsAsync>>;
@@ -265,8 +275,8 @@ export class CodeGenerator<IsAsync extends boolean> {
     optimized?: boolean;
   }) {
     this.environment = environment;
-    this.name = name || null;
-    this.filename = filename || null;
+    this.name = name ?? null;
+    this.filename = filename ?? null;
     this.deferInit = deferInit;
     this.importAliases = {};
     this.blocks = {};
@@ -304,7 +314,9 @@ export class CodeGenerator<IsAsync extends boolean> {
         if (findUndeclared(node.body, ["self"]).has("self")) {
           const ref = frame.symbols.declareParameter("self");
           inner.push(
-            ast`const %%ref%% = new runtime.TemplateReference(context)`({ ref })
+            ast`const %%ref%% = new runtime.TemplateReference(context)`({
+              ref,
+            }),
           );
         }
         frame.symbols.analyzeNode(node);
@@ -316,14 +328,14 @@ export class CodeGenerator<IsAsync extends boolean> {
         inner.push(...self.enterFrame(frame));
         inner.push(...self.pullDependencies(node.body));
         inner.push(
-          ...forceStatements(self.traverse(path, { ...state, frame }))
+          ...forceStatements(self.traverse(path, { ...state, frame })),
         );
         if (haveExtends) {
           const parentCall: n.Expression = self.awaitIfAsync(
-            ast.expression`parentTemplate.rootRenderFunc(context)`()
+            ast.expression`parentTemplate.rootRenderFunc(context)`(),
           );
           let extendsYield: n.Statement = b.expressionStatement(
-            b.yieldExpression(parentCall, true)
+            b.yieldExpression(parentCall, true),
           );
           if (!self.hasKnownExtends) {
             extendsYield = ast`if (parentTemplate !== null) %%inner%%`({
@@ -362,7 +374,7 @@ export class CodeGenerator<IsAsync extends boolean> {
               body: b.blockStatement(blockStatements),
               async: self.isAsync,
               generator: true,
-            })
+            }),
           );
           const blockFrame = new Frame(evalCtx);
           blockFrame.blockFrame = true;
@@ -372,7 +384,7 @@ export class CodeGenerator<IsAsync extends boolean> {
             blockStatements.push(
               ast`%%ref%% = new runtime.TemplateReference(context)`({
                 ref: id(ref),
-              })
+              }),
             );
           }
           if (undeclared.has("super")) {
@@ -383,8 +395,8 @@ export class CodeGenerator<IsAsync extends boolean> {
                   ref: id(ref),
                   name: b.stringLiteral(name),
                   blockFnName: id(`block_${name}`),
-                }
-              )
+                },
+              ),
             );
           }
           blockFrame.symbols.analyzeNode(block);
@@ -392,14 +404,14 @@ export class CodeGenerator<IsAsync extends boolean> {
           blockStatements.push(
             ast.statement`const _blockVars = {}`(),
             ast.statement`const { missing, undef } = env`(),
-            ast.statement`const resolve = (key) => context.resolveOrMissing(key)`()
+            ast.statement`const resolve = (key) => context.resolveOrMissing(key)`(),
           );
           blockStatements.push(...self.enterFrame(blockFrame));
           blockStatements.push(
             ...forceStatements([
               ...self.pullDependencies(block.body),
               ...self.visit(block.body, { ...state, frame: blockFrame }),
-            ])
+            ]),
           );
           blockStatements.unshift(...state.decls.splice(0));
         });
@@ -416,12 +428,12 @@ export class CodeGenerator<IsAsync extends boolean> {
                 id("blocks"),
                 b.objectExpression(
                   [...Object.keys(self.blocks)].map((block) =>
-                    b.objectProperty(id(block), id(`block_${block}`))
-                  )
-                )
+                    b.objectProperty(id(block), id(`block_${block}`)),
+                  ),
+                ),
               ),
-            ])
-          )
+            ]),
+          ),
         );
         return rootStatements;
       },
@@ -454,8 +466,8 @@ export class CodeGenerator<IsAsync extends boolean> {
           `({
                 name: b.stringLiteral(node.name),
                 msg: b.stringLiteral(`Required block '${node.name}' not found`),
-              })
-            )
+              }),
+            ),
           );
         }
 
@@ -465,12 +477,12 @@ export class CodeGenerator<IsAsync extends boolean> {
         `({
             name: b.stringLiteral(node.name),
             context,
-          })
+          }),
         );
 
         if (frame.buffer === null) {
           statements.push(
-            b.expressionStatement(b.yieldExpression(block, true))
+            b.expressionStatement(b.yieldExpression(block, true)),
           );
         } else {
           const stmt: n.ForOfStatement = ast.statement`
@@ -501,7 +513,7 @@ export class CodeGenerator<IsAsync extends boolean> {
         if (!frame.toplevel) {
           return self.fail(
             "Cannot use extend from a non top-level scope",
-            node.loc
+            node.loc,
           );
         }
         const statements: n.Statement[] = [];
@@ -516,13 +528,13 @@ export class CodeGenerator<IsAsync extends boolean> {
               if (parentTemplate !== null) {
                 throw new runtime.TemplateRuntimeError("extended multiple times");
               }
-            `()
+            `(),
             );
           } else {
             statements.push(
               ast.statement`
                 throw new runtime.TemplateRuntimeError("extended multiple times");
-              `()
+              `(),
             );
           }
           // if we have a known extends already we don't need that code here
@@ -539,13 +551,13 @@ export class CodeGenerator<IsAsync extends boolean> {
           ast.expression`env.getTemplate(%%template%%, { parent: %%name%% })`({
             template,
             name: self.name ? b.stringLiteral(self.name) : b.nullLiteral(),
-          })
+          }),
         );
         statements.push(
           ...decls,
           ...forceStatements(
-            ast`parentTemplate = %%parentTemplate%%`({ parentTemplate })
-          )
+            ast`parentTemplate = %%parentTemplate%%`({ parentTemplate }),
+          ),
         );
         statements.push(
           ast`
@@ -556,7 +568,7 @@ export class CodeGenerator<IsAsync extends boolean> {
                 parentBlock,
               );
             }
-        `()
+        `(),
         );
 
         // if this extends statement was in the root level we can take
@@ -594,7 +606,7 @@ export class CodeGenerator<IsAsync extends boolean> {
           ast.expression`env.%%funcName%%(%%template%%)`({
             funcName,
             template: templateExpr,
-          })
+          }),
         );
 
         if (node.ignoreMissing) {
@@ -610,10 +622,10 @@ export class CodeGenerator<IsAsync extends boolean> {
                     } catch (e) {
                       if (e.type !== "TemplateNotFound" && e.type !== "TemplatesNotFound") throw e;
                     }
-                  `({ template })
+                  `({ template }),
                 ),
-              })
-            )
+              }),
+            ),
           );
           // statements.push(
           //   ...forceStatements(
@@ -641,16 +653,16 @@ export class CodeGenerator<IsAsync extends boolean> {
         const renderCall: n.Expression = self.awaitIfAsync(
           ast.expression`template.rootRenderFunc(%%context%%)`({
             context,
-          })
+          }),
         );
 
-        let doRender: n.Statement = self.delegateGenerator(renderCall, frame);
+        const doRender: n.Statement = self.delegateGenerator(renderCall, frame);
 
         if (node.ignoreMissing) {
           statements.push(
             ast.statement`if (template) %%consequent%%`({
               consequent: b.blockStatement([doRender]),
-            })
+            }),
           );
         } else {
           statements.push(doRender);
@@ -668,13 +680,13 @@ export class CodeGenerator<IsAsync extends boolean> {
         let assignment: n.AssignmentExpression = b.assignmentExpression(
           "=",
           id(frame.symbols.ref(node.target)),
-          templateModule
+          templateModule,
         );
         if (frame.toplevel) {
           assignment = b.assignmentExpression(
             "=",
             ast.expression`context.vars["${node.target}"]`() as n.MemberExpression,
-            assignment
+            assignment,
           );
         }
         statements.push(b.expressionStatement(assignment));
@@ -682,7 +694,7 @@ export class CodeGenerator<IsAsync extends boolean> {
           statements.push(
             ast.statement`
               context.exportedVars.delete(%%target%%)
-            `({ target: str(node.target) })
+            `({ target: str(node.target) }),
           );
         }
         return statements;
@@ -696,7 +708,7 @@ export class CodeGenerator<IsAsync extends boolean> {
         statements.push(
           ast.statement`const includedTemplate = %%templateModule%%`({
             templateModule,
-          })
+          }),
         );
         const varNames: string[] = [];
         const discardedNames: string[] = [];
@@ -716,7 +728,7 @@ export class CodeGenerator<IsAsync extends boolean> {
             `({
               alias: id(frame.symbols.ref(alias)),
               name: b.stringLiteral(name),
-            })
+            }),
           );
           const message = b.templateLiteral(
             [
@@ -726,17 +738,17 @@ export class CodeGenerator<IsAsync extends boolean> {
                   `' (imported on ${self.position(node)})`,
                   ` does not export the requested name '${name}'`,
                 ].join(""),
-                { tail: true }
+                { tail: true },
               ),
             ],
-            [memberExpr("includedTemplate.__name__")]
+            [memberExpr("includedTemplate.__name__")],
           );
           statements.push(
             ...ast.statements`
               if (%%alias%% === missing) {
                 %%alias%% = undef(%%message%%)
               }
-            `({ alias: id(frame.symbols.ref(alias)), message })
+            `({ alias: id(frame.symbols.ref(alias)), message }),
           );
           if (frame.toplevel) {
             varNames.push(alias);
@@ -753,24 +765,24 @@ export class CodeGenerator<IsAsync extends boolean> {
               `({
                 name: b.stringLiteral(varNames[0]),
                 ref: id(frame.symbols.ref(varNames[0])),
-              })
+              }),
             );
           } else {
             statements.push(
               ast.statement`Object.assign(context.vars, %%obj%%)`({
                 obj: b.objectExpression(
                   varNames.map((name) =>
-                    b.objectProperty(str(name), id(frame.symbols.ref(name)))
-                  )
+                    b.objectProperty(str(name), id(frame.symbols.ref(name))),
+                  ),
                 ),
-              })
+              }),
             );
           }
         }
         statements.push(
           ast.statement`
           runtime.setDelete(context.exportedVars, %%names%%)
-        `({ names: discardedNames.map((name) => str(name)) })
+        `({ names: discardedNames.map((name) => str(name)) }),
         );
         // statements.push(
         //   ...discardedNames.map((name) =>
@@ -811,7 +823,7 @@ export class CodeGenerator<IsAsync extends boolean> {
       visitTest({ node }, state) {
         const { self } = state;
         return self._filterTestCommon(node, state, () =>
-          self.visitExpression(node.node, state)
+          self.visitExpression(node.node, state),
         );
       },
       visitOutput(path, state) {
@@ -863,7 +875,7 @@ export class CodeGenerator<IsAsync extends boolean> {
           }
           const callee = memberExpr(`${frame.buffer}.push`);
           innerNodes.push(
-            b.expressionStatement(b.callExpression(callee, args))
+            b.expressionStatement(b.callExpression(callee, args)),
           );
           // innerNodes.push(
           //   b.expressionStatement(
@@ -879,7 +891,7 @@ export class CodeGenerator<IsAsync extends boolean> {
             if (Array.isArray(item)) {
               const val = item.map((i) => `${i}`).join("");
               innerNodes.push(
-                b.expressionStatement(b.yieldExpression(b.stringLiteral(val)))
+                b.expressionStatement(b.yieldExpression(b.stringLiteral(val))),
               );
             } else {
               const itemNodes = self.visit(item, state).filter((node) => {
@@ -892,8 +904,8 @@ export class CodeGenerator<IsAsync extends boolean> {
               });
               innerNodes.push(
                 b.expressionStatement(
-                  b.yieldExpression(self.wrapChildPre(itemNodes, decls, frame))
-                )
+                  b.yieldExpression(self.wrapChildPre(itemNodes, decls, frame)),
+                ),
               );
             }
           }
@@ -924,7 +936,7 @@ export class CodeGenerator<IsAsync extends boolean> {
           ast.expression`env.getattr(%%target%%, %%attr%%)`({
             target,
             attr: b.stringLiteral(node.attr),
-          })
+          }),
         );
       },
       visitGetitem(path, state) {
@@ -935,7 +947,7 @@ export class CodeGenerator<IsAsync extends boolean> {
           const slice = path.get("arg") as Path<t.Slice, t.Slice>;
           const start = node.arg.start
             ? self.visitExpression(slice.get("start") as Path, state)
-            : node.arg.stop || node.arg.step
+            : node.arg.stop ?? node.arg.step
               ? id("undefined")
               : undefined;
           const stop = node.arg.stop
@@ -954,8 +966,8 @@ export class CodeGenerator<IsAsync extends boolean> {
           const callSlice = self.awaitIfAsync(
             b.callExpression(
               runtimeExpr(this.isAsync ? "asyncSlice" : "slice"),
-              args
-            )
+              args,
+            ),
           );
 
           return self.toArrayExpression(callSlice);
@@ -965,12 +977,12 @@ export class CodeGenerator<IsAsync extends boolean> {
           ast.expression`env.getattr(%%target%%, %%attr%%)`({
             target,
             attr,
-          })
+          }),
         );
       },
       visitSlice(path, state) {
         throw new Error(
-          "this should not be reached (Slice is visited as a child of Getitem)"
+          "this should not be reached (Slice is visited as a child of Getitem)",
         );
       },
       visitTuple({ node }, state) {
@@ -997,8 +1009,8 @@ export class CodeGenerator<IsAsync extends boolean> {
           properties.push(
             b.objectProperty(
               self.visitExpression(item.key, state),
-              self.visitExpression(item.value, state)
-            )
+              self.visitExpression(item.value, state),
+            ),
           );
         }
         return b.objectExpression(properties);
@@ -1045,7 +1057,7 @@ export class CodeGenerator<IsAsync extends boolean> {
           funcName,
           args: [
             b.arrayExpression(
-              node.nodes.map((child) => self.visitExpression(child, state))
+              node.nodes.map((child) => self.visitExpression(child, state)),
             ),
           ],
         });
@@ -1073,7 +1085,7 @@ export class CodeGenerator<IsAsync extends boolean> {
             dynargs: node.dynArgs
               ? self.visitExpression(path.get("dynArgs") as Path, childState)
               : b.arrayExpression([]),
-          })
+          }),
         );
         // const varargs: n.ArrayExpression = b.arrayExpression([]);
         const kwargs: n.ObjectProperty[] = [];
@@ -1081,8 +1093,8 @@ export class CodeGenerator<IsAsync extends boolean> {
           kwargs.push(
             b.objectProperty(
               id(kwarg.node.key),
-              self.visitExpression(kwarg.get("value"), childState)
-            )
+              self.visitExpression(kwarg.get("value"), childState),
+            ),
           );
         });
 
@@ -1099,8 +1111,8 @@ export class CodeGenerator<IsAsync extends boolean> {
                   b.spreadElement(
                     self.visitExpression(
                       path.get("dynKwargs") as Path,
-                      childState
-                    )
+                      childState,
+                    ),
                   ),
                 ]
               : []),
@@ -1109,15 +1121,15 @@ export class CodeGenerator<IsAsync extends boolean> {
                 key: id(key),
                 value: id(key),
                 shorthand: true,
-              })
+              }),
             ),
-          ])
+          ]),
         );
         return self.awaitIfAsync(
           ast.expression`context.call(%%func%%, %%args%%)`({
             func,
             args: b.arrayExpression(args),
-          })
+          }),
         );
       },
       visitMarkSafe(path, state) {
@@ -1182,7 +1194,7 @@ export class CodeGenerator<IsAsync extends boolean> {
           ast.statement`%%ctx%%.vars = %%rhs%%`({
             ctx: id(ctx),
             rhs: self.visit(path.get("context"), state),
-          })
+          }),
         );
         self.pushContextReference(ctx);
 
@@ -1191,7 +1203,7 @@ export class CodeGenerator<IsAsync extends boolean> {
         statements.push(
           ...self.enterFrame(scopeFrame),
           ...self.blockvisit(node.body, { ...state, frame: scopeFrame }),
-          ...self.leaveFrame(scopeFrame)
+          ...self.leaveFrame(scopeFrame),
         );
         self.popContextReference();
         return b.blockStatement(statements);
@@ -1215,7 +1227,7 @@ export class CodeGenerator<IsAsync extends boolean> {
           const pos = self.position(node);
           alternate = ast.expression`undef(%%err%%)`({
             err: str(
-              `the inline if-expression on ${pos} evaluated to false and no else section was defined.`
+              `the inline if-expression on ${pos} evaluated to false and no else section was defined.`,
             ),
           });
         }
@@ -1251,9 +1263,9 @@ export class CodeGenerator<IsAsync extends boolean> {
         stmts.push(
           b.expressionStatement(
             andExprs.reduceRight((acc: n.Expression | undefined, curr) =>
-              acc ? b.logicalExpression("&&", curr, acc) : curr
-            )
-          )
+              acc ? b.logicalExpression("&&", curr, acc) : curr,
+            ),
+          ),
         );
         return stmts;
       },
@@ -1267,7 +1279,7 @@ export class CodeGenerator<IsAsync extends boolean> {
         if (targetNode.type === "NSRef") {
           const ref = frame.symbols.ref(targetNode.name);
           statements.push(
-            ast.statement`runtime.assertNamespace(%%ref%%)`({ ref: id(ref) })
+            ast.statement`runtime.assertNamespace(%%ref%%)`({ ref: id(ref) }),
           );
         }
         const [left] = this.visit(path.get("target"), state);
@@ -1275,7 +1287,7 @@ export class CodeGenerator<IsAsync extends boolean> {
         n.assertLVal(left);
         n.assertExpression(right);
         statements.push(
-          b.expressionStatement(b.assignmentExpression("=", left, right))
+          b.expressionStatement(b.assignmentExpression("=", left, right)),
         );
         return [...statements, ...self.popAssignTracking(frame)];
       },
@@ -1292,8 +1304,8 @@ export class CodeGenerator<IsAsync extends boolean> {
         stmts.push(self.buffer(blockFrame));
         stmts.push(
           ...forceStatements(
-            self.visit(node.body, { ...state, frame: blockFrame })
-          )
+            self.visit(node.body, { ...state, frame: blockFrame }),
+          ),
         );
         const target = self.visitExpression(node.target, state);
         const callee: n.ConditionalExpression = ast.expression`
@@ -1302,13 +1314,13 @@ export class CodeGenerator<IsAsync extends boolean> {
         const args: n.Expression[] = [];
         if (node.filter) {
           args.push(
-            self.visitExpression(node.filter, { ...state, frame: blockFrame })
+            self.visitExpression(node.filter, { ...state, frame: blockFrame }),
           );
         } else {
           args.push(
             ast.expression`runtime.concat(%%buf%%)`({
               buf: id(blockFrame.buffer!),
-            })
+            }),
           );
         }
         stmts.push(
@@ -1316,7 +1328,7 @@ export class CodeGenerator<IsAsync extends boolean> {
             target,
             callee,
             args,
-          })
+          }),
         );
         stmts.push(...self.popAssignTracking(frame));
 
@@ -1351,7 +1363,7 @@ export class CodeGenerator<IsAsync extends boolean> {
               {
                 name: b.stringLiteral(node.name),
                 ref,
-              }
+              },
             );
           }
         }
@@ -1363,31 +1375,34 @@ export class CodeGenerator<IsAsync extends boolean> {
         const frame = state.frame.soft();
         const decls: n.VariableDeclaration[] = [];
         const test = runtimeTest(
-          self.visitExpression(node.test, { ...state, frame }, decls)
+          self.visitExpression(node.test, { ...state, frame }, decls),
         );
         const consequent = b.blockStatement(
-          self.visitStatements(node.body, { ...state, frame })
+          self.visitStatements(node.body, { ...state, frame }),
         );
         const alternates: { test: n.Expression; consequent: n.Statement }[] =
           node.elif.map((elif) => ({
             test: runtimeTest(
-              forceExpression(self.visit(elif.test, { ...state, frame }), decls)
+              forceExpression(
+                self.visit(elif.test, { ...state, frame }),
+                decls,
+              ),
             ),
             consequent: b.blockStatement(
-              self.visitStatements(elif.body, { ...state, frame })
+              self.visitStatements(elif.body, { ...state, frame }),
             ),
           }));
         const else_ = node.else_?.length
           ? b.blockStatement(
-              self.visitStatements(node.else_, { ...state, frame })
+              self.visitStatements(node.else_, { ...state, frame }),
             )
           : undefined;
         const alternate =
           alternates.reduceRight(
             (alt: n.Statement | undefined, { test, consequent }) =>
               b.ifStatement(test, consequent, alt),
-            else_
-          ) || null;
+            else_,
+          ) ?? null;
         return [...decls, b.ifStatement(test, consequent, alternate)];
       },
       visitFor(path, state) {
@@ -1437,7 +1452,7 @@ export class CodeGenerator<IsAsync extends boolean> {
               ...state,
               frame: loopFrame,
             }),
-            decls
+            decls,
           );
           n.assertIdentifier(target);
           const test = forceExpression(
@@ -1445,7 +1460,7 @@ export class CodeGenerator<IsAsync extends boolean> {
               ...state,
               frame: testFrame,
             }),
-            decls
+            decls,
           );
           const stmt: n.ForOfStatement =
             ast.statement`for (%%target%% of fiter) {
@@ -1458,7 +1473,7 @@ export class CodeGenerator<IsAsync extends boolean> {
               ]),
               test,
               consequent: b.expressionStatement(
-                b.yieldExpression(cloneNode(target))
+                b.yieldExpression(cloneNode(target)),
               ),
               // yieldTarget: cloneNode(target),
             });
@@ -1471,7 +1486,7 @@ export class CodeGenerator<IsAsync extends boolean> {
               body: blockStmt,
               async: self.isAsync,
               generator: true,
-            })
+            }),
           );
           // rootStatements.push(
           //   ast`function %%loopFilterFunc%%(fiter) %%blockStmt%%`({
@@ -1499,7 +1514,7 @@ export class CodeGenerator<IsAsync extends boolean> {
           if (name.ctx === "store" && name.name === "loop") {
             return self.fail(
               "Cannot assign to special loop variable in for-loop",
-              node.loc
+              node.loc,
             );
           }
         }
@@ -1516,7 +1531,7 @@ export class CodeGenerator<IsAsync extends boolean> {
           rest = [];
           return self.fail(
             "Unexpected return of multiple nodes for for-loop target",
-            node.loc
+            node.loc,
           );
         }
         // Convert array expressions to array patterns for lhs
@@ -1537,16 +1552,16 @@ export class CodeGenerator<IsAsync extends boolean> {
         //   : _target;
 
         const assertTarget: (
-          t: n.Node
+          t: n.Node,
         ) => asserts t is n.Identifier | n.ArrayPattern = (t) =>
           JsType.or(n.Identifier, n.ArrayPattern).assert(t);
 
         assertTarget(target);
-        if (extendedLoop) {
+        if (loopRef) {
           if (n.Identifier.check(target)) {
-            target = b.arrayPattern([target, id(loopRef!)]);
+            target = b.arrayPattern([target, id(loopRef)]);
           } else {
-            target.elements.push(id(loopRef!));
+            target.elements.push(id(loopRef));
           }
         }
         target = b.variableDeclaration("let", [b.variableDeclarator(target)]);
@@ -1581,13 +1596,13 @@ export class CodeGenerator<IsAsync extends boolean> {
             right: iter,
             body: b.blockStatement(loopBody),
             await: self.environment.isAsync(),
-          })
+          }),
         );
         for (const bodyNode of node.body) {
           loopBody.push(
             ...forceStatements(
-              self.visit(bodyNode, { ...state, frame: loopFrame })
-            )
+              self.visit(bodyNode, { ...state, frame: loopFrame }),
+            ),
           );
         }
         if (node.else_?.length) {
@@ -1600,8 +1615,8 @@ export class CodeGenerator<IsAsync extends boolean> {
           currStatements.push(
             b.ifStatement(
               id(iterationIndicator!),
-              self.wrapFrame(elseFrame, elseNodes)
-            )
+              self.wrapFrame(elseFrame, elseNodes),
+            ),
           );
         }
         if (node.recursive) {
@@ -1612,7 +1627,7 @@ export class CodeGenerator<IsAsync extends boolean> {
 
           loopArgs.push(id("loop"));
           const callExpr = self.awaitIfAsync(
-            b.callExpression(id("loop"), loopArgs)
+            b.callExpression(id("loop"), loopArgs),
           );
           rootStatements.push(self.write(callExpr, frame));
         }
@@ -1620,7 +1635,7 @@ export class CodeGenerator<IsAsync extends boolean> {
         if (self.assignStack.length) {
           differenceUpdate(
             self.assignStack[self.assignStack.length - 1],
-            loopFrame.symbols.stores
+            loopFrame.symbols.stores,
           );
         }
         return b.blockStatement([...decls, ...rootStatements]);
@@ -1637,13 +1652,13 @@ export class CodeGenerator<IsAsync extends boolean> {
         let assignment: n.AssignmentExpression = b.assignmentExpression(
           "=",
           id(frame.symbols.ref(node.name)),
-          macro
+          macro,
         );
         if (frame.toplevel) {
           assignment = b.assignmentExpression(
             "=",
             ast.expression`context.vars["${node.name}"]`() as n.MemberExpression,
-            assignment
+            assignment,
           );
         }
         statements.push(b.expressionStatement(assignment));
@@ -1655,7 +1670,7 @@ export class CodeGenerator<IsAsync extends boolean> {
         const expr = self.visitExpression(
           node.call,
           { ...state, forwardCaller: true },
-          decls
+          decls,
         );
         return [
           ...decls,
@@ -1679,7 +1694,7 @@ export class CodeGenerator<IsAsync extends boolean> {
         const expr = self.visitExpression(
           node.filter,
           { ...state, frame: filterFrame },
-          decls
+          decls,
         );
         return [
           ...statements,
@@ -1712,7 +1727,7 @@ export class CodeGenerator<IsAsync extends boolean> {
         const len = node.targets.length;
         if (node.values.length !== len) {
           throw new Error(
-            "parsing error: mismatched number of with targets and expressions"
+            "parsing error: mismatched number of with targets and expressions",
           );
         }
         let decls: n.VariableDeclaration[] = [];
@@ -1722,18 +1737,18 @@ export class CodeGenerator<IsAsync extends boolean> {
           const lhs = self.visitExpression(
             target,
             { ...state, frame: withFrame },
-            decls
+            decls,
           );
           const rhs = self.visitExpression(expr, { ...state, frame }, decls);
           n.LVal.assert(lhs);
           statements.push(
             ...decls,
-            b.variableDeclaration("let", [b.variableDeclarator(lhs, rhs)])
+            b.variableDeclaration("let", [b.variableDeclarator(lhs, rhs)]),
           );
           decls = [];
         }
         statements.push(
-          ...self.blockvisit(node.body, { ...state, frame: withFrame })
+          ...self.blockvisit(node.body, { ...state, frame: withFrame }),
         );
         statements.push(...self.leaveFrame(withFrame));
         return statements;
@@ -1754,14 +1769,14 @@ export class CodeGenerator<IsAsync extends boolean> {
 
   visitStatements<T extends t.Node>(
     nodeOrPath: T | Path<T, any> | T[],
-    state: State<IsAsync>
+    state: State<IsAsync>,
   ): n.Statement[] {
     const result = this.visit(nodeOrPath, state);
     return forceStatements(result);
   }
   visitStatement<T extends t.Node>(
     nodeOrPath: T | Path<T, any> | T[],
-    state: State<IsAsync>
+    state: State<IsAsync>,
   ): n.Statement {
     const statements = this.visitStatements(nodeOrPath, state);
     const len = statements.length;
@@ -1773,7 +1788,7 @@ export class CodeGenerator<IsAsync extends boolean> {
   visitExpression<T extends t.Node>(
     nodeOrPath: T | Path<T, T> | T[],
     state: State<IsAsync>,
-    decls?: n.VariableDeclaration[]
+    decls?: n.VariableDeclaration[],
   ): n.Expression {
     if (typeof decls === "undefined") {
       decls = state.decls;
@@ -1782,7 +1797,7 @@ export class CodeGenerator<IsAsync extends boolean> {
   }
   visit<T extends t.Node>(
     nodeOrPath: T | Path<T, T> | T[] | Path<T, T>[],
-    state: State<IsAsync>
+    state: State<IsAsync>,
   ): n.Node[] {
     let path: Path;
 
@@ -1796,7 +1811,7 @@ export class CodeGenerator<IsAsync extends boolean> {
 
     if (!(nodeOrPath instanceof Path)) {
       path = (new Path({ root: nodeOrPath }) as any).get(
-        "root"
+        "root",
       ) as unknown as Path;
     } else {
       path = nodeOrPath as unknown as Path;
@@ -1840,7 +1855,7 @@ export class CodeGenerator<IsAsync extends boolean> {
   }
   traverse<T extends t.Node>(
     path: Path<T, T>,
-    state: State<IsAsync>
+    state: State<IsAsync>,
   ): n.Node[] {
     const ret: n.Node[] = [];
     for (const child of path.iterChildNodes()) {
@@ -1896,7 +1911,7 @@ export class CodeGenerator<IsAsync extends boolean> {
   }
   returnBufferContents(
     frame: Frame<IsAsync>,
-    { forceUnescaped = false } = {}
+    { forceUnescaped = false } = {},
   ): n.ReturnStatement {
     if (!frame.buffer) {
       throw new Error("unexpected error: buffer not defined");
@@ -1910,7 +1925,7 @@ export class CodeGenerator<IsAsync extends boolean> {
         returnExpr = b.conditionalExpression(
           memberExpr("context.evalCtx.autoescape"),
           markup,
-          concat
+          concat,
         );
       } else if (frame.evalCtx.autoescape) {
         returnExpr = markup;
@@ -1932,16 +1947,16 @@ export class CodeGenerator<IsAsync extends boolean> {
               this.awaitIfAsync(
                 b.callExpression(this.getResolveFunc(), [
                   param === null ? b.nullLiteral() : b.stringLiteral(param),
-                ])
-              )
+                ]),
+              ),
             ),
-          ])
+          ]),
         );
       } else if (action === VAR_LOAD_ALIAS) {
         nodes.push(
           b.variableDeclaration("let", [
-            b.variableDeclarator(id(target), id(param!)),
-          ])
+            b.variableDeclarator(id(target), id(param)),
+          ]),
         );
       } else if (action === VAR_LOAD_UNDEFINED) {
         undefs.push(target);
@@ -1953,9 +1968,9 @@ export class CodeGenerator<IsAsync extends boolean> {
         b.variableDeclaration(
           "let",
           undefs.map((target) =>
-            b.variableDeclarator(id(target), id("missing"))
-          )
-        )
+            b.variableDeclarator(id(target), id("missing")),
+          ),
+        ),
       );
     }
     return nodes;
@@ -1971,18 +1986,17 @@ export class CodeGenerator<IsAsync extends boolean> {
       return id("resolve");
     } else {
       return memberExpr(`${target}.resolve`);
-      // return b.memberExpression(b.identifier(target), b.identifier("resolve"));
     }
   }
   popAssignTracking(frame: Frame<IsAsync>): n.Statement[] {
-    const stackVars = [...(this.assignStack.pop() || [])];
+    const stackVars = [...(this.assignStack.pop() ?? [])];
     if (
       (!frame.blockFrame && !frame.loopFrame && !frame.toplevel) ||
       !stackVars.length
     ) {
       return [];
     }
-    const publicNames = stackVars.filter((v) => v[0] !== "_");
+    const publicNames = stackVars.filter((v) => !v.startsWith("_"));
     const nodes: n.Statement[] = stackVars.map((name) => {
       const ref = frame.symbols.ref(name);
       let obj: n.Expression;
@@ -1996,7 +2010,7 @@ export class CodeGenerator<IsAsync extends boolean> {
       const prop = b.stringLiteral(name);
       const refId = id(ref);
       return b.expressionStatement(
-        b.assignmentExpression("=", b.memberExpression(obj, prop), refId)
+        b.assignmentExpression("=", b.memberExpression(obj, prop), refId),
       );
     });
 
@@ -2006,8 +2020,8 @@ export class CodeGenerator<IsAsync extends boolean> {
           b.callExpression(memberExpr("runtime.setAdd"), [
             memberExpr("context.exportedVars"),
             ...publicNames.map((name) => b.stringLiteral(name)),
-          ])
-        )
+          ]),
+        ),
       );
       // nodes.push(
       //   b.callExpression(
@@ -2041,7 +2055,7 @@ export class CodeGenerator<IsAsync extends boolean> {
   wrapChildPre(
     argument: n.Node[],
     decls: n.VariableDeclaration[],
-    frame: Frame<IsAsync>
+    frame: Frame<IsAsync>,
   ) {
     const callee: n.Expression = frame.evalCtx.volatile
       ? ast.expression`(context.evalCtx.autoescape ? runtime.escape : runtime.str)`()
@@ -2050,14 +2064,14 @@ export class CodeGenerator<IsAsync extends boolean> {
         : runtimeExpr("str");
     return b.callExpression(
       callee,
-      argument.map((arg) => forceExpression(arg, decls))
+      argument.map((arg) => forceExpression(arg, decls)),
     );
   }
 
   makeComparison(
     lhs: n.Expression,
     op: t.Operand["op"],
-    rhs: n.Expression
+    rhs: n.Expression,
   ): n.Expression {
     if (op === "in" || op === "notin") {
       const callExpr = ast.expression`%%func%%(%%rhs%%, %%lhs%%)`({
@@ -2074,7 +2088,7 @@ export class CodeGenerator<IsAsync extends boolean> {
   _filterTestCommon(
     node: t.Filter | t.Test,
     state: State<IsAsync>,
-    inner: () => n.Expression
+    inner: () => n.Expression,
   ) {
     let funcVar: string;
     let func: any;
@@ -2100,15 +2114,15 @@ export class CodeGenerator<IsAsync extends boolean> {
       args.push(this.visitExpression(arg, state));
     }
     if (node.kwargs.length) {
-      let kwargProps: n.ObjectProperty[] = [
+      const kwargProps: n.ObjectProperty[] = [
         b.objectProperty(str("__isKwargs"), b.booleanLiteral(true)),
       ];
       for (const kwarg of node.kwargs) {
         kwargProps.push(
           b.objectProperty(
             str(kwarg.key),
-            this.visitExpression(kwarg.value, { ...state, frame })
-          )
+            this.visitExpression(kwarg.value, { ...state, frame }),
+          ),
         );
       }
       args.push(b.objectExpression(kwargProps));
@@ -2117,13 +2131,13 @@ export class CodeGenerator<IsAsync extends boolean> {
       ast.expression`context.call(%%func%%, %%args%%)`({
         func: funcVar,
         args: b.arrayExpression(args),
-      })
+      }),
     );
   }
 
   write(
     expr: n.Expression | string,
-    frame: Frame<IsAsync>
+    frame: Frame<IsAsync>,
   ): n.ExpressionStatement {
     if (typeof expr === "string") {
       expr = b.stringLiteral(expr);
@@ -2131,7 +2145,7 @@ export class CodeGenerator<IsAsync extends boolean> {
     return b.expressionStatement(
       frame.buffer
         ? b.callExpression(memberExpr(`${frame.buffer}.push`), [expr])
-        : b.yieldExpression(expr)
+        : b.yieldExpression(expr),
     );
   }
 
@@ -2159,8 +2173,8 @@ export class CodeGenerator<IsAsync extends boolean> {
               name: b.stringLiteral(name),
               exc: runtimeExpr("TemplateRuntimeError"),
               msg: b.stringLiteral(`No ${dependency} named '${name}' found.`),
-            }
-          )
+            },
+          ),
         );
       }
     }
@@ -2178,7 +2192,7 @@ export class CodeGenerator<IsAsync extends boolean> {
   // } {
   macroDef(
     node: t.Macro | t.CallBlock,
-    state: State<IsAsync>
+    state: State<IsAsync>,
   ): n.NewExpression {
     const frame = state.frame.inner();
     frame.symbols.analyzeNode(node);
@@ -2212,7 +2226,7 @@ export class CodeGenerator<IsAsync extends boolean> {
               'special "caller" argument must be omitted ',
               "or be given a default.",
             ].join(""),
-            node.loc
+            node.loc,
           );
       } else {
         args.push(frame.symbols.declareParameter("caller"));
@@ -2254,7 +2268,7 @@ export class CodeGenerator<IsAsync extends boolean> {
         ast.statement`if (%%ref%% === missing) { %%ref%% = %%rhs%%; }`({
           ref: id(ref),
           rhs,
-        })
+        }),
       );
       this.markParameterStored(ref);
     });
@@ -2278,7 +2292,7 @@ export class CodeGenerator<IsAsync extends boolean> {
     };
 
     const argArray = b.arrayExpression(
-      macroRef.node.args.map((x) => b.stringLiteral(x.name))
+      macroRef.node.args.map((x) => b.stringLiteral(x.name)),
     );
     const name: n.Literal =
       "name" in macroRef.node
@@ -2308,19 +2322,19 @@ export class CodeGenerator<IsAsync extends boolean> {
 
   leaveFrame(
     frame: Frame<IsAsync>,
-    { withPythonScope = false } = {}
+    { withPythonScope = false } = {},
   ): n.Statement[] {
     if (withPythonScope) return [];
     const undefs = Array.from(Object.keys(frame.symbols.loads)).map((s) =>
-      id(s)
+      id(s),
     );
     if (!undefs.length) return [];
     return [
       b.expressionStatement(
         undefs.reduceRight<n.Expression>(
           (prev, curr) => b.assignmentExpression("=", curr, prev),
-          id("missing")
-        )
+          id("missing"),
+        ),
       ),
     ];
   }
@@ -2340,7 +2354,7 @@ export class CodeGenerator<IsAsync extends boolean> {
 
   dumpLocalContext(frame: Frame<IsAsync>): n.ObjectExpression {
     const itemsKeyvals = Object.entries(frame.symbols.dumpStores()).map(
-      ([name, target]) => b.objectProperty(id(name), id(target))
+      ([name, target]) => b.objectProperty(id(name), id(target)),
     );
     return b.objectExpression(itemsKeyvals);
   }
@@ -2386,7 +2400,7 @@ export class CodeGenerator<IsAsync extends boolean> {
   toArrayExpression(node: n.Expression): n.Expression {
     if (this.isAsync) {
       return b.awaitExpression(
-        b.callExpression(runtimeExpr("arrayFromAsync"), [node])
+        b.callExpression(runtimeExpr("arrayFromAsync"), [node]),
       );
     } else {
       return b.arrayExpression([b.spreadElement(node)]);
@@ -2394,7 +2408,7 @@ export class CodeGenerator<IsAsync extends boolean> {
   }
   _importCommon(
     node: t.Import | t.FromImport,
-    state: State<IsAsync>
+    state: State<IsAsync>,
   ): n.Expression {
     const { frame } = state;
     const template = this.visitExpression(node.template, state);
@@ -2402,7 +2416,7 @@ export class CodeGenerator<IsAsync extends boolean> {
       ast.expression`env.getTemplate(%%template%%, { parent: %%name%% })`({
         template,
         name: this.name ? b.stringLiteral(this.name) : b.nullLiteral(),
-      })
+      }),
     );
 
     if (node.withContext) {
@@ -2411,14 +2425,14 @@ export class CodeGenerator<IsAsync extends boolean> {
           {
             getTemplate,
             locals: this.dumpLocalContext(frame),
-          }
-        )
+          },
+        ),
       );
     } else {
       return this.awaitIfAsync(
         ast.expression`%%getTemplate%%._getDefaultModule(context)`({
           getTemplate,
-        })
+        }),
       );
     }
   }

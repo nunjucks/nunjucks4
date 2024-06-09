@@ -1,6 +1,6 @@
 import { Environment, ObjectSourceLoader } from "@nunjucks/environment";
 import { TemplateRuntimeError } from "@nunjucks/runtime";
-import { describe, expect, test } from "@jest/globals";
+import { describe, expect, it } from "@jest/globals";
 import { TemplateSyntaxError } from "@nunjucks/parser";
 
 const LAYOUTTEMPLATE = `|{% block block1 %}block 1 from layout{% endblock %}
@@ -69,13 +69,13 @@ describe("inheritance", () => {
   it("renders base template with blocks and no extends", () => {
     const tmpl = env.getTemplate("layout");
     expect(tmpl.render()).toBe(
-      "|block 1 from layout|block 2 from layout|nested block 4 from layout|"
+      "|block 1 from layout|block 2 from layout|nested block 4 from layout|",
     );
   });
   it("renders inherited templates one level deep", () => {
     const tmpl = env.getTemplate("level1");
     expect(tmpl.render()).toBe(
-      "|block 1 from level1|block 2 from layout|nested block 4 from layout|"
+      "|block 1 from level1|block 2 from layout|nested block 4 from layout|",
     );
   });
   it("renders inherited templates two levels deep", () => {
@@ -84,19 +84,19 @@ describe("inheritance", () => {
       [
         "|block 1 from level1|nested block 5 from ",
         "level2|nested block 4 from layout|",
-      ].join("")
+      ].join(""),
     );
   });
   it("renders inherited templates three levels deep", () => {
     const tmpl = env.getTemplate("level3");
     expect(tmpl.render()).toBe(
-      "|block 1 from level1|block 5 from level3|block 4 from level3|"
+      "|block 1 from level1|block 5 from level3|block 4 from level3|",
     );
   });
   it("renders inherited templates four levels deep", () => {
     const tmpl = env.getTemplate("level4");
     expect(tmpl.render()).toBe(
-      "|block 1 from level1|block 5 from level3|block 3 from level4|"
+      "|block 1 from level1|block 5 from level3|block 3 from level4|",
     );
   });
   it("supports block super() calls", () => {
@@ -115,7 +115,7 @@ describe("inheritance", () => {
 
   it("reuses blocks", () => {
     const tmpl = env.fromString(
-      "{{ self.foo() }}|{% block foo %}42{% endblock %}|{{ self.foo() }}"
+      "{{ self.foo() }}|{% block foo %}42{% endblock %}|{{ self.foo() }}",
     );
     expect(tmpl.render()).toBe("42|42|42");
   });
@@ -180,7 +180,7 @@ describe("inheritance", () => {
       ],
     });
     const t = env.fromString(
-      "{% extends 'default.html' %}{% block item %}{{ item }}{% endblock %}"
+      "{% extends 'default.html' %}{% block item %}{{ item }}{% endblock %}",
     );
     expect(t.render({ seq: [0, 1, 2, 3, 4] })).toBe("[0][1][2][3][4]");
   });
@@ -199,10 +199,10 @@ describe("inheritance", () => {
       [
         '{% extends "default.html" %}{% block item %}',
         "{{ super() }}|{{ item * 2 }}{% endblock %}",
-      ].join("")
+      ].join(""),
     );
     expect(t.render({ seq: [0, 1, 2, 3, 4] })).toBe(
-      "[0|0][1|2][2|4][3|6][4|8]"
+      "[0|0][1|2][2|4][3|6][4|8]",
     );
   });
 
@@ -231,7 +231,7 @@ describe("inheritance", () => {
       rv
         .split(/\n/g)
         .map((s) => s.trim())
-        .filter((s) => !!s)
+        .filter((s) => !!s),
     ).toStrictEqual(["43", "44", "45"]);
   });
 
@@ -310,7 +310,7 @@ describe("inheritance", () => {
       const fn = () => t.render(context);
       expect(fn).toThrow(TemplateSyntaxError);
       expect(fn).toThrow(
-        "Required blocks can only contain comments or whitespace"
+        "Required blocks can only contain comments or whitespace",
       );
     };
 
@@ -357,11 +357,11 @@ describe("inheritance", () => {
     const tmpl = env.getTemplate("child");
 
     expect(() => tmpl.render({ default: "default1", seq: [0, 1, 2] })).toThrow(
-      TemplateSyntaxError
+      TemplateSyntaxError,
     );
 
     expect(() => tmpl.render({ default: "default2", seq: [0, 1, 2] })).toThrow(
-      TemplateSyntaxError
+      TemplateSyntaxError,
     );
   });
   it("handles macro block scoping correctly", () => {
@@ -407,16 +407,16 @@ describe("inheritance", () => {
         .render()
         .split(/\n/g)
         .map((s) => s.trim())
-        .filter((s) => !!s)
+        .filter((s) => !!s),
     ).toStrictEqual(["outer_box", "my_macro"]);
   });
 
   it("throws error for double extends", () => {
     expect(() => env.getTemplate("doublee").render()).toThrow(
-      TemplateRuntimeError
+      TemplateRuntimeError,
     );
     expect(() => env.getTemplate("doublee").render()).toThrow(
-      "extended multiple times"
+      "extended multiple times",
     );
   });
 });

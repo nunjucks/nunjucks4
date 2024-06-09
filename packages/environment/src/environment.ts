@@ -21,10 +21,14 @@ import {
 import { types } from "@nunjucks/ast";
 import { parse, TokenizerOptions } from "@nunjucks/parser";
 import { CodeGenerator } from "@nunjucks/compiler";
-import { Template, TemplateNotFound, TemplatesNotFound } from "./template";
+import {
+  Template,
+  TemplateNotFound,
+  TemplatesNotFound,
+  RenderFunc,
+} from "./template";
 // import { generate } from "astring";
 import generate from "@babel/generator";
-import { RenderFunc } from "./template";
 import type { Loader, AsyncLoader, SyncLoader } from "./loaders";
 import { chainMap, dict, joiner, cycler, lipsum } from "./utils";
 import DEFAULT_FILTERS from "./filters";
@@ -72,7 +76,7 @@ function undef(
   hint?: string | null,
   obj?: any,
   name?: string | null,
-  exc?: new (message?: string) => Error
+  exc?: new (message?: string) => Error,
 ): Undefined;
 function undef(
   arg1?: UndefinedOpts | string | null,
@@ -218,12 +222,10 @@ export class Environment<
     return !this.async;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   isSafeAttribute(obj: any, attr: any, value: any): boolean {
     return true;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   isSafeCallable(obj: any): boolean {
     return true;
   }
@@ -343,7 +345,7 @@ export class Environment<
       if (passArg === PASS_ARG_CONTEXT) {
         if (!context) {
           throw new TemplateRuntimeError(
-            `Attempted to invoke a context ${typeName} without context`
+            `Attempted to invoke a context ${typeName} without context`,
           );
         }
         args.unshift(context);
@@ -371,7 +373,7 @@ export class Environment<
     {
       name = null,
       filename = null,
-    }: { name?: string | null; filename?: string | null }
+    }: { name?: string | null; filename?: string | null } = {},
   ): types.Template {
     return this._parse(source, { name, filename });
     // try {
@@ -386,14 +388,14 @@ export class Environment<
     {
       name = null,
       filename = null,
-    }: { name?: string | null; filename?: string | null }
+    }: { name?: string | null; filename?: string | null },
   ): types.Template {
     return parse(source, [], this.parserOpts);
   }
 
   compile(
     source: types.Template | string,
-    opts?: { name?: string | null; filename?: string | null; raw?: false }
+    opts?: { name?: string | null; filename?: string | null; raw?: false },
   ): {
     root: RenderFunc<IsAsync>;
     blocks: Record<string, RenderFunc<IsAsync>>;
@@ -401,7 +403,7 @@ export class Environment<
 
   compile(
     source: types.Template | string,
-    opts: { name?: string | null; filename?: string | null; raw: true }
+    opts: { name?: string | null; filename?: string | null; raw: true },
   ): string;
   compile(
     source: string | types.Template,
@@ -409,7 +411,7 @@ export class Environment<
       raw,
       name = null,
       filename = null,
-    }: { name?: string | null; filename?: string | null; raw?: boolean } = {}
+    }: { name?: string | null; filename?: string | null; raw?: boolean } = {},
   ) {
     let njAst: types.Template;
     if (typeof source === "string") {
@@ -430,11 +432,12 @@ export class Environment<
     {
       name = null,
       filename = null,
-    }: { name?: string | null; filename?: string | null } = {}
+    }: { name?: string | null; filename?: string | null } = {},
   ): {
     root: RenderFunc<IsAsync>;
     blocks: Record<string, RenderFunc<IsAsync>>;
   } {
+    // eslint-disable-next-line @typescript-eslint/no-implied-eval
     return new Function(source)() as {
       root: RenderFunc<IsAsync>;
       blocks: Record<string, RenderFunc<IsAsync>>;
@@ -446,7 +449,7 @@ export class Environment<
     {
       name = null,
       filename = null,
-    }: { name?: string | null; filename?: string | null } = {}
+    }: { name?: string | null; filename?: string | null } = {},
   ): string {
     const codegen = new CodeGenerator({ environment: this, name, filename });
     const ast = codegen.compile(source);
@@ -456,7 +459,7 @@ export class Environment<
 
   fromString(
     source: string,
-    { globals }: { globals?: Record<string, unknown> } = {}
+    { globals }: { globals?: Record<string, unknown> } = {},
   ): Template<IsAsync> {
     const { root, blocks } = this.compile(source);
     return new Template<IsAsync>({ environment: this, root, blocks, globals });
@@ -465,19 +468,19 @@ export class Environment<
   _loadTemplate(
     this: Environment<true>,
     name: string,
-    opts: { globals?: Record<string, any> }
+    opts: { globals?: Record<string, any> },
   ): Promise<Template<true>>;
 
   _loadTemplate(
     this: Environment<false>,
     name: string,
-    opts: { globals?: Record<string, any> }
+    opts: { globals?: Record<string, any> },
   ): Template<false>;
 
   _loadTemplate(
     this: Environment<true> | Environment<false>,
     name: string,
-    { globals = {} }: { globals?: Record<string, any> } = {}
+    { globals = {} }: { globals?: Record<string, any> } = {},
   ): Template<false> | Promise<Template<true>> {
     if (!this.loaders.length) {
       throw new Error("no loaders for this environment specified");
@@ -487,7 +490,7 @@ export class Environment<
     } else {
       if (this.cache !== null) {
         const template = this.cache[name];
-        if (template && template.isUpToDate()) {
+        if (template?.isUpToDate()) {
           Object.assign(template.globals, globals);
           return template;
         }
@@ -536,7 +539,7 @@ export class Environment<
     opts?: {
       parent?: string | null;
       globals?: Record<string, unknown>;
-    }
+    },
   ): Promise<Template<true>>;
   getTemplate(
     this: Environment<false>,
@@ -544,7 +547,7 @@ export class Environment<
     opts?: {
       parent?: string | null;
       globals?: Record<string, unknown>;
-    }
+    },
   ): Template<false>;
 
   getTemplate(
@@ -556,7 +559,7 @@ export class Environment<
     }: {
       parent?: string | null;
       globals?: Record<string, unknown>;
-    } = {}
+    } = {},
   ): Promise<Template<true>> | Template<false> {
     if (isUndefinedInstance(name)) {
       throw name._failWithUndefinedError();
@@ -590,7 +593,7 @@ export class Environment<
     }: {
       parent?: string | null;
       globals?: Record<string, unknown>;
-    } = {}
+    } = {},
   ): Promise<Template<true>> {
     const templateNames: (string | Template<true>)[] = [];
     for await (const name of names) {
@@ -599,7 +602,7 @@ export class Environment<
     if (!templateNames.length) {
       throw new TemplatesNotFound(
         [],
-        "Tried to select from an empty list of templates."
+        "Tried to select from an empty list of templates.",
       );
     }
 
@@ -632,7 +635,7 @@ export class Environment<
     opts?: {
       parent?: string | null;
       globals?: Record<string, unknown>;
-    }
+    },
   ): Promise<Template<true>>;
   selectTemplate(
     this: Environment<false>,
@@ -640,7 +643,7 @@ export class Environment<
     opts?: {
       parent?: string | null;
       globals?: Record<string, unknown>;
-    }
+    },
   ): Template<false>;
 
   selectTemplate(
@@ -655,7 +658,7 @@ export class Environment<
     }: {
       parent?: string | null;
       globals?: Record<string, unknown>;
-    } = {}
+    } = {},
   ): Template<false> | Promise<Template<true>> {
     if (isUndefinedInstance(names)) {
       throw names._failWithUndefinedError();
@@ -664,7 +667,7 @@ export class Environment<
         names as
           | Iterable<string | Template<true>>
           | AsyncIterable<string | Template<true>>,
-        { parent, globals }
+        { parent, globals },
       );
     } else if (!this.isSync()) {
       throw new Error("unreachable");
@@ -673,13 +676,13 @@ export class Environment<
     if (!templateNames.length) {
       throw new TemplatesNotFound(
         [],
-        "Tried to select from an empty list of templates."
+        "Tried to select from an empty list of templates.",
       );
     }
 
     for (let name of templateNames) {
       if (name instanceof Template) {
-        return name as Template<false>;
+        return name;
       }
       if (parent !== null) {
         name = this.joinPath(name, parent);
@@ -707,7 +710,7 @@ export class Environment<
     opts?: {
       parent?: string | null;
       globals?: Record<string, unknown>;
-    }
+    },
   ): Template<false> | Promise<Template<true>>;
 
   getOrSelectTemplate(
@@ -715,14 +718,13 @@ export class Environment<
     templateNameOrList:
       | Iterable<string | Template<true>>
       | Undefined
-      | Iterable<string | Template<true>>
       | AsyncIterable<string | Template<true>>
       | string
       | Template<true>,
     opts?: {
       parent?: string | null;
       globals?: Record<string, unknown>;
-    }
+    },
   ): Promise<Template<true>>;
 
   getOrSelectTemplate(
@@ -740,7 +742,7 @@ export class Environment<
     }: {
       parent?: string | null;
       globals?: Record<string, unknown>;
-    } = {}
+    } = {},
   ): Template<false> | Promise<Template<true>> {
     if (
       typeof templateNameOrList === "string" ||
@@ -758,7 +760,7 @@ export class Environment<
     this: Environment<true>,
     name: string | Template<true>,
     parent: string | null = null,
-    globals: Record<string, unknown> = {}
+    globals: Record<string, unknown> = {},
   ): Promise<Template<true>> {
     if (name instanceof Template) return name;
     if (parent !== null) name = this.joinPath(name, parent);
@@ -783,7 +785,7 @@ export class Environment<
   async _asyncLoadTemplate(
     this: Environment<true> | Environment<false>,
     name: string,
-    { globals }: { globals: Record<string, any> }
+    { globals }: { globals: Record<string, any> },
   ): Promise<Template<true>> {
     if (!this.isAsync()) {
       throw new Error("_asyncLoadTemplate called on a non-async environment");
@@ -798,7 +800,7 @@ export class Environment<
     const template = await this.loaders
       .map(
         async (loader): Promise<Template<true>> =>
-          loader.load(this, name, this.makeGlobals(globals))
+          loader.load(this, name, this.makeGlobals(globals)),
       )
       .reduce((p_, p) => p_.catch(() => p));
 

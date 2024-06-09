@@ -1,10 +1,9 @@
-import { Environment, ObjectSourceLoader } from "@nunjucks/environment";
-import { TemplateRuntimeError, markSafe } from "@nunjucks/runtime";
-import { describe, expect, test } from "@jest/globals";
-import { TemplateSyntaxError } from "@nunjucks/parser";
+import { Environment } from "@nunjucks/environment";
+import { markSafe } from "@nunjucks/runtime";
+import { describe, expect, it } from "@jest/globals";
 
 async function* asyncGen<T>(
-  iter: Iterable<T>
+  iter: Iterable<T>,
 ): AsyncGenerator<T, void, unknown> {
   for await (const item of iter) yield item;
 }
@@ -53,7 +52,7 @@ describe("filters in async environment", () => {
         expect(
           await tmpl.render({
             values: type === "async" ? Promise.resolve(values) : values,
-          })
+          }),
         ).toBe("42");
       });
     });
@@ -63,13 +62,13 @@ describe("filters in async environment", () => {
     const arr = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
     const items = () => (type === "async" ? asyncGen(arr) : syncGen(arr));
     const tmpl = env.fromString(
-      "{{ items()|slice(3)|list }}|{{ items()|slice(3, 'X')|list }}"
+      "{{ items()|slice(3)|list }}|{{ items()|slice(3, 'X')|list }}",
     );
     expect(await tmpl.render({ items })).toBe(
       [
         "[[0, 1, 2, 3], [4, 5, 6], [7, 8, 9]]",
         "[[0, 1, 2, 3], [4, 5, 6, 'X'], [7, 8, 9, 'X']]",
-      ].join("|")
+      ].join("|"),
     );
   });
 

@@ -41,14 +41,14 @@ def("Position").field("line", geq(1)).field("column", geq(0));
 
 def("SourceLocation")
   .field("start", def("Position"))
-  .field("end", or(def("Position"), null), defaults["null"])
-  .field("source", or(String, null), defaults["null"]);
+  .field("end", or(def("Position"), null), defaults.null)
+  .field("source", or(String, null), defaults.null);
 
 def("Node").abstract();
 
 def("BaseNode")
   .field("type", String)
-  .field("loc", or(def("SourceLocation"), null), defaults["null"], true);
+  .field("loc", or(def("SourceLocation"), null), defaults.null, true);
 
 def("Stmt").abstract().aliases("Node").bases("BaseNode");
 
@@ -88,8 +88,8 @@ def("ForBase")
   .field("iter", def("Node"))
   .field("body", [def("Node")])
   .field("else_", [def("Node")])
-  .field("test", or(def("Node"), null), defaults["null"])
-  .field("recursive", Boolean, defaults["false"]);
+  .field("test", or(def("Node"), null), defaults.null)
+  .field("recursive", Boolean, defaults.false);
 
 def("For")
   .bases("ForBase")
@@ -124,7 +124,7 @@ def("Name")
   .canAssign(
     (obj: any) =>
       ["true", "false", "none", "True", "False", "None"].indexOf(obj.name) ===
-      -1
+      -1,
   );
 
 def("Macro")
@@ -150,8 +150,8 @@ def("Call")
   .field("node", def("Expr"))
   .field("args", [def("Expr")])
   .field("kwargs", [def("Keyword")])
-  .field("dynArgs", or(def("Expr"), null), defaults["null"])
-  .field("dynKwargs", or(def("Expr"), null), defaults["null"]);
+  .field("dynArgs", or(def("Expr"), null), defaults.null)
+  .field("dynKwargs", or(def("Expr"), null), defaults.null);
 
 def("CallBlock")
   .bases("BaseNode")
@@ -175,8 +175,8 @@ def("FilterTestBase")
   .field("name", String)
   .field("args", [def("Expr")])
   .field("kwargs", [def("Keyword")])
-  .field("dynArgs", or(def("Expr"), null), defaults["null"])
-  .field("dynKwargs", or(def("Expr"), null), defaults["null"]);
+  .field("dynArgs", or(def("Expr"), null), defaults.null)
+  .field("dynKwargs", or(def("Expr"), null), defaults.null);
 
 def("Filter")
   .bases("FilterTestBase")
@@ -255,7 +255,7 @@ def("AssignBlock")
   .aliases("Node", "Stmt")
   .build("target", "filter", "body")
   .field("target", def("Expr"))
-  .field("filter", or(def("Filter"), null), defaults["null"])
+  .field("filter", or(def("Filter"), null), defaults.null)
   .field("body", [def("Node")]);
 
 def("BinExpr").abstract().bases("BaseNode").aliases("Node");
@@ -304,7 +304,7 @@ def("Tuple")
   .field("items", [def("Expr")])
   .field("ctx", String)
   .canAssign((obj: any) =>
-    obj.items.every((o: any) => def(o.type).isAssignable(o))
+    obj.items.every((o: any) => def(o.type).isAssignable(o)),
   );
 
 def("List")
@@ -325,7 +325,7 @@ def("CondExpr")
   .build("test", "expr1", "expr2")
   .field("test", def("Expr"))
   .field("expr1", def("Expr"))
-  .field("expr2", or(def("Expr"), null), defaults["null"]);
+  .field("expr2", or(def("Expr"), null), defaults.null);
 
 def("Getitem")
   .bases("BaseNode")
@@ -347,9 +347,9 @@ def("Slice")
   .bases("BaseNode")
   .aliases("Node", "Expr")
   .build("start", "stop", "step")
-  .field("start", or(def("Expr"), null), defaults["null"])
-  .field("stop", or(def("Expr"), null), defaults["null"])
-  .field("step", or(def("Expr"), null), defaults["null"]);
+  .field("start", or(def("Expr"), null), defaults.null)
+  .field("stop", or(def("Expr"), null), defaults.null)
+  .field("step", or(def("Expr"), null), defaults.null);
 
 def("Concat")
   .bases("BaseNode")

@@ -16,12 +16,12 @@ export class UndefinedError extends Error {
   name = "UndefinedError";
 }
 
-export type UndefinedOpts = {
+export interface UndefinedOpts {
   hint?: string | null;
   obj?: any;
   name?: string | null;
   exc?: new (message?: string) => Error;
-};
+}
 
 function getObjectTypeName(obj: unknown) {
   if (obj === undefined || obj === null) {
@@ -42,7 +42,7 @@ export class Undefined extends Function {
     hint?: string | null,
     obj?: any,
     name?: string | null,
-    exc?: new (message?: string) => Error
+    exc?: new (message?: string) => Error,
   );
   constructor(arg1?: UndefinedOpts | string | null, ...args: any[]) {
     super();
@@ -151,11 +151,11 @@ export function isUndefinedInstance(obj: unknown): obj is Undefined {
   return "_failWithUndefinedError" in obj;
 }
 
-export type NunjuckArgsInfo = {
+export interface NunjuckArgsInfo {
   varNames: string[];
   varargs: boolean;
   kwargs: boolean;
-};
+}
 
 declare global {
   interface Function {
@@ -174,7 +174,7 @@ export function isVarargs(o: unknown): o is any[] & { __isVarargs: true } {
 }
 
 export function isKwargs(
-  o: unknown
+  o: unknown,
 ): o is Record<string, any> & { __isKwargs: true } {
   return isPlainObject(o) && hasOwn(o, "__isKwargs") && !!o.__isKwargs;
 }
@@ -185,14 +185,13 @@ export function nunjucksFunction(
     kwargs?: boolean;
     varargs?: boolean;
     passArg?: "context" | "evalContext" | "environment";
-  } = {}
+  } = {},
 ) {
   return function <T extends (...args: unknown[]) => unknown>(func: T): T {
     const wrapper = function wrapper(...posargs: any[]) {
       // shift off the first argument if it is an automatically passed argument
       // (e.g. Context, EvalContext, or Environment)
       const kwargs: Record<string, any> | null = options.kwargs ? {} : null;
-      const varargs: any[] = [];
       let kwargsArg: Record<string, any> | null = null;
       const kwargsIndex = posargs.findIndex((o) => isKwargs(o));
       if (kwargsIndex > -1) {
@@ -215,7 +214,7 @@ export function nunjucksFunction(
 
       const rest = posargs.slice(varNames.length);
 
-      Object.entries(kwargsArg || {}).forEach(([name, value]) => {
+      Object.entries(kwargsArg ?? {}).forEach(([name, value]) => {
         if (name === "__isKwargs") return;
         const index = varNames.indexOf(name);
         if (index >= 0) {
@@ -259,7 +258,7 @@ export class KeyError extends Error {}
 
 export function hasOwn<K extends string>(
   o: unknown,
-  key: K
+  key: K,
 ): o is Record<K, unknown> {
   return o && Object.prototype.hasOwnProperty.call(o, key);
 }
@@ -446,7 +445,8 @@ export class Context<IsAsync extends boolean> {
     const index =
       blocks.findIndex(
         (block) =>
-          current === block || Object.create(current.prototype) instanceof block
+          current === block ||
+          Object.create(current.prototype) instanceof block,
       ) + 1;
     if (index === 0 || index >= blocks.length) {
       return this.environment.undef(`there is no parent block called ${name}`, {
@@ -652,7 +652,7 @@ export class BlockReference<IsAsync extends boolean> extends Function {
     if (!this._stack || this._depth + 1 >= this._stack.length) {
       return this._context.environment.undef(
         `there is no parent block called ${this.name}.`,
-        { name: "super" }
+        { name: "super" },
       );
     }
     return new BlockReference({
@@ -681,17 +681,6 @@ export class TemplateReference<IsAsync extends boolean> {
         return Reflect.has(context.blocks, prop);
       },
     });
-  }
-}
-
-function* mapGen<T = unknown, U = unknown>(
-  iter: Iterable<T>,
-  fn: (arg: T, i: number) => U
-): Generator<U> {
-  let i = 0;
-  for (const item of iter) {
-    yield fn(item, i);
-    i++;
   }
 }
 
@@ -742,7 +731,7 @@ export function str(o: unknown): string {
         .replace(/ \]/g, "]")
         .replace(/\\([\s\S])|(')/g, "\\$1$2")
         .replace(/\\([\s\S])|(")/g, (match, p1, p2) =>
-          p2 ? "'" : match === '\\"' ? '"' : match
+          p2 ? "'" : match === '\\"' ? '"' : match,
         );
     } catch (e) {
       // do nothing
@@ -770,7 +759,7 @@ const escapeMap: Record<string, string> = {
 
 const escapeRegex = new RegExp(
   `[${[...Object.keys(escapeMap)].join("")}]`,
-  "g"
+  "g",
 );
 
 export function isMarkup(obj: unknown): obj is MarkupType {
@@ -782,9 +771,10 @@ export function isMarkup(obj: unknown): obj is MarkupType {
 
 export function escape(obj: unknown): MarkupType {
   if (isMarkup(obj)) return obj;
+  // eslint-disable-next-line @typescript-eslint/no-base-to-string
   const s = obj === null || obj === undefined ? "" : `${obj}`;
   return markSafe(
-    s.replace(escapeRegex, (c) => (c in escapeMap ? escapeMap[c] : c))
+    s.replace(escapeRegex, (c) => (c in escapeMap ? escapeMap[c] : c)),
   );
 }
 
@@ -830,7 +820,7 @@ export class Markup extends String {
       | {
           [Symbol.split](string: string, limit?: number | undefined): string[];
         },
-    limit?: number | undefined
+    limit?: number | undefined,
   ): MarkupType[] {
     const ret =
       typeof separator === "string"
@@ -881,8 +871,8 @@ export class Markup extends String {
     return markSafe(
       super.replace.apply(
         this,
-        args.map((arg) => escape(arg))
-      )
+        args.map((arg) => escape(arg)),
+      ),
     );
   }
 }
@@ -928,7 +918,7 @@ function* arrayslice<T>(
   array: T[],
   start?: number,
   stop?: number,
-  step = 1
+  step = 1,
 ): Generator<T> {
   const direction = Math.sign(step);
   const len = array.length;
@@ -954,7 +944,7 @@ export function* slice<T = any>(
   iterable: Iterable<T>,
   start?: number,
   stop?: number,
-  step = 1
+  step = 1,
 ): Generator<T> {
   if ((start ?? 0) < 0 || (stop ?? 0) < 0 || step < 0) {
     yield* arrayslice([...iterable], start, stop, step);
@@ -980,7 +970,7 @@ export async function* asyncSlice<T = any>(
   iterable: Iterable<T> | AsyncIterable<T>,
   start?: number,
   stop?: number,
-  step = 1
+  step = 1,
 ): AsyncGenerator<T> {
   if ((start ?? 0) < 0 || (stop ?? 0) < 0 || step < 0) {
     const arr: T[] = [];
@@ -1011,7 +1001,6 @@ export function copySafeness<T>(src: unknown, dest: T): T | MarkupType {
   return isMarkup(src) ? markSafe(dest) : dest;
 }
 
-// eslint-disable-next-line @typescript-eslint/ban-types
 // export const Markup = _Markup as unknown as (String & string) & {
 //   constructor(value: unknown): _Markup;
 // };
@@ -1049,13 +1038,13 @@ export const namespace = nunjucksFunction(["__init"], { kwargs: true })(
       ...attrs,
       ...kwargs,
     });
-  }
+  },
 );
 
 function assertNamespace(obj: unknown): asserts obj is Namespace {
   if (!isPlainObject(obj) || !("__isNamespace" in obj && obj.__isNamespace)) {
     throw new TemplateRuntimeError(
-      "Cannot assign attribute on non-namespace object"
+      "Cannot assign attribute on non-namespace object",
     );
   }
 }
@@ -1095,13 +1084,14 @@ export function includes(obj: unknown, lookup: unknown): boolean {
       return obj.includes(lookup);
     } else {
       throw new Error(
-        `'in <string>' requires string as left operand, not ${getObjectTypeName(lookup)}`
+        `'in <string>' requires string as left operand, not ${getObjectTypeName(lookup)}`,
       );
     }
   } else if (isIterable(obj)) {
     return Array.from(obj).includes(lookup);
   } else if (isObject(obj)) {
     if (lookup === null || lookup === undefined) return false;
+    // eslint-disable-next-line @typescript-eslint/no-base-to-string
     return `${lookup}` in obj;
   } else {
     throw new TypeError(`object ${getObjectTypeName(obj)} is not iterable`);
@@ -1110,7 +1100,7 @@ export function includes(obj: unknown, lookup: unknown): boolean {
 
 export async function asyncIncludes(
   obj: unknown,
-  lookup: unknown
+  lookup: unknown,
 ): Promise<boolean> {
   if (isAsyncIterable(obj)) {
     return arrayFromAsync(obj).then((arr) => arr.includes(lookup));

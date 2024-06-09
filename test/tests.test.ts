@@ -11,7 +11,7 @@ describe("tests", () => {
 
   it("defined", () => {
     const tmpl = env.fromString(
-      "{{ missing is defined }}|{{ true is defined }}"
+      "{{ missing is defined }}|{{ true is defined }}",
     );
     expect(tmpl.render()).toBe("false|true");
   });
@@ -128,10 +128,10 @@ describe("tests", () => {
         '{{ bar is eq ("ba" + "z") }}',
         "{{ bar is eq bar }}",
         "{{ bar is eq foo }}",
-      ].join("|")
+      ].join("|"),
     );
     expect(tmpl.render({ foo: 12, bar: "baz" })).toBe(
-      "true|false|true|true|false|true|true|false"
+      "true|false|true|true|false|true|true|false",
     );
   });
 
@@ -155,7 +155,7 @@ describe("tests", () => {
 
   it("sameas", () => {
     const tmpl = env.fromString(
-      "{{ foo is sameas false }}|{{ 0 is sameas false }}"
+      "{{ foo is sameas false }}|{{ 0 is sameas false }}",
     );
     expect(tmpl.render({ foo: false })).toBe("true|false");
   });
@@ -168,7 +168,7 @@ describe("tests", () => {
 
   it("greaterthan", () => {
     const tmpl = env.fromString(
-      "{{ 1 is greaterthan 0 }}|{{ 0 is greaterthan 1 }}"
+      "{{ 1 is greaterthan 0 }}|{{ 0 is greaterthan 1 }}",
     );
     expect(tmpl.render()).toBe("true|false");
   });
@@ -186,7 +186,7 @@ describe("tests", () => {
     };
     const tmpl = env.fromString(
       `{{ 'us-west-1' is matching '(us-east-1|ap-northeast-1)'
-         or 'stage' is matching '(dev|stage)' }}`
+         or 'stage' is matching '(dev|stage)' }}`,
     );
     expect(tmpl.render()).toBe("false");
     expect(items).toStrictEqual([
@@ -207,10 +207,10 @@ describe("tests", () => {
         "{{ 3 is in [1, 2] }}",
         '{{ "foo" is in {"foo": 1}}}',
         '{{ "baz" is in {"bar": 1}}}',
-      ].join("|")
+      ].join("|"),
     );
     expect(tmpl.render()).toBe(
-      "true|true|false|true|false|true|false|true|false"
+      "true|true|false|true|false|true|false|true|false",
     );
   });
 

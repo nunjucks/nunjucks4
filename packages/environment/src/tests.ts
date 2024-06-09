@@ -34,7 +34,7 @@ export function defined(value: unknown): boolean {
 export const filter = nunjucksFunction(["value"], { passArg: "environment" })(
   function filter(env: Environment, value: string): boolean {
     return Object.prototype.hasOwnProperty.call(env.filters, value);
-  }
+  },
 );
 
 /**
@@ -44,7 +44,7 @@ export const filter = nunjucksFunction(["value"], { passArg: "environment" })(
 export const test = nunjucksFunction(["value"], { passArg: "environment" })(
   function test(env: Environment, value: string): boolean {
     return Object.prototype.hasOwnProperty.call(env.tests, value);
-  }
+  },
 );
 
 export function none(value: unknown): value is null {
@@ -87,7 +87,7 @@ export function upper(value: unknown): value is string {
 }
 
 export function mapping(
-  value: unknown
+  value: unknown,
 ): value is Record<string, unknown> | Map<unknown, unknown> {
   return (
     value instanceof Map ||
@@ -100,7 +100,7 @@ export function number(value: unknown): value is number | BigInt {
 }
 
 export function sequence(
-  value: unknown
+  value: unknown,
 ): value is
   | unknown[]
   | string
@@ -124,7 +124,7 @@ export function sameas<T = unknown>(value: T, other: unknown): other is T {
 }
 
 export function iterable(
-  value: unknown
+  value: unknown,
 ): value is Iterable<unknown> | AsyncIterable<unknown> {
   if (typeof value === "object" && !!value) {
     if (Symbol.iterator in value || Symbol.asyncIterator in value) {
@@ -132,6 +132,7 @@ export function iterable(
     }
   }
   try {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     for (const x of value as any) break;
   } catch (e) {
     return false;
@@ -187,7 +188,7 @@ export function le(value: unknown, other: unknown): boolean {
 }
 
 export function callable(
-  value: unknown
+  value: unknown,
 ): value is (...args: unknown[]) => unknown {
   return typeof value === "function" || value instanceof Function;
 }

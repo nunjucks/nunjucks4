@@ -28,7 +28,7 @@ export interface ForBuilder {
     body: types.Node[],
     else_: types.Node[],
     test?: types.Node | null,
-    recursive?: boolean
+    recursive?: boolean,
   ): types.For;
   from(params: {
     body: types.Node[];
@@ -47,7 +47,7 @@ export interface AsyncEachBuilder {
     body: types.Node[],
     else_: types.Node[],
     test?: types.Node | null,
-    recursive?: boolean
+    recursive?: boolean,
   ): types.AsyncEach;
   from(params: {
     body: types.Node[];
@@ -66,7 +66,7 @@ export interface AsyncAllBuilder {
     body: types.Node[],
     else_: types.Node[],
     test?: types.Node | null,
-    recursive?: boolean
+    recursive?: boolean,
   ): types.AsyncAll;
   from(params: {
     body: types.Node[];
@@ -83,7 +83,7 @@ export interface IfBuilder {
     test: types.Node,
     body: types.Node[],
     elif: types.If[],
-    else_: types.Node[]
+    else_: types.Node[],
   ): types.If;
   from(params: {
     body: types.Node[];
@@ -106,7 +106,7 @@ export interface MacroBuilder {
     name: string,
     args: types.Name[],
     defaults: types.Expr[],
-    body: types.Node[]
+    body: types.Node[],
   ): types.Macro;
   from(params: {
     args: types.Name[];
@@ -130,7 +130,7 @@ export interface CallBuilder {
     args: types.Expr[],
     kwargs: types.Keyword[],
     dynArgs?: types.Expr | null,
-    dynKwargs?: types.Expr | null
+    dynKwargs?: types.Expr | null,
   ): types.Call;
   from(params: {
     args: types.Expr[];
@@ -146,7 +146,7 @@ export interface CallBlockBuilder {
     call: types.Call,
     args: types.Name[],
     defaults: types.Expr[],
-    body: types.Node[]
+    body: types.Node[],
   ): types.CallBlock;
   from(params: {
     args: types.Name[];
@@ -171,7 +171,7 @@ export interface FilterBuilder {
     args: types.Expr[],
     kwargs: types.Keyword[],
     dynArgs?: types.Expr | null,
-    dynKwargs?: types.Expr | null
+    dynKwargs?: types.Expr | null,
   ): types.Filter;
   from(params: {
     args: types.Expr[];
@@ -190,7 +190,7 @@ export interface TestBuilder {
     args: types.Expr[],
     kwargs: types.Keyword[],
     dynArgs?: types.Expr | null,
-    dynKwargs?: types.Expr | null
+    dynKwargs?: types.Expr | null,
   ): types.Test;
   from(params: {
     args: types.Expr[];
@@ -224,7 +224,7 @@ export interface BlockBuilder {
     name: string,
     body: types.Node[],
     scoped: boolean,
-    required: boolean
+    required: boolean,
   ): types.Block;
   from(params: {
     body: types.Node[];
@@ -238,7 +238,7 @@ export interface IncludeBuilder {
   (
     template: types.Expr,
     withContext: boolean,
-    ignoreMissing: boolean
+    ignoreMissing: boolean,
   ): types.Include;
   from(params: {
     ignoreMissing: boolean;
@@ -260,7 +260,7 @@ export interface FromImportBuilder {
   (
     template: types.Expr,
     names: (string | string[])[],
-    withContext: boolean
+    withContext: boolean,
   ): types.FromImport;
   from(params: {
     loc?: types.SourceLocation | null;
@@ -279,7 +279,7 @@ export interface ExprStmtBuilder {
 export interface AssignBuilder {
   (
     target: types.NSRef | types.Name | types.Tuple,
-    node: types.Expr
+    node: types.Expr,
   ): types.Assign;
   from(params: {
     loc?: types.SourceLocation | null;
@@ -307,7 +307,7 @@ export interface AssignBlockBuilder {
   (
     target: types.Expr,
     filter: (types.Filter | null) | undefined,
-    body: types.Node[]
+    body: types.Node[],
   ): types.AssignBlock;
   from(params: {
     body: types.Node[];
@@ -345,7 +345,7 @@ export interface CondExprBuilder {
   (
     test: types.Expr,
     expr1: types.Expr,
-    expr2?: types.Expr | null
+    expr2?: types.Expr | null,
   ): types.CondExpr;
   from(params: {
     expr1: types.Expr;
@@ -376,7 +376,7 @@ export interface SliceBuilder {
   (
     start?: types.Expr | null,
     stop?: types.Expr | null,
-    step?: types.Expr | null
+    step?: types.Expr | null,
   ): types.Slice;
   from(params: {
     loc?: types.SourceLocation | null;
@@ -403,7 +403,7 @@ export interface CompareBuilder {
 export interface OperandBuilder {
   (
     op: "eq" | "ne" | "gt" | "gteq" | "lt" | "lteq" | "in" | "notin",
-    expr: types.Expr
+    expr: types.Expr,
   ): types.Operand;
   from(params: {
     expr: types.Expr;
@@ -602,7 +602,7 @@ export interface EvalContextModifierBuilder {
 export interface ScopedEvalContextModifierBuilder {
   (
     options: types.Keyword[],
-    body: types.Node[]
+    body: types.Node[],
   ): types.ScopedEvalContextModifier;
   from(params: {
     body: types.Node[];

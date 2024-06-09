@@ -1,13 +1,8 @@
-import {
-  Environment,
-  TemplateNotFound,
-  TemplatesNotFound,
-  ObjectSourceLoader,
-} from "@nunjucks/environment";
+import { Environment } from "@nunjucks/environment";
 import { describe, expect, test } from "@jest/globals";
 import { TemplateSyntaxError } from "@nunjucks/parser";
 import { UndefinedError, nunjucksFunction } from "@nunjucks/runtime";
-
+import { types as t } from "@nunjucks/ast";
 let env: Environment<false>;
 
 beforeEach(() => {
@@ -31,7 +26,7 @@ describe("parser", () => {
       `<!-- I'm a comment, I'm not interesting -->
 <?- for item in seq -?>
     <?= item ?>
-<?- endfor ?>`
+<?- endfor ?>`,
     );
     expect(tmpl.render({ seq: [0, 1, 2, 3, 4] })).toBe("01234");
   });
@@ -52,7 +47,7 @@ describe("parser", () => {
       `<%# I'm a comment, I'm not interesting %>
       <%- for item in seq -%>
           <%= item %>
-      <%- endfor %>`
+      <%- endfor %>`,
     );
     expect(tmpl.render({ seq: [0, 1, 2, 3, 4] })).toBe("01234");
   });
@@ -73,7 +68,7 @@ describe("parser", () => {
       `<!--# I'm a comment, I'm not interesting -->
       <!--- for item in seq --->
           \${item}
-      <!--- endfor -->`
+      <!--- endfor -->`,
     );
     expect(tmpl.render({ seq: [0, 1, 2, 3, 4] })).toBe("01234");
   });
@@ -88,7 +83,7 @@ describe("parser", () => {
       `{# foo comment
 and bar comment #}
 {% macro blub() %}foo{% endmacro %}
-{{ blub() }}`
+{{ blub() }}`,
     );
     expect(tmpl.render().trim()).toBe("foo");
   });
@@ -111,7 +106,7 @@ and bar comment #}
         "% for item in seq:",
         "    ${item}",
         "% endfor`",
-      ].join("\n")
+      ].join("\n"),
     );
     expect(tmpl.render({ seq: [0, 1, 2, 3, 4] })).toBe("01234");
   });
@@ -121,10 +116,10 @@ describe("syntax", () => {
   test("call", () => {
     env.globals.foo = nunjucksFunction(["a", "b", "c", "e", "g"])(
       (a: string, b: string, c: string, e: string, g: string): string =>
-        a + b + c + e + g
+        a + b + c + e + g,
     );
     const tmpl = env.fromString(
-      "{{ foo('a', c='d', e='f', *['b'], **{'g': 'h'}) }}"
+      "{{ foo('a', c='d', e='f', *['b'], **{'g': 'h'}) }}",
     );
     expect(tmpl.render()).toBe("abdfh");
   });
@@ -202,7 +197,7 @@ describe("syntax", () => {
 
   test("in operation", () => {
     const tmpl = env.fromString(
-      "{{ 1 in [1, 2, 3] }}|{{ 1 not in [1, 2, 3] }}"
+      "{{ 1 in [1, 2, 3] }}|{{ 1 not in [1, 2, 3] }}",
     );
     expect(tmpl.render()).toBe("true|false");
   });
@@ -232,17 +227,18 @@ describe("syntax", () => {
     const t = env.fromString(`{{ ${src} }}`);
     expect(t.render({ a: 4, b: 2, c: 3 })).toBe(expected);
   });
-  test("django_attr", () => {
+
+  test("django-style numeric attribute", () => {
     const tmpl = env.fromString("{{ [1, 2, 3].0 }}|{{ [[1]].0.0 }}");
     expect(tmpl.render()).toBe("1|1");
   });
 
-  test("conditional_expression", () => {
+  test("conditional expression", () => {
     const tmpl = env.fromString("{{ 0 if true else 1 }}");
     expect(tmpl.render()).toBe("0");
   });
 
-  test("short_conditional_expression", () => {
+  test("short conditional expression", () => {
     let tmpl = env.fromString("<{{ 1 if false }}>");
     expect(tmpl.render()).toBe("<>");
 
@@ -272,7 +268,7 @@ describe("syntax", () => {
       env.fromString(`{{ foo(${args}) }}`);
     } else {
       expect(() => env.fromString(`{{ foo(${args}) }}`)).toThrow(
-        TemplateSyntaxError
+        TemplateSyntaxError,
       );
     }
   });
@@ -289,10 +285,10 @@ describe("syntax", () => {
       const upper = title.toUpperCase();
       const lower = title.toLowerCase();
       const tmpl = env.fromString(
-        `{{ ${title} }}|{{ ${upper} }}|{{ ${lower} }}`
+        `{{ ${title} }}|{{ ${upper} }}|{{ ${lower} }}`,
       );
       const expected = lower === "none" ? "null" : lower;
       expect(tmpl.render()).toBe(`${expected}|${expected}|${expected}`);
-    }
+    },
   );
 });

@@ -55,7 +55,7 @@ export class ArrayType<T> extends BaseType<T> {
   readonly kind: "ArrayType" = "ArrayType";
 
   constructor(
-    public readonly elemType: Type<T extends (infer E)[] ? E : never>
+    public readonly elemType: Type<T extends (infer E)[] ? E : never>,
   ) {
     super();
   }
@@ -136,7 +136,7 @@ export class PredicateType<T> extends BaseType<T> {
 
   constructor(
     public readonly name: string,
-    public readonly predicate: (value: any, deep?: Deep) => boolean
+    public readonly predicate: (value: any, deep?: Deep) => boolean,
   ) {
     super();
   }
@@ -156,20 +156,20 @@ export class PredicateType<T> extends BaseType<T> {
 
 export abstract class Def<T = any> {
   public baseNames: string[] = [];
-  public ownFields: { [name: string]: Field<any> } = Object.create(null);
+  public ownFields: Record<string, Field<any>> = Object.create(null);
 
   public isAbstract = false;
 
   public aliasNames: string[] = [];
 
   // Includes own typeName. Populated during finalization.
-  public allSupertypes: { [name: string]: Def<any> } = Object.create(null);
+  public allSupertypes: Record<string, Def<any>> = Object.create(null);
 
   // Linear inheritance hierarchy. Populated during finalization.
   public supertypeList: string[] = [];
 
   // Includes inherited fields.
-  public allFields: { [name: string]: Field<any> } = Object.create(null);
+  public allFields: Record<string, Field<any>> = Object.create(null);
 
   // Non-hidden keys of allFields.
   public fieldNames: string[] = [];
@@ -184,7 +184,7 @@ export abstract class Def<T = any> {
 
   constructor(
     public readonly type: Type<T>,
-    public readonly typeName: string
+    public readonly typeName: string,
   ) {}
 
   abstract(): this {
@@ -298,7 +298,7 @@ export abstract class Def<T = any> {
     name: string,
     type: any,
     defaultFn?: Function,
-    hidden?: boolean
+    hidden?: boolean,
   ): this;
 
   abstract finalize(): void;
@@ -311,7 +311,7 @@ class Field<T> {
     public readonly name: string,
     public readonly type: Type<T>,
     public readonly defaultFn?: Function,
-    hidden?: boolean
+    hidden?: boolean,
   ) {
     this.hidden = !!hidden;
   }
@@ -320,7 +320,7 @@ class Field<T> {
     return JSON.stringify(this.name) + ": " + this.type;
   }
 
-  getValue(obj: { [key: string]: any }) {
+  getValue(obj: Record<string, any>) {
     let value = obj[this.name];
 
     if (typeof value !== "undefined") {
@@ -345,7 +345,7 @@ export interface ASTNode {
 
 export interface Builder {
   (...args: any[]): ASTNode;
-  from(obj: { [param: string]: any }): ASTNode;
+  from(obj: Record<string, any>): ASTNode;
 }
 
 export function shallowStringify(value: any): string {
@@ -403,7 +403,7 @@ export const Type = {
       return new ObjectType(
         Object.keys(value).map((name) => {
           return new Field(name, Type.from(value[name], name));
-        })
+        }),
       );
     }
 
@@ -446,28 +446,28 @@ export const Type = {
 const builtInCtorFns: Function[] = [];
 const builtInCtorTypes: Type<any>[] = [];
 
-export type BuiltInTypes = {
+export interface BuiltInTypes {
   string: string;
   function: Function;
   array: any[];
-  object: { [key: string]: any };
+  object: Record<string, any>;
   RegExp: RegExp;
   Date: Date;
   number: number;
   boolean: boolean;
   null: null;
   undefined: undefined;
-};
+}
 
 function defBuiltInType<K extends keyof BuiltInTypes>(
   name: K,
-  example: BuiltInTypes[K]
+  example: BuiltInTypes[K],
 ): PredicateType<BuiltInTypes[K]> {
   const objStr: string = objToStr.call(example);
 
   const type = new PredicateType<BuiltInTypes[K]>(
     name,
-    (value) => objToStr.call(value) === objStr
+    (value) => objToStr.call(value) === objStr,
   );
 
   if (example && typeof example.constructor === "function") {
@@ -517,7 +517,7 @@ export const AnyType = new PredicateType<any>("any", () => true);
 
 // In order to return the same Def instance every time Type.def is called
 // with a particular name, those instances need to be stored in a cache.
-const defCache: { [typeName: string]: Def<any> } = Object.create(null);
+const defCache: Record<string, Def<any>> = Object.create(null);
 
 export function defFromValue(value: any): Def<any> | null {
   if (value && typeof value === "object") {
@@ -537,7 +537,7 @@ class DefImpl<T = any> extends Def<T> {
   constructor(typeName: string) {
     super(
       new PredicateType<T>(typeName, (value, deep) => this.check(value, deep)),
-      typeName
+      typeName,
     );
   }
 
@@ -618,7 +618,7 @@ class DefImpl<T = any> extends Def<T> {
       built: any,
       param: any,
       arg: any,
-      isArgAvailable: boolean
+      isArgAvailable: boolean,
     ) => {
       if (hasOwn.call(built, param)) return;
 
@@ -659,7 +659,7 @@ class DefImpl<T = any> extends Def<T> {
             " does not match field " +
             field +
             " of type " +
-            this.typeName
+            this.typeName,
         );
       }
 
@@ -675,7 +675,7 @@ class DefImpl<T = any> extends Def<T> {
 
       if (!this.finalized) {
         throw new Error(
-          "attempting to instantiate unfinalized type " + this.typeName
+          "attempting to instantiate unfinalized type " + this.typeName,
         );
       }
 
@@ -705,10 +705,10 @@ class DefImpl<T = any> extends Def<T> {
     // Calling .from on the builder function will construct an instance of the Def,
     // using field values from the passed object. For fields missing from the passed object,
     // their default value will be used.
-    builder.from = (obj: { [fieldName: string]: any }) => {
+    builder.from = (obj: Record<string, any>) => {
       if (!this.finalized) {
         throw new Error(
-          "attempting to instantiate unfinalized type " + this.typeName
+          "attempting to instantiate unfinalized type " + this.typeName,
         );
       }
 
@@ -748,7 +748,7 @@ class DefImpl<T = any> extends Def<T> {
         "Ignoring attempt to redefine field " +
           JSON.stringify(name) +
           " of finalized type " +
-          JSON.stringify(this.typeName)
+          JSON.stringify(this.typeName),
       );
       return this;
     }
@@ -836,7 +836,7 @@ export function getSupertypeNames(typeName: string): string[] {
 // most specific supertype whose name is an own property of the candidates
 // object.
 export function computeSupertypeLookupTable(candidates: any) {
-  const table: { [typeName: string]: any } = {};
+  const table: Record<string, any> = {};
   const typeNames = Object.keys(defCache);
   const typeNameCount = typeNames.length;
 
@@ -861,13 +861,13 @@ export function computeSupertypeLookupTable(candidates: any) {
 export const builders: import("./gen/builders").builders = Object.create(null);
 
 // This object is used as prototype for any node created by a builder.
-const nodePrototype: { [definedMethod: string]: Function } = {};
+const nodePrototype: Record<string, Function> = {};
 
 // Call this function to define a new method to be shared by all AST
 // nodes. The replaced method (if any) is returned for easy wrapping.
 export function defineMethod(
   name: string,
-  func?: Function
+  func?: Function,
 ): Function | undefined {
   const old = nodePrototype[name];
 
@@ -919,7 +919,7 @@ export function getFieldNames(object: any): string[] {
 
   if ("type" in object) {
     throw new Error(
-      "did not recognize object of type " + JSON.stringify(object.type)
+      "did not recognize object of type " + JSON.stringify(object.type),
     );
   }
 
@@ -937,7 +937,7 @@ export function getFieldValue(object: any, fieldName: string): any {
     }
   }
 
-  return object && object[fieldName];
+  return object?.[fieldName];
 }
 
 // Iterate over all defined fields of an object, including those missing
@@ -947,7 +947,7 @@ export function getFieldValue(object: any, fieldName: string): any {
 export function eachField(
   object: any,
   callback: (name: string, value: any) => any,
-  context?: any
+  context?: any,
 ): void {
   getFieldNames(object).forEach(function (this: any, name: string) {
     callback.call(this, name, getFieldValue(object, name));
@@ -961,7 +961,7 @@ export function eachField(
 export function someField(
   object: any,
   callback: (name: string, value: any) => any,
-  context?: any
+  context?: any,
 ): boolean {
   return getFieldNames(object).some(function (this: any, name: string) {
     return callback.call(this, name, getFieldValue(object, name));
@@ -1008,9 +1008,7 @@ function populateSupertypeList(typeName: any, list: any) {
   list.length = to;
 }
 
-interface ObjKeys {
-  [key: string]: any;
-}
+type ObjKeys = Record<string, any>;
 
 function extend<T extends ObjKeys, U extends ObjKeys>(into: T, from: U): T & U {
   const ret = into as any;

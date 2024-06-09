@@ -11,9 +11,9 @@ type LoadType =
   | [typeof VAR_LOAD_ALIAS, string]
   | [typeof VAR_LOAD_UNDEFINED, string | null];
 
-type RootVisitorState = {
+interface RootVisitorState {
   forBranch?: "body" | "else" | "test";
-};
+}
 
 export class Symbols {
   level: number;
@@ -31,7 +31,7 @@ export class Symbols {
     } else {
       this.level = level;
     }
-    this.parent = parent || null;
+    this.parent = parent ?? null;
     this.refs = {};
     this.loads = {};
     this.stores = new Set();
@@ -62,21 +62,21 @@ export class Symbols {
     if (target in this.loads) {
       return this.loads[target];
     }
-    return this.parent?.findLoad(target) || null;
+    return this.parent?.findLoad(target) ?? null;
   }
 
   findRef(target: string): string | null {
     if (target in this.refs) {
       return this.refs[target];
     }
-    return this.parent?.findRef(target) || null;
+    return this.parent?.findRef(target) ?? null;
   }
 
   ref(name: string): string {
     const rv = this.findRef(name);
     if (rv === null) {
       throw new Error(
-        `Tried to resolve a name to a reference that was unknown to the frame (${name})`
+        `Tried to resolve a name to a reference that was unknown to the frame (${name})`,
       );
     }
     return rv;
@@ -113,13 +113,13 @@ export class Symbols {
   }
 
   branchUpdate(branchSymbols: Symbols[]): void {
-    const stores: Map<string, number> = new Map();
+    const stores = new Map<string, number>();
     branchSymbols.forEach((branch) => {
       branch.stores.forEach((target) => {
         if (target in this.stores) {
           return;
         }
-        stores.set(target, (stores.get(target) || 0) + 1);
+        stores.set(target, (stores.get(target) ?? 0) + 1);
       });
     });
     branchSymbols.forEach((sym) => {
@@ -133,7 +133,7 @@ export class Symbols {
       }
       const target = this.findRef(name);
       if (target === null) throw new Error(""); // This should not happen
-      const outerTarget = this.parent?.findRef(name) || null;
+      const outerTarget = this.parent?.findRef(name) ?? null;
       if (outerTarget !== null) {
         this.loads[target] = [VAR_LOAD_ALIAS, outerTarget];
         continue;
@@ -160,7 +160,7 @@ export class Symbols {
   }
 
   dumpParamTargets(): Set<string> {
-    const rv: Set<string> = new Set();
+    const rv = new Set<string>();
     // eslint-disable-next-line @typescript-eslint/no-this-alias
     let node: Symbols | null = this;
     while (node !== null) {
@@ -178,7 +178,7 @@ export class Symbols {
 const rootVisitor = (
   node: t.Node,
   symbols: Symbols,
-  state?: RootVisitorState
+  state?: RootVisitorState,
 ) => {
   const symVisitor = new FrameSymbolVisitor(symbols);
 
@@ -261,14 +261,14 @@ const rootVisitor = (
         return false;
       },
     },
-    state
+    state,
   );
 };
 
-type frameSymbolVisitorContext = {
+interface frameSymbolVisitorContext {
   forBranch?: "body" | "else" | "test";
   storeAsParam?: boolean;
-};
+}
 
 export class FrameSymbolVisitor {
   symbols: Symbols;
@@ -281,7 +281,7 @@ export class FrameSymbolVisitor {
     const symbols = this.symbols;
     return PathVisitor.fromMethodsObject<frameSymbolVisitorContext>({
       visitName({ node }, state) {
-        if (state?.storeAsParam || node.ctx === "param") {
+        if (node.ctx === "param" || state?.storeAsParam) {
           symbols.declareParameter(node.name);
         } else if (node.ctx === "store") {
           symbols.store(node.name);
@@ -381,7 +381,7 @@ export class FrameSymbolVisitor {
 
 export const findSymbols = (
   nodes: t.Node[],
-  parentSymbols?: Symbols
+  parentSymbols?: Symbols,
 ): Symbols => {
   const sym = new Symbols(parentSymbols);
   const visitor = new FrameSymbolVisitor(sym);
@@ -391,7 +391,7 @@ export const findSymbols = (
 
 export const symbolsForNode = (
   node: t.Node,
-  parentSymbols?: Symbols
+  parentSymbols?: Symbols,
 ): Symbols => {
   const sym = new Symbols(parentSymbols);
   sym.analyzeNode(node);

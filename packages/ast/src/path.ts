@@ -21,13 +21,11 @@ export type ChildCache = Record<PathName, Path>;
 
 export type MapCallback<T, U, V> = (this: T, childPath: U) => V;
 export type EachCallback<T, U> = MapCallback<T, U, void>;
-export interface PathConstructor {
-  new <N extends n.Node = n.Node, V = any>(
-    value: V,
-    parentPath?: any,
-    name?: PathName,
-  ): Path<N, V>;
-}
+export type PathConstructor = new <N extends n.Node = n.Node, V = any>(
+  value: V,
+  parentPath?: any,
+  name?: PathName,
+) => Path<N, V>;
 
 type PathValueType<T> = T extends n.Node ? Path<T, T> : Path<n.Node, T>;
 
@@ -158,7 +156,6 @@ export class Path<
   value: V;
   name: K | null;
 
-  // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
   constructor(value: V, parentPath?: any, name?: K | null) {
     if (parentPath) {
       if (!(parentPath instanceof this.constructor)) {
@@ -437,7 +434,7 @@ export class Path<
         }
         const newIndex = i + offset;
         childPath.name = newIndex;
-        moves[newIndex] = childPath as any;
+        moves[newIndex] = childPath;
         delete cache[i];
       }
     }
@@ -544,7 +541,7 @@ export class Path<
     const parentCache = pp._getChildCache() as any;
 
     // Make sure parentCache[path.name] is populated.
-    if ((parentValue as any)[name] === this.value) {
+    if (parentValue[name] === this.value) {
       parentCache[name] = this;
     } else if (isArray.check(parentValue)) {
       // Something caused this.name to become out of date, so attempt to
@@ -558,11 +555,11 @@ export class Path<
       // If this.value disagrees with parentValue[this.name], and
       // this.name is not an array index, let this.value become the new
       // parentValue[this.name] and update parentCache accordingly.
-      (parentValue as any)[name] = this.value;
+      parentValue[name] = this.value;
       parentCache[name] = this;
     }
 
-    if ((parentValue as any)[name] !== this.value) {
+    if (parentValue[name] !== this.value) {
       throw new Error("");
     }
     if ((pp.get(`${name as string}`) as any) !== (this as any)) {
@@ -668,10 +665,10 @@ export class Path<
       if (this.value !== args[0]) {
         this.__childCache = null;
       }
-      this.value = (parentValue as any)[name] = args[0];
+      this.value = parentValue[name] = args[0];
       results.push(this as unknown as Path);
     } else if (args.length === 0) {
-      delete (parentValue as any)[name];
+      delete parentValue[name];
       this.value = undefined as unknown as V;
       this.__childCache = null;
 

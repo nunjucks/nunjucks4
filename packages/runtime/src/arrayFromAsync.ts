@@ -36,51 +36,32 @@
 const { MAX_SAFE_INTEGER } = Number;
 const iteratorSymbol = Symbol.iterator;
 const asyncIteratorSymbol = Symbol.asyncIterator;
-const IntrinsicArray = Array;
 const tooLongErrorMessage =
   "Input is too long and exceeded Number.MAX_SAFE_INTEGER times.";
-
-function isConstructor(obj: any) {
-  if (obj != null) {
-    const prox: any = new Proxy(obj, {
-      construct() {
-        return prox;
-      },
-    });
-    try {
-      new prox();
-      return true;
-    } catch (err) {
-      return false;
-    }
-  } else {
-    return false;
-  }
-}
 
 export async function arrayFromAsync<T>(
   iterableOrArrayLike:
     | AsyncIterable<T>
     | Iterable<T | Promise<T>>
-    | ArrayLike<T | Promise<T>>
+    | ArrayLike<T | Promise<T>>,
 ): Promise<T[]>;
 
 export async function arrayFromAsync<T, U>(
   iterableOrArrayLike: AsyncIterable<T> | Iterable<T> | ArrayLike<T>,
   mapFn: (value: Awaited<T>) => U,
-  thisArg?: any
+  thisArg?: any,
 ): Promise<Awaited<U>[]>;
 
 export default async function arrayFromAsync(
   items: any,
   mapfn?: any,
-  thisArg?: any
+  thisArg?: any,
 ) {
   const itemsAreIterable =
     asyncIteratorSymbol in items || iteratorSymbol in items;
 
   if (itemsAreIterable) {
-    const result = new Array();
+    const result = [];
 
     let i = 0;
 

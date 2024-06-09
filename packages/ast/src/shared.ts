@@ -7,7 +7,7 @@ const isNumber = builtin.number;
 export function geq(than: any) {
   return Type.from(
     (value: number) => isNumber.check(value) && value >= than,
-    isNumber + " >= " + than
+    isNumber + " >= " + than,
   );
 }
 
@@ -32,7 +32,7 @@ const naiveIsPrimitive = Type.or(
   builtin.number,
   builtin.boolean,
   builtin.null,
-  builtin.undefined
+  builtin.undefined,
 );
 
 export const isPrimitive = Type.from((value: unknown): value is Primitive => {
