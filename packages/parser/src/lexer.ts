@@ -1,24 +1,78 @@
-"use strict";
+import nameRe from "./identifiers";
 
-const whitespaceChars = " \n\t\r\u00A0";
-const delimChars = "()[]{}%*-+~/#,:|.<>=!";
-const intChars = "0123456789";
+export class TemplateSyntaxError extends Error {
+  name = "TemplateSyntaxError";
+  lineno: number;
+  sourcename?: string | null;
+  filename?: string | null;
+  source: string | null = null;
+  translated: boolean;
+  message: string;
 
-const BLOCK_START = "{%";
-const BLOCK_END = "%}";
-const VARIABLE_START = "{{";
-const VARIABLE_END = "}}";
-const COMMENT_START = "{#";
-const COMMENT_END = "#}";
+  constructor(
+    message: string | undefined,
+    {
+      lineno,
+      name = null,
+      filename = null,
+    }: { lineno?: number; name?: string | null; filename?: string | null } = {},
+  ) {
+    super(message);
+    this.lineno = lineno ?? 0;
+    this.sourcename = name;
+    this.filename = filename;
+    this.translated = false;
+    this.message = message ?? "Error";
+  }
+}
+
+const whitespaceRe = /\s+/g;
+const whitespaceFullRe = /^\s+$/;
+const newlineRe = /(\r\n|\r|\n)/g;
+const stringRe = /('([^'\\]*(?:\\.[^'\\]*)*)'|"([^"\\]*(?:\\.[^"\\]*)*)")/gs;
+
+const integerRe = new RegExp(
+  `(${[
+    "0b(_?[0-1])+", // binary
+    "0o(_?[0-7])+", // octal
+    "0x(_?[\\da-f])+", // hex
+    "[1-9](_?\\d)*", // non-zero decimal
+    "0(_?0)*", // decimal zero
+  ].join("|")})`,
+  "gi",
+);
+
+const floatRe = new RegExp(
+  [
+    "(?<!\\.)", // doesn't start with a .
+    "(\\d+_)*\\d+", // digits, possibly _ separated
+    "(",
+    "(\\.(\\d+_)*\\d+)?", // optional fractional part
+    "e[+\\-]?(\\d+_)*\\d+", // exponent part
+    "|",
+    "\\.(\\d+_)*\\d+", // required fractional part
+    ")",
+  ].join(""),
+  "gi",
+);
 
 export const TOKEN_STRING = "string";
 export const TOKEN_WHITESPACE = "whitespace";
 export const TOKEN_DATA = "data";
-export const TOKEN_BLOCK_START = "block-start";
-export const TOKEN_BLOCK_END = "block-end";
-export const TOKEN_VARIABLE_START = "variable-start";
-export const TOKEN_VARIABLE_END = "variable-end";
+export const TOKEN_BLOCK_START = "block_start";
+export const TOKEN_BLOCK_END = "block_end";
+export const TOKEN_VARIABLE_START = "variable_start";
+export const TOKEN_VARIABLE_END = "variable_end";
+export const TOKEN_RAW_START = "raw_start";
+export const TOKEN_RAW_END = "raw_end";
 export const TOKEN_COMMENT = "comment";
+export const TOKEN_COMMENT_START = "comment_start";
+export const TOKEN_COMMENT_END = "comment_end";
+export const TOKEN_LINESTATEMENT_START = "linestatement_start";
+export const TOKEN_LINESTATEMENT_END = "linestatement_end";
+export const TOKEN_LINECOMMENT_START = "linecomment_start";
+export const TOKEN_LINECOMMENT_END = "linecomment_end";
+export const TOKEN_LINECOMMENT = "linecomment";
 export const TOKEN_LPAREN = "lparen";
 export const TOKEN_RPAREN = "rparen";
 export const TOKEN_LBRACKET = "lbracket";
@@ -55,7 +109,7 @@ export const TOKEN_NONE = "none";
 export const TOKEN_NAME = "name";
 export const TOKEN_SPECIAL = "special";
 export const TOKEN_REGEX = "regex";
-export const TOKEN_REGEX_FLAGS = "regex-flags";
+export const TOKEN_REGEX_FLAGS = "regex_flags";
 export const TOKEN_INITIAL = "initial";
 export const TOKEN_EOF = "eof";
 
@@ -67,7 +121,16 @@ export type TokenType =
   | typeof TOKEN_BLOCK_END
   | typeof TOKEN_VARIABLE_START
   | typeof TOKEN_VARIABLE_END
+  | typeof TOKEN_RAW_START
+  | typeof TOKEN_RAW_END
   | typeof TOKEN_COMMENT
+  | typeof TOKEN_COMMENT_START
+  | typeof TOKEN_COMMENT_END
+  | typeof TOKEN_LINESTATEMENT_START
+  | typeof TOKEN_LINESTATEMENT_END
+  | typeof TOKEN_LINECOMMENT_START
+  | typeof TOKEN_LINECOMMENT_END
+  | typeof TOKEN_LINECOMMENT
   | typeof TOKEN_LPAREN
   | typeof TOKEN_RPAREN
   | typeof TOKEN_LBRACKET
@@ -108,29 +171,92 @@ export type TokenType =
   | typeof TOKEN_INITIAL
   | typeof TOKEN_EOF;
 
-export class TemplateSyntaxError extends Error {
-  name = "TemplateSyntaxError";
-  lineno: number;
-  sourcename?: string | null;
-  filename?: string | null;
-  source: string | null = null;
-  translated: boolean;
+// bind operators to token types
+const operators: Record<string, TokenType> = {
+  "+": TOKEN_ADD,
+  "-": TOKEN_SUB,
+  "/": TOKEN_DIV,
+  "//": TOKEN_FLOORDIV,
+  "*": TOKEN_MUL,
+  "%": TOKEN_MOD,
+  "**": TOKEN_POW,
+  "~": TOKEN_TILDE,
+  "[": TOKEN_LBRACKET,
+  "]": TOKEN_RBRACKET,
+  "(": TOKEN_LPAREN,
+  ")": TOKEN_RPAREN,
+  "{": TOKEN_LBRACE,
+  "}": TOKEN_RBRACE,
+  "==": TOKEN_EQ,
+  "!=": TOKEN_NE,
+  ">": TOKEN_GT,
+  ">=": TOKEN_GTEQ,
+  "<": TOKEN_LT,
+  "<=": TOKEN_LTEQ,
+  "=": TOKEN_ASSIGN,
+  ".": TOKEN_DOT,
+  ":": TOKEN_COLON,
+  "|": TOKEN_PIPE,
+  ",": TOKEN_COMMA,
+  ";": TOKEN_SEMICOLON,
+};
 
-  constructor(
-    message: string,
-    {
-      lineno,
-      name = null,
-      filename = null,
-    }: { lineno: number; name?: string | null; filename?: string | null },
-  ) {
-    super(message);
-    this.lineno = lineno;
-    this.sourcename = name;
-    this.filename = filename;
-    this.translated = false;
-  }
+export type TokenEof = Token<typeof TOKEN_EOF>;
+
+function isEof(tok: Token): tok is TokenEof {
+  return tok.type === TOKEN_EOF;
 }
+
+type ReverseMap<T extends Record<keyof T, keyof any>> = {
+  [P in T[keyof T]]: {
+    [K in keyof T]: T[K] extends P ? K : never;
+  }[keyof T];
+};
+
+const reverseOperators = Object.fromEntries(
+  Object.entries(operators).map(([k, v]) => [v, k]),
+) as ReverseMap<typeof operators>;
+
+const regexEscape = (str: string): string =>
+  str.replace(/[.*+\-?^${}()|[\]\\]/g, "\\$&");
+
+const operatorRe = (() => {
+  const ops = [...Object.keys(operators)];
+  ops.sort((a, b) => b.length - a.length);
+  return new RegExp(`(${ops.map((op) => regexEscape(op)).join("|")})`, "g");
+})();
+
+const ignoredTokens = new Set<string>([
+  TOKEN_COMMENT_START,
+  TOKEN_COMMENT,
+  TOKEN_COMMENT_END,
+  TOKEN_WHITESPACE,
+  TOKEN_LINECOMMENT_START,
+  TOKEN_LINECOMMENT_END,
+  TOKEN_LINECOMMENT,
+]);
+
+const ignoreIfEmpty = new Set<string>([
+  TOKEN_WHITESPACE,
+  TOKEN_DATA,
+  TOKEN_COMMENT,
+  TOKEN_LINECOMMENT,
+]);
+
+const tokenDescriptions = {
+  [TOKEN_COMMENT_START]: "begin of comment",
+  [TOKEN_COMMENT_END]: "end of comment",
+  [TOKEN_COMMENT]: "comment",
+  [TOKEN_LINECOMMENT]: "comment",
+  [TOKEN_BLOCK_START]: "begin of statement block",
+  [TOKEN_BLOCK_END]: "end of statement block",
+  [TOKEN_VARIABLE_START]: "begin of print statement",
+  [TOKEN_VARIABLE_END]: "end of print statement",
+  [TOKEN_LINESTATEMENT_START]: "begin of line statement",
+  [TOKEN_LINESTATEMENT_END]: "end of line statement",
+  [TOKEN_DATA]: "template data / text",
+  [TOKEN_EOF]: "end of template",
+} as const;
 
 export interface Token<T extends TokenType = TokenType> {
   type: T;
@@ -138,14 +264,16 @@ export interface Token<T extends TokenType = TokenType> {
   lineno: number;
   colno: number;
   pos: number;
+  raw: string;
 }
 
-function token<T extends TokenType = TokenType>(
+function makeToken<T extends TokenType = TokenType>(
   type: T,
   value: string,
   lineno: number,
   colno: number,
   pos: number,
+  raw: string,
 ): Token<T> {
   return {
     type,
@@ -153,6 +281,7 @@ function token<T extends TokenType = TokenType>(
     lineno,
     colno,
     pos,
+    raw,
   };
 }
 
@@ -179,31 +308,269 @@ export function assertToken(value: unknown): asserts value is Token {
   }
 }
 
-export interface TokenizerOptions {
-  blockStart?: string;
-  blockEnd?: string;
-  variableStart?: string;
-  variableEnd?: string;
-  commentStart?: string;
-  commentEnd?: string;
-  trimBlocks?: boolean;
-  lstripBlocks?: boolean;
+function _describeTokenType(tokenType: string): string {
+  if (tokenType in reverseOperators) {
+    return reverseOperators[tokenType as keyof typeof reverseOperators];
+  }
+  if (tokenType in tokenDescriptions) {
+    return tokenDescriptions[tokenType as keyof typeof tokenDescriptions];
+  }
+  return tokenType;
 }
 
-export class Tokenizer {
-  str: string;
-  index: number;
-  len: number;
-  lineno: number;
-  colno: number;
-  currentToken: Token;
-  prevToken: Token | null;
+function describeToken(token: Token): string {
+  return token.type === TOKEN_NAME
+    ? token.value
+    : _describeTokenType(token.type);
+}
 
-  inCode: boolean;
-  inVariable: boolean;
-  inTag: boolean;
+function describeTokenExpr(expr: string): string {
+  let type = expr;
+  let value = "";
+  if (expr.includes(":")) {
+    [type, value] = expr.split(/:/);
+    if (type === TOKEN_NAME) return value;
+  }
+  return _describeTokenType(type);
+}
+
+export class TokenStream implements Iterator<Token, TokenEof> {
+  name: string | null;
+  filename: string | null;
+  _iter: Iterator<Token>;
+  _pushed: Token[] = [];
+  closed = false;
+  current: Token;
+  str: string;
+
+  position = 0;
+  lineno = 1;
+  colno = 0;
+
+  constructor(
+    generator: Iterable<Token>,
+    { name, filename }: { name?: string; filename?: string } = {},
+  ) {
+    this.name = name ?? null;
+    this.filename = filename ?? null;
+    this.current = makeToken(TOKEN_INITIAL, "", 1, 0, 0, "");
+    this._iter = generator[Symbol.iterator]();
+    this.next();
+  }
+
+  get eos(): boolean {
+    return !!this._pushed.length || this.current.type !== TOKEN_EOF;
+  }
+
+  push(token: Token) {
+    this._pushed.push(token);
+  }
+
+  test(token: Token, expr: string): boolean {
+    if (token.type === expr) return true;
+    if (expr.includes(":")) {
+      return expr == `${token.type}:${token.value}`;
+    }
+    return false;
+  }
+
+  testAny(token: Token, arr: string[]): boolean {
+    return arr.some((expr) => this.test(token, expr));
+  }
+
+  look(): Token {
+    const result = this.next();
+    if (result.done) {
+      throw new Error("look called on a closed token stream");
+    }
+    const looked = this.current;
+    this.push(looked);
+    this.current = result.value;
+    return looked;
+  }
+
+  close(): void {
+    this.current = makeToken(
+      TOKEN_EOF,
+      "",
+      this.current.lineno,
+      this.current.colno,
+      this.current.pos,
+      "",
+    );
+    this._iter = [][Symbol.iterator] as unknown as IterableIterator<Token>;
+    this.closed = true;
+  }
+
+  [Symbol.iterator]() {
+    return this;
+  }
+
+  next(): IteratorResult<Token, TokenEof> {
+    const value = this.current;
+    if (this._pushed.length) {
+      this.current = this._pushed.shift()!;
+    } else if (this.current.type !== TOKEN_EOF) {
+      const result = this._iter.next();
+      if (result.done) {
+        this.close();
+      } else {
+        this.current = result.value;
+      }
+    }
+    if (isEof(value)) {
+      return { done: true, value };
+    } else {
+      return { done: false, value };
+    }
+  }
+
+  skip(n: number = 1) {
+    for (let i = 0; i < n; i++) {
+      this.next();
+    }
+  }
+
+  nextIf(expr: string): Token | null {
+    if (this.test(this.current, expr)) {
+      const result = this.next();
+      return result.done ? null : result.value;
+    }
+    return null;
+  }
+
+  skipIf(expr: string): boolean {
+    return this.nextIf(expr) !== null;
+  }
+
+  expect(expr: string): Token {
+    const tok = this.current;
+    if (!this.test(tok, expr)) {
+      const expected = describeTokenExpr(expr);
+      if (this.current.type === TOKEN_EOF) {
+        throw new TemplateSyntaxError(
+          `unexpected end of template, expected '${expected}'`,
+          { lineno: this.lineno, name: this.name, filename: this.filename },
+        );
+      }
+      throw new TemplateSyntaxError(
+        `expected '${expected}', got '${describeToken(tok)}'`,
+        {
+          lineno: this.current.lineno,
+          name: this.name,
+          filename: this.filename,
+        },
+      );
+    }
+    this.next();
+    return tok;
+  }
+}
+const BLOCK_START = "{%";
+const BLOCK_END = "%}";
+const VARIABLE_START = "{{";
+const VARIABLE_END = "}}";
+const COMMENT_START = "{#";
+const COMMENT_END = "#}";
+
+export interface ParserOptions {
+  blockStart: string;
+  blockEnd: string;
+  variableStart: string;
+  variableEnd: string;
+  commentStart: string;
+  commentEnd: string;
+  lineStatementPrefix: string | null;
+  lineCommentPrefix: string | null;
   trimBlocks: boolean;
   lstripBlocks: boolean;
+  newlineSequence: string | null;
+  keepTrailingNewline: boolean;
+}
+
+function compileRules(opts: ParserOptions): [string, string][] {
+  const e = regexEscape;
+  const rules: [number, string, string][] = [
+    [opts.commentStart.length, TOKEN_COMMENT_START, e(opts.commentStart)],
+    [opts.blockStart.length, TOKEN_BLOCK_START, e(opts.blockStart)],
+    [opts.variableStart.length, TOKEN_VARIABLE_START, e(opts.variableStart)],
+  ];
+  if (opts.lineStatementPrefix !== null) {
+    rules.push([
+      opts.lineStatementPrefix.length,
+      TOKEN_LINESTATEMENT_START,
+      "^[ \\t\\v]*" + e(opts.lineStatementPrefix),
+    ]);
+  }
+  if (opts.lineCommentPrefix !== null) {
+    rules.push([
+      opts.lineCommentPrefix.length,
+      TOKEN_LINECOMMENT_START,
+      "(?:^|(?<=\\S))[^\\S\\r\\n]*" + e(opts.lineCommentPrefix),
+    ]);
+  }
+  return rules
+    .sort()
+    .reverse()
+    .map(([, tok, regex]) => [tok, regex]);
+}
+
+interface Rule {
+  regex: RegExp;
+  tokens: TokenType | (TokenType | "#bygroup")[] | [Failure];
+  command?: string;
+}
+
+class Failure {
+  message: string;
+  exceptionClass: typeof TemplateSyntaxError;
+  constructor(
+    message: string,
+    {
+      exceptionClass = TemplateSyntaxError,
+    }: { exceptionClass?: typeof TemplateSyntaxError } = {},
+  ) {
+    this.message = message;
+    this.exceptionClass = exceptionClass;
+  }
+
+  raise(lineno: number, filename: string | null): never {
+    throw new this.exceptionClass(this.message, { lineno, filename });
+  }
+}
+
+type OptionalLStrip = (TokenType | "#bygroup")[] & {
+  __optionalLStrip: boolean;
+};
+
+function optionalLStrip(arr: (TokenType | "#bygroup")[]): OptionalLStrip {
+  return Object.assign(arr, { __optionalLStrip: true });
+}
+
+function isOptionalLStrip(tokens: unknown): tokens is OptionalLStrip {
+  return (
+    Array.isArray(tokens) &&
+    Object.prototype.hasOwnProperty.call(tokens, "__optionalLStrip")
+  );
+}
+
+function rule(
+  regex: RegExp,
+  tokens: TokenType | (TokenType | "#bygroup")[] | [Failure],
+  command?: string,
+): Rule {
+  return { regex, tokens, command };
+}
+
+export class Lexer {
+  trimBlocks: boolean;
+  lstripBlocks: boolean;
+  newlineSequence: string | null;
+  keepTrailingNewline: boolean;
+
+  rules: Record<string, Rule[]>;
+
+  options: ParserOptions;
 
   tags: {
     BLOCK_START: string;
@@ -212,32 +579,25 @@ export class Tokenizer {
     VARIABLE_END: string;
     COMMENT_START: string;
     COMMENT_END: string;
+    LINE_COMENT_PREFIX: string | null;
+    LINE_STATEMENT_PREFIX: string | null;
   };
 
-  _pushed: Token[];
-
-  constructor(str: string, options?: TokenizerOptions) {
-    this.str = str;
-    this.index = 0;
-    this.len = str.length;
-    this.lineno = 1;
-    this.colno = 0;
-    this.currentToken = token(
-      TOKEN_INITIAL,
-      "",
-      this.lineno,
-      this.colno,
-      this.index,
-    );
-    this.prevToken = null;
-
-    this.inCode = false;
-    this.inVariable = false;
-    this.inTag = false;
-    this._pushed = [];
-
-    const opts: TokenizerOptions = options ?? {};
-
+  constructor(opts: Partial<ParserOptions> = {}) {
+    this.options = {
+      blockStart: opts.blockStart ?? BLOCK_START,
+      blockEnd: opts.blockEnd ?? BLOCK_END,
+      variableStart: opts.variableStart ?? VARIABLE_START,
+      variableEnd: opts.variableEnd ?? VARIABLE_END,
+      commentStart: opts.commentStart ?? COMMENT_START,
+      commentEnd: opts.commentEnd ?? COMMENT_END,
+      lineCommentPrefix: opts.lineCommentPrefix ?? null,
+      lineStatementPrefix: opts.lineStatementPrefix ?? null,
+      newlineSequence: opts.newlineSequence ?? null,
+      trimBlocks: !!opts.trimBlocks,
+      lstripBlocks: !!opts.lstripBlocks,
+      keepTrailingNewline: opts.keepTrailingNewline ?? false,
+    };
     this.tags = {
       BLOCK_START: opts.blockStart ?? BLOCK_START,
       BLOCK_END: opts.blockEnd ?? BLOCK_END,
@@ -245,612 +605,422 @@ export class Tokenizer {
       VARIABLE_END: opts.variableEnd ?? VARIABLE_END,
       COMMENT_START: opts.commentStart ?? COMMENT_START,
       COMMENT_END: opts.commentEnd ?? COMMENT_END,
+      LINE_COMENT_PREFIX: opts.lineCommentPrefix ?? null,
+      LINE_STATEMENT_PREFIX: opts.lineStatementPrefix ?? null,
     };
-
+    this.newlineSequence = opts.newlineSequence ?? null;
     this.trimBlocks = !!opts.trimBlocks;
     this.lstripBlocks = !!opts.lstripBlocks;
+    this.keepTrailingNewline = opts.keepTrailingNewline ?? false;
+
+    const e = regexEscape;
+    const c = (s: string) => new RegExp(s, "gms");
+
+    const tagRules: Rule[] = [
+      rule(whitespaceRe, TOKEN_WHITESPACE),
+      rule(floatRe, TOKEN_FLOAT),
+      rule(integerRe, TOKEN_INT),
+      rule(nameRe, TOKEN_NAME),
+      rule(stringRe, TOKEN_STRING),
+      rule(operatorRe, TOKEN_OPERATOR),
+    ];
+
+    const rootTagRules = compileRules(this.options);
+
+    const blockStartRe = e(this.options.blockStart);
+    const blockEndRe = e(this.options.blockEnd);
+    const commentEndRe = e(this.options.commentEnd);
+    const variableEndRe = e(this.options.variableEnd);
+
+    const blockSuffixRe = this.options.trimBlocks ? "\\n?" : "";
+
+    const rootRawRe = [
+      `(?<raw_start>${blockStartRe}(\\-|\\+|)\\s*raw\\s*`,
+      `(?:\\-${blockEndRe}\\s*|${blockEndRe}))`,
+    ].join("");
+
+    const rootPartsRe = [
+      rootRawRe,
+      ...rootTagRules.map(([n, r]) => `(?<${n}>${r}(\\-|\\+|))`),
+    ].join("|");
+
+    this.rules = {
+      root: [
+        // directives
+        rule(
+          c(`(.*?)(?:${rootPartsRe})`),
+          optionalLStrip([TOKEN_DATA, "#bygroup"]),
+          "#bygroup",
+        ),
+        // data
+        rule(c(".+"), TOKEN_DATA),
+      ],
+      // comments
+      [TOKEN_COMMENT_START]: [
+        rule(
+          c(
+            [
+              `(.*?)((?:\\+${commentEndRe}|\\-${commentEndRe}\\s*`,
+              `|${commentEndRe}${blockSuffixRe}))`,
+            ].join(""),
+          ),
+          [TOKEN_COMMENT, TOKEN_COMMENT_END],
+          "#pop",
+        ),
+        rule(c("(.)"), [new Failure("Missing end of comment tag")]),
+      ],
+      // blocks
+      [TOKEN_BLOCK_START]: [
+        rule(
+          c(
+            [
+              `(?:\\+${blockEndRe}|\\-${blockEndRe}\\s*`,
+              `|${blockEndRe}${blockSuffixRe})`,
+            ].join(""),
+          ),
+          TOKEN_BLOCK_END,
+          "#pop",
+        ),
+        ...tagRules,
+      ],
+      // variables
+      [TOKEN_VARIABLE_START]: [
+        rule(
+          c(`\\-${variableEndRe}\\s*|${variableEndRe}`),
+          TOKEN_VARIABLE_END,
+          "#pop",
+        ),
+        ...tagRules,
+      ],
+      // raw block
+      [TOKEN_RAW_START]: [
+        rule(
+          c(
+            [
+              `(.*?)((?:${blockStartRe}(\\-|\\+|))\\s*endraw\\s*`,
+              `(?:\\+${blockEndRe}|\\-${blockEndRe}\\s*`,
+              `|${blockEndRe}${blockSuffixRe}))`,
+            ].join(""),
+          ),
+          optionalLStrip([TOKEN_DATA, TOKEN_RAW_END]),
+          "#pop",
+        ),
+        rule(c("(.)"), [new Failure("Missing end of raw directive")]),
+      ],
+      // line statements
+      [TOKEN_LINESTATEMENT_START]: [
+        rule(c("\\s*(\\n|$)"), TOKEN_LINESTATEMENT_END, "#pop"),
+        ...tagRules,
+      ],
+      // line comments
+      [TOKEN_LINECOMMENT_START]: [
+        rule(
+          c("(.*?)()(?=\\n|$)"),
+          [TOKEN_LINECOMMENT, TOKEN_LINECOMMENT_END],
+          "#pop",
+        ),
+      ],
+    };
   }
 
-  pushToken(tok: Token): void {
-    this._pushed.push(tok);
+  _normalizeNewlines(value: string): string {
+    return value.replace(newlineRe, this.newlineSequence ?? "\n");
   }
 
-  peekToken(): Token {
-    let peeked;
-
-    for (peeked of this._pushed) {
-      if (peeked.type !== TOKEN_WHITESPACE) return peeked;
-    }
-    while ((peeked = this._nextToken())) {
-      this.pushToken(peeked);
-      if (peeked.type !== TOKEN_WHITESPACE) break;
-    }
-
-    return peeked;
+  tokenize(
+    source: string,
+    {
+      name,
+      filename = null,
+      state = null,
+    }: {
+      name?: string | null;
+      filename?: string | null;
+      state?: string | null;
+    } = {},
+  ): TokenStream {
+    const stream = this.tokeniter(source, { name, filename, state });
+    return new TokenStream(this.wrap(stream), {
+      name: name ?? undefined,
+      filename: filename ?? undefined,
+    });
   }
 
-  nextToken(): Token {
-    this.prevToken = this.currentToken;
-    if (this._pushed.length) {
-      this.currentToken = this._pushed.shift()!;
-    } else {
-      this.currentToken = this._nextToken();
-    }
-    return this.currentToken;
-  }
+  *wrap(
+    stream: Iterable<[number, string, string, number, string]>,
+  ): Iterable<Token> {
+    for (const [lineno, token_, valueStr, pos, raw] of stream) {
+      let token = token_;
+      if (ignoredTokens.has(token)) continue;
 
-  _nextToken(): Token {
-    const lineno = this.lineno;
-    const colno = this.colno;
-    const pos = this.index;
-    let tok = "";
+      let value: any = valueStr;
 
-    if (this.inCode) {
-      // Otherwise, if we are in a block parse it as code
-      let cur = this.current();
-
-      if (this.isFinished()) {
-        // We have nothing else to parse
-        return token(TOKEN_EOF, "", lineno, colno, pos);
-      } else if (cur === '"' || cur === "'") {
-        // We've hit a string
-        return token(TOKEN_STRING, this._parseString(cur), lineno, colno, pos);
-      } else if ((tok = this._extract(whitespaceChars))) {
-        // We hit some whitespace
-        return token(TOKEN_WHITESPACE, tok, lineno, colno, pos);
-      } else if (
-        this.inTag &&
-        ((tok = this._extractString(this.tags.BLOCK_END)) ||
-          (tok = this._extractString("-" + this.tags.BLOCK_END)))
-      ) {
-        // Special check for the block end tag
-        //
-        // It is a requirement that start and end tags are composed of
-        // delimiter characters (%{}[] etc), and our code always
-        // breaks on delimiters so we can assume the token parsing
-        // doesn't consume these elsewhere
-        this.inCode = false;
-        this.inTag = false;
-        if (this.trimBlocks) {
-          cur = this.current();
-          if (cur === "\n") {
-            // Skip newline
-            this.forward();
-          } else if (cur === "\r") {
-            // Skip CRLF newline
-            this.forward();
-            cur = this.current();
-            if (cur === "\n") {
-              this.forward();
-            } else {
-              // Was not a CRLF, so go back
-              this.back();
-            }
-          }
-        }
-        if (tok.startsWith("-")) {
-          this._extract(whitespaceChars);
-        }
-        return token(TOKEN_BLOCK_END, tok, lineno, colno, pos);
-      } else if (
-        this.inVariable &&
-        ((tok = this._extractString(this.tags.VARIABLE_END)) ||
-          (tok = this._extractString("-" + this.tags.VARIABLE_END)))
-      ) {
-        // Check that this isn't actually a close rbracket adjacent to a
-        // variable end (i.e. "}}}")
-        if (this._extractString("}")) {
-          this.backN(3);
-          tok = this._extractString("}");
-          return token(TOKEN_RBRACE, tok, lineno, colno, pos);
-        }
-        // Special check for variable end tag (see above)
-        this.inCode = false;
-        this.inVariable = false;
-        return token(TOKEN_VARIABLE_END, tok, lineno, colno, pos);
-      } else if (cur === "r" && this.str.charAt(this.index + 1) === "/") {
-        // Skip past 'r/'.
-        this.forwardN(2);
-
-        // Extract until the end of the regex -- / ends it, \/ does not.
-        let regexBody = "";
-        while (!this.isFinished()) {
-          if (this.current() === "/" && this.previous() !== "\\") {
-            this.forward();
-            break;
-          } else {
-            regexBody += this.current();
-            this.forward();
-          }
-        }
-
-        // Check for flags.
-        // The possible flags are according to https://developer.mozilla.org/en/docs/Web/JavaScript/Reference/Global_Objects/RegExp)
-        const POSSIBLE_FLAGS = ["g", "i", "m", "y"];
-        const flagStartPos = {
-          lineno: this.lineno,
-          colno: this.colno,
-          pos: this.index,
-        };
-        let regexFlags = "";
-        while (!this.isFinished()) {
-          const isCurrentAFlag = POSSIBLE_FLAGS.indexOf(this.current()) !== -1;
-          if (isCurrentAFlag) {
-            regexFlags += this.current();
-            this.forward();
-          } else {
-            break;
-          }
-        }
-
-        if (regexFlags) {
-          this.pushToken(
-            token(
-              TOKEN_REGEX_FLAGS,
-              regexFlags,
-              flagStartPos.lineno,
-              flagStartPos.colno,
-              flagStartPos.pos,
-            ),
-          );
-        }
-
-        return token(TOKEN_REGEX, regexBody, lineno, colno, pos);
-      } else if (delimChars.indexOf(cur) !== -1) {
-        // We've hit a delimiter (a special char like a bracket)
-        this.forward();
-        const complexOps = ["==", "===", "!=", "!==", "<=", ">=", "//", "**"];
-        const curComplex = cur + this.current();
-        let type: TokenType;
-
-        if (complexOps.indexOf(curComplex) !== -1) {
-          this.forward();
-          cur = curComplex;
-
-          // See if this is a strict equality/inequality comparator
-          if (complexOps.indexOf(curComplex + this.current()) !== -1) {
-            cur = curComplex + this.current();
-            this.forward();
-          }
-        }
-
-        switch (cur) {
-          case "(":
-            type = TOKEN_LPAREN;
-            break;
-          case ")":
-            type = TOKEN_RPAREN;
-            break;
-          case "[":
-            type = TOKEN_LBRACKET;
-            break;
-          case "]":
-            type = TOKEN_RBRACKET;
-            break;
-          case "{":
-            type = TOKEN_LBRACE;
-            break;
-          case "}":
-            type = TOKEN_RBRACE;
-            break;
-          case ",":
-            type = TOKEN_COMMA;
-            break;
-          case ":":
-            type = TOKEN_COLON;
-            break;
-          case "~":
-            type = TOKEN_TILDE;
-            break;
-          case "|":
-            type = TOKEN_PIPE;
-            break;
-          case ".":
-            type = TOKEN_DOT;
-            break;
-          case "=":
-            type = TOKEN_ASSIGN;
-            break;
-          case "+":
-            type = TOKEN_ADD;
-            break;
-          case "-":
-            type = TOKEN_SUB;
-            break;
-          case "/":
-            type = TOKEN_DIV;
-            break;
-          case "//":
-            type = TOKEN_FLOORDIV;
-            break;
-          case "*":
-            type = TOKEN_MUL;
-            break;
-          case "%":
-            type = TOKEN_MOD;
-            break;
-          case "**":
-            type = TOKEN_POW;
-            break;
-          case "==":
-            type = TOKEN_EQ;
-            break;
-          case "!=":
-            type = TOKEN_NE;
-            break;
-          case ">":
-            type = TOKEN_GT;
-            break;
-          case ">=":
-            type = TOKEN_GTEQ;
-            break;
-          case "<":
-            type = TOKEN_LT;
-            break;
-          case "<=":
-            type = TOKEN_LTEQ;
-            break;
-          case ";":
-            type = TOKEN_SEMICOLON;
-            break;
-          case "===":
-            type = TOKEN_STRICT_EQ;
-            break;
-          case "!==":
-            type = TOKEN_STRICT_NE;
-            break;
-          default:
-            type = TOKEN_OPERATOR;
-        }
-
-        return token(type, cur, lineno, colno, pos);
-      } else {
-        // We are not at whitespace or a delimiter, so extract the
-        // text and parse it
-        tok = this._extractUntil(whitespaceChars + "()[]{}%*~/#,:|.<>=!");
-        if (
-          tok.match(
-            /^[-+]?(0b(_?[0-1])+|0o(_?[0-7])+|0x(_?[\da-f])+|[1-9](_?\d)*|0(_?0)*)(e[+-]?(\d+_)*\d+)?$/i,
-          )
-        ) {
-          if (this.current() === "." && this.prevToken?.type !== TOKEN_DOT) {
-            this.forward();
-            if (!tok.match(/^[_\d]+$/)) {
-              throw new TemplateSyntaxError(
-                "Unexpected value while parsing: " + tok,
-                { lineno: this.lineno },
-              );
-            }
-            const dec = this._extract(intChars + "e_-+");
-            if (!dec.match(/^(((\d+_)*\d+)?e[+-]?(\d+_)*\d+|(\d+_)*\d+)$/)) {
-              throw new TemplateSyntaxError(
-                "Unexpected value while parsing: " + dec,
-                { lineno: this.lineno },
-              );
-            }
-            return token(TOKEN_FLOAT, tok + "." + dec, lineno, colno, pos);
-          } else {
-            return token(TOKEN_INT, tok, lineno, colno, pos);
-          }
-        } else if (tok.match(/^(true|false)$/)) {
-          return token(TOKEN_NAME, tok, lineno, colno, pos);
-        } else if (tok === "none") {
-          return token(TOKEN_NAME, tok, lineno, colno, pos);
-          /*
-           * Added to make the test `null is null` evaluate truthily.
-           * Otherwise, Nunjucks will look up null in the context and
-           * return `undefined`, which is not what we want. This *may* have
-           * consequences is someone is using null in their templates as a
-           * variable.
-           */
-        } else if (tok === "null") {
-          return token(TOKEN_NAME, tok, lineno, colno, pos);
-        } else if (tok) {
-          return token(TOKEN_NAME, tok, lineno, colno, pos);
-        } else {
-          throw new TemplateSyntaxError(
-            "Unexpected value while parsing: " + tok,
-            { lineno: this.lineno },
-          );
-        }
+      if (token === TOKEN_LINESTATEMENT_START) {
+        token = TOKEN_BLOCK_START;
+      } else if (token === TOKEN_LINESTATEMENT_END) {
+        token = TOKEN_BLOCK_END;
+        // we are not interested in those tokens in the parser
+      } else if (token === TOKEN_RAW_START || token === TOKEN_RAW_END) {
+        continue;
+      } else if (token === TOKEN_DATA) {
+        value = this._normalizeNewlines(valueStr);
+      } else if (token === "keyword") {
+        token = valueStr;
+      } else if (token === TOKEN_NAME) {
+        value = valueStr;
+      } else if (token === TOKEN_STRING) {
+        // TODO unicode unescape string?
+        value = this._normalizeNewlines(
+          valueStr.substring(1, valueStr.length - 1),
+        );
+      } else if (token === TOKEN_INT || token === TOKEN_FLOAT) {
+        value = Number(valueStr.replace(/_/g, ""));
+      } else if (token === TOKEN_OPERATOR) {
+        token = operators[valueStr];
       }
-    } else {
-      // Parse out the template text, breaking on tag
-      // delimiters because we need to look for block/variable start
-      // tags (don't use the full delimChars for optimization)
-      const beginChars =
-        this.tags.BLOCK_START.charAt(0) +
-        this.tags.VARIABLE_START.charAt(0) +
-        this.tags.COMMENT_START.charAt(0) +
-        this.tags.COMMENT_END.charAt(0);
+      yield makeToken(token as TokenType, value, lineno, 0, pos, raw);
+    }
+  }
 
-      // true if BLOCK_START is a substring of COMMENT_START
-      const commentBlockSameStart = this.tags.COMMENT_START.startsWith(
-        this.tags.BLOCK_START,
-      );
+  *tokeniter(
+    source: string,
+    {
+      name,
+      filename = null,
+      state = null,
+    }: {
+      name?: string | null;
+      filename?: string | null;
+      state?: string | null;
+    } = {},
+  ): Iterable<[number, string, string, number, string]> {
+    const lines = source.split(newlineRe).filter((_, i) => i % 2 === 0);
+    if (!this.keepTrailingNewline && lines[lines.length - 1] === "") {
+      lines.pop();
+    }
 
-      if (this.isFinished()) {
-        return token(TOKEN_EOF, "", lineno, colno, pos);
-      } else if (
-        (tok = this._extractString(this.tags.VARIABLE_START + "-")) ||
-        (tok = this._extractString(this.tags.VARIABLE_START))
-      ) {
-        this.inCode = true;
-        this.inVariable = true;
-        return token(TOKEN_VARIABLE_START, tok, lineno, colno, pos);
-      } else if (
-        !(commentBlockSameStart && this._matches(this.tags.COMMENT_START)) &&
-        ((tok = this._extractString(this.tags.BLOCK_START + "-")) ||
-          (tok = this._extractString(this.tags.BLOCK_START)))
-      ) {
-        this.inCode = true;
-        this.inTag = true;
-        return token(TOKEN_BLOCK_START, tok, lineno, colno, pos);
-      } else {
-        tok = "";
-        let data;
-        let inComment = false;
+    source = lines.join("\n");
+    let pos = 0;
+    let lineno = 1;
+    const stack: string[] = ["root"];
 
-        if (this._matches(this.tags.COMMENT_START)) {
-          inComment = true;
-          tok = this._extractString(this.tags.COMMENT_START);
+    if (state !== null && state !== "root") {
+      if (state !== "variable" && state !== "block") {
+        throw new Error("invalid state");
+      }
+      stack.push(`${state}_start`);
+    }
+
+    let statetokens = this.rules[stack[stack.length - 1]];
+    const sourceLength = source.length;
+    const balancingStack: string[] = [];
+    let newlinesStripped = 0;
+    let lineStarting = true;
+
+    while (true) {
+      let hasBreak;
+      for (const { regex, tokens, command: newState } of statetokens) {
+        hasBreak = false;
+        regex.lastIndex = pos;
+        const m = regex.exec(source);
+
+        if (m === null || m.index !== pos) continue;
+
+        // we only match blocks and variables if braces / parentheses
+        // are balanced. continue parsing with the lower rule which
+        // is the operator rule. do this only if the end tags look
+        // like operators
+        if (
+          balancingStack.length &&
+          (tokens === TOKEN_VARIABLE_END ||
+            tokens === TOKEN_BLOCK_END ||
+            tokens === TOKEN_LINESTATEMENT_END)
+        ) {
+          continue;
         }
 
-        // Continually consume text, breaking on the tag delimiter
-        // characters and checking to see if it's a start tag.
-        //
-        // We could hit the end of the template in the middle of
-        // our looping, so check for the null return value from
-        // _extractUntil
-        while (
-          !this.isFinished() &&
-          (data = this._extractUntil(beginChars)) !== null
-        ) {
-          tok += data;
-
-          if (
-            (this._matches(this.tags.BLOCK_START) ||
-              this._matches(this.tags.VARIABLE_START) ||
-              this._matches(this.tags.COMMENT_START)) &&
-            !inComment
-          ) {
-            if (
+        if (Array.isArray(tokens)) {
+          const groups = [...m].slice(1);
+          if (isOptionalLStrip(tokens)) {
+            // Rule supports lstrip. Match will look like
+            // text, block type, whitespace control, type, control, ...
+            const text = groups[0];
+            // Skipping the text and first type, every other group is the
+            // whitespace control for each type. One of the groups will be
+            // -, +, or empty string instead of None.
+            const stripSign = groups.find(
+              (g, i) => i >= 2 && i % 2 === 0 && !!g,
+            );
+            if (stripSign === "-") {
+              // Strip all whitespace between the text and the tag.
+              const stripped = text.trimEnd();
+              newlinesStripped =
+                text.substring(stripped.length).match(/\n/g)?.length ?? 0;
+              groups[0] = stripped;
+            } else if (
+              // Not marked for preserving whitespace.
+              stripSign !== "+" &&
+              // lstrip is enabled
               this.lstripBlocks &&
-              this._matches(this.tags.BLOCK_START) &&
-              this.colno > 0 &&
-              this.colno <= tok.length
+              // Not a variable expression
+              !m.groups?.[TOKEN_VARIABLE_START]
             ) {
-              const lastLine = tok.slice(-this.colno);
-              if (/^\s+$/.test(lastLine)) {
-                // Remove block leading whitespace from beginning of the string
-                tok = tok.slice(0, -this.colno);
-                if (!tok.length) {
-                  // All data removed, collapse to avoid unnecessary nodes
-                  // by returning next token (block start)
-                  return this.nextToken();
+              // The start of text between the last newline and the tag.
+              const lPos = text.lastIndexOf("\n") + 1;
+              if (lPos > 0 || lineStarting) {
+                // If there's only whitespace between the newline and the
+                // tag, strip it.
+                whitespaceFullRe.lastIndex = lPos;
+                if (whitespaceFullRe.exec(text)) {
+                  groups[0] = text.substring(0, lPos);
                 }
               }
             }
-            // If it is a start tag, stop looping
-            break;
-          } else if (this._matches(this.tags.COMMENT_END)) {
-            if (!inComment) {
-              throw new TemplateSyntaxError("unexpected end of comment", {
-                lineno: this.lineno,
-              });
-            }
-            tok += this._extractString(this.tags.COMMENT_END);
-            break;
-          } else {
-            // It does not match any tag, so add the character and
-            // carry on
-            tok += this.current();
-            this.forward();
           }
+          let idx = 0;
+          for (const token of tokens) {
+            const data = groups[idx];
+            idx++;
+            if (token instanceof Failure) {
+              token.raise(lineno, filename);
+            } else if (token === "#bygroup") {
+              // bygroup is a bit more complex, in that case we
+              // yield for the current token the first named
+              // group that matched
+              if (!m.groups) {
+                throw new Error(
+                  `'${regex} wanted to resolve the token dynamically ` +
+                    "but no group matched",
+                );
+              }
+              for (const [key, value] of Object.entries(m.groups)) {
+                if (value) {
+                  const matchPos = source.slice(m.index).indexOf(value);
+                  const index =
+                    matchPos >= 0 && matchPos < m[0].length
+                      ? m.index + matchPos
+                      : m.index;
+                  yield [lineno, key, value, index, value];
+                  lineno += value.match(/\n/g)?.length ?? 0;
+                  break;
+                }
+              }
+            } else {
+              // normal group
+              if (data || !ignoreIfEmpty.has(token)) {
+                const matchPos = data ? source.slice(m.index).indexOf(data) : 0;
+                const index =
+                  matchPos >= 0 && matchPos < m[0].length
+                    ? m.index + matchPos
+                    : m.index;
+                yield [lineno, token, data, index, data];
+              }
+              lineno += (data.match(/\n/g)?.length ?? 0) + newlinesStripped;
+              newlinesStripped = 0;
+            }
+          }
+        } else {
+          // strings as tokens are yielded as-is
+          const data = m[0];
+
+          // update brace/parentheses balance
+          if (tokens === TOKEN_OPERATOR) {
+            if (data === "{") {
+              balancingStack.push("}");
+            } else if (data === "(") {
+              balancingStack.push(")");
+            } else if (data === "[") {
+              balancingStack.push("]");
+            } else if (data === "}" || data === ")" || data === "]") {
+              if (!balancingStack.length) {
+                throw new TemplateSyntaxError(`unexpected '${data}'`, {
+                  lineno,
+                  name,
+                  filename,
+                });
+              }
+              const expectedOp = balancingStack.pop()!;
+
+              if (expectedOp !== data)
+                throw new TemplateSyntaxError(
+                  `unexpected '${data}', expected '${expectedOp}'`,
+                  { lineno, name, filename },
+                );
+            }
+          }
+          // yield items
+          if (data || !ignoreIfEmpty.has(tokens)) {
+            yield [lineno, tokens, data, m.index, m[0]];
+          }
+          lineno += data?.match(/\n/g)?.length ?? 0;
         }
 
-        if (data === null && inComment) {
-          throw new TemplateSyntaxError(
-            "expected end of comment, got end of file",
-            { lineno: this.lineno },
+        lineStarting = (m[0] ?? "").endsWith("\n");
+
+        // fetch new position into new variable so that we can check
+        // if there is a internal parsing error which would result
+        // in an infinite loop
+        const pos2 = regex.lastIndex;
+
+        // handle state changes
+        if (newState) {
+          // remove the uppermost state
+          if (newState === "#pop") {
+            stack.pop();
+            // resolve the new state by group checking
+          } else if (newState === "#bygroup") {
+            if (!m.groups)
+              throw new Error(
+                `'${regex} wanted to resolve the token dynamically ` +
+                  "but no group matched",
+              );
+            for (const [key, value] of Object.entries(m.groups)) {
+              if (value) {
+                stack.push(key);
+                break;
+              }
+            }
+            // direct state name given
+          } else {
+            stack.push(newState);
+          }
+
+          statetokens = this.rules[stack[stack.length - 1]];
+
+          // we are still at the same position and no stack change.
+          // this means a loop without break condition, avoid that and
+          // raise error
+        } else if (pos2 === pos) {
+          throw new Error(
+            `'${regex}' yielded empty string without stack change`,
           );
         }
 
-        if (!inComment && this._matches(this.tags.BLOCK_START + "-")) {
-          // If the next token is a left-stripping block tag, strip trailing
-          // whitespace
-          tok = tok.replace(/\s+$/, "");
-          // If the token is now empty, skip and return the next
-          if (!tok) return this._nextToken();
+        // publish new function and start again
+        pos = pos2;
+        hasBreak = true;
+        break;
+      }
+      // if loop terminated without break we haven't found a single match
+      // either we are at the end of the file or we have a problem
+      if (!hasBreak) {
+        // end of text
+        if (pos >= sourceLength) {
+          return;
         }
 
-        return token(
-          inComment ? TOKEN_COMMENT : TOKEN_DATA,
-          tok,
-          lineno,
-          colno,
-          pos,
+        // something went wrong
+        throw new TemplateSyntaxError(
+          `unexpected char '${source[pos]}' at ${pos}`,
         );
       }
     }
   }
-
-  _parseString(delimiter: '"' | "'"): string {
-    this.forward();
-
-    let str = "";
-
-    while (!this.isFinished() && this.current() !== delimiter) {
-      const cur = this.current();
-
-      if (cur === "\\") {
-        this.forward();
-        switch (this.current()) {
-          case "n":
-            str += "\n";
-            break;
-          case "t":
-            str += "\t";
-            break;
-          case "r":
-            str += "\r";
-            break;
-          default:
-            str += this.current();
-        }
-        this.forward();
-      } else {
-        str += cur;
-        this.forward();
-      }
-    }
-
-    this.forward();
-    return str;
-  }
-
-  _matches(str: string): boolean {
-    if (this.index + str.length > this.len) {
-      return false;
-    }
-
-    const m = this.str.slice(this.index, this.index + str.length);
-    return m === str;
-  }
-
-  _extractString(str: string): string {
-    if (this._matches(str)) {
-      this.forwardN(str.length);
-      return str;
-    }
-    return "";
-  }
-
-  _extractUntil(charString?: string): string {
-    // Extract all non-matching chars, with the default matching set
-    // to everything
-    return this._extractMatching(true, charString ?? "");
-  }
-
-  _extract(charString: string): string {
-    // Extract all matching chars (no default, so charString must be
-    // explicit)
-    return this._extractMatching(false, charString);
-  }
-
-  _extractMatching(breakOnMatch: boolean, charString: string): string {
-    // Pull out characters until a breaking char is hit.
-    // If breakOnMatch is false, a non-matching char stops it.
-    // If breakOnMatch is true, a matching char stops it.
-
-    if (this.isFinished()) {
-      return "";
-    }
-
-    const first = charString.indexOf(this.current());
-
-    // Only proceed if the first character doesn't meet our condition
-    if ((breakOnMatch && first === -1) || (!breakOnMatch && first !== -1)) {
-      let t = this.current();
-      this.forward();
-
-      // And pull out all the chars one at a time until we hit a
-      // breaking char
-      let idx = charString.indexOf(this.current());
-
-      while (
-        ((breakOnMatch && idx === -1) || (!breakOnMatch && idx !== -1)) &&
-        !this.isFinished()
-      ) {
-        t += this.current();
-        this.forward();
-
-        idx = charString.indexOf(this.current());
-      }
-
-      return t;
-    }
-
-    return "";
-  }
-
-  // _extractRegex(regex) {
-  //   const matches = this.currentStr().match(regex);
-  //   if (!matches) {
-  //     return null;
-  //   }
-  //
-  //   // Move forward whatever was matched
-  //   this.forwardN(matches[0].length);
-  //
-  //   return matches;
-  // }
-
-  isFinished(): boolean {
-    return this.index >= this.len;
-  }
-
-  forwardN(n: number): void {
-    for (let i = 0; i < n; i++) {
-      this.forward();
-    }
-  }
-
-  forward(): void {
-    this.index++;
-
-    if (this.previous() === "\n") {
-      this.lineno++;
-      this.colno = 0;
-    } else {
-      this.colno++;
-    }
-  }
-
-  backN(n: number): void {
-    for (let i = 0; i < n; i++) {
-      this.back();
-    }
-  }
-
-  back(): void {
-    this.index--;
-
-    if (this.current() === "\n") {
-      this.lineno--;
-
-      const idx = this.str.lastIndexOf("\n", this.index - 1);
-      if (idx === -1) {
-        this.colno = this.index;
-      } else {
-        this.colno = this.index - idx;
-      }
-    } else {
-      this.colno--;
-    }
-  }
-
-  // current returns current character
-  current(): string {
-    if (!this.isFinished()) {
-      return this.str.charAt(this.index);
-    }
-    return "";
-  }
-
-  // currentStr returns what's left of the unparsed string
-  currentStr(): string {
-    if (!this.isFinished()) {
-      return this.str.substr(this.index);
-    }
-    return "";
-  }
-
-  previous(): string {
-    return this.str.charAt(this.index - 1);
-  }
 }
 
-export function lex(src: string, opts?: TokenizerOptions): Tokenizer {
-  return new Tokenizer(src, opts);
+export function lex(src: string, opts?: ParserOptions): TokenStream {
+  const lexer = new Lexer(opts);
+  const stream = lexer.tokenize(src);
+  stream.str = src;
+  return stream;
 }

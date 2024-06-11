@@ -19,7 +19,7 @@ import {
   range,
 } from "@nunjucks/runtime";
 import { types } from "@nunjucks/ast";
-import { parse, TokenizerOptions } from "@nunjucks/parser";
+import { parse, ParserOptions } from "@nunjucks/parser";
 import { CodeGenerator } from "@nunjucks/compiler";
 import {
   Template,
@@ -129,7 +129,7 @@ export class Environment<
   autoescape: boolean | ((templateName?: string | null) => boolean);
   missing: Record<never, never>;
   async: IsAsync;
-  parserOpts: TokenizerOptions;
+  parserOpts: ParserOptions;
   filters: Record<string, Filter>;
   tests: Record<string, Test>;
   globals: Record<string, any>;
@@ -183,7 +183,7 @@ export class Environment<
   }: {
     async?: IsAsync;
     loaders?: (IsAsync extends true ? AsyncLoader | SyncLoader : SyncLoader)[];
-    parserOpts?: Partial<TokenizerOptions>;
+    parserOpts?: Partial<ParserOptions>;
     autoescape?: boolean | ((templateName?: string | null) => boolean);
     filters?: Record<string, Filter>;
     tests?: Record<string, Test>;
@@ -197,15 +197,18 @@ export class Environment<
     this.loaders = loaders;
     this.missing = MISSING;
     this.parserOpts = {
-      blockStart: "{%",
-      blockEnd: "%}",
-      variableStart: "{{",
-      variableEnd: "}}",
-      commentStart: "{#",
-      commentEnd: "#}",
-      trimBlocks: false,
-      lstripBlocks: false,
-      ...parserOpts,
+      blockStart: parserOpts.blockStart ?? "{%",
+      blockEnd: parserOpts.blockEnd ?? "%}",
+      variableStart: parserOpts.variableStart ?? "{{",
+      variableEnd: parserOpts.variableEnd ?? "}}",
+      commentStart: parserOpts.commentStart ?? "{#",
+      commentEnd: parserOpts.commentEnd ?? "#}",
+      trimBlocks: parserOpts.trimBlocks ?? false,
+      lstripBlocks: parserOpts.lstripBlocks ?? false,
+      lineCommentPrefix: parserOpts.lineCommentPrefix ?? null,
+      lineStatementPrefix: parserOpts.lineStatementPrefix ?? null,
+      keepTrailingNewline: parserOpts.keepTrailingNewline ?? false,
+      newlineSequence: parserOpts.newlineSequence ?? "\n",
     };
     this.autoescape = autoescape;
     this.filters = filters;

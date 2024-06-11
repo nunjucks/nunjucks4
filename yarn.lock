@@ -3021,6 +3021,9 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@nunjucks/parser@workspace:packages/parser"
   dependencies:
+    "@types/regenerate": ^1.4.3
+    "@unicode/unicode-12.1.0": ^1.5.2
+    regenerate: ^1.4.2
     rimraf: ~3.0.2
     typescript: ^5.4.3
   languageName: unknown
@@ -3505,6 +3508,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/regenerate@npm:^1.4.3":
+  version: 1.4.3
+  resolution: "@types/regenerate@npm:1.4.3"
+  checksum: fbf35bc7d88286c9da2a9742b2edee0cc3c248e18026d0d6371d5d88b000a56c16a56e132a308c87aeb81d76c658a15355663eee3ca27f1992d887cd60391b6b
+  languageName: node
+  linkType: hard
+
 "@types/semver@npm:^7.5.0":
   version: 7.5.8
   resolution: "@types/semver@npm:7.5.8"
@@ -3662,6 +3672,13 @@ __metadata:
   version: 1.2.0
   resolution: "@ungap/structured-clone@npm:1.2.0"
   checksum: 4f656b7b4672f2ce6e272f2427d8b0824ed11546a601d8d5412b9d7704e83db38a8d9f402ecdf2b9063fc164af842ad0ec4a55819f621ed7e7ea4d1efcc74524
+  languageName: node
+  linkType: hard
+
+"@unicode/unicode-12.1.0@npm:^1.5.2":
+  version: 1.5.2
+  resolution: "@unicode/unicode-12.1.0@npm:1.5.2"
+  checksum: a194a2e3cb858f8be5451a561f792dca50dc4f43d6f4e634656ca47716930d8ccc878b549117d92eed3a280dd50fc90843a7b3feecef6e964859805e7bac183f
   languageName: node
   linkType: hard
 
@@ -12133,7 +12150,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"regenerate@npm:^1.4.0":
+"regenerate@npm:^1.4.0, regenerate@npm:^1.4.2":
   version: 1.4.2
   resolution: "regenerate@npm:1.4.2"
   checksum: 3317a09b2f802da8db09aa276e469b57a6c0dd818347e05b8862959c6193408242f150db5de83c12c3fa99091ad95fb42a6db2c3329bfaa12a0ea4cbbeb30cb0

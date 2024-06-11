@@ -88,7 +88,7 @@ and bar comment #}
     expect(tmpl.render().trim()).toBe("foo");
   });
 
-  test.skip("line syntax", () => {
+  test("line syntax", () => {
     env = new Environment({
       async: false,
       parserOpts: {
@@ -98,17 +98,25 @@ and bar comment #}
         variableEnd: "}",
         commentStart: "<%#",
         commentEnd: "%>",
+        lineStatementPrefix: "%",
+        lineCommentPrefix: "##",
       },
     });
     const tmpl = env.fromString(
       [
         "<%# regular comment %>",
         "% for item in seq:",
-        "    ${item}",
-        "% endfor`",
+        "    ${item} ## the rest of the stuff",
+        "% endfor",
       ].join("\n"),
     );
-    expect(tmpl.render({ seq: [0, 1, 2, 3, 4] })).toBe("01234");
+    expect(
+      tmpl
+        .render({ seq: [0, 1, 2, 3, 4] })
+        .split(/\s*/)
+        .map((s) => s.trim())
+        .join(""),
+    ).toBe("01234");
   });
 });
 
@@ -272,6 +280,37 @@ describe("syntax", () => {
       );
     }
   });
+
+  test("bool", () => {
+    const tmpl = env.fromString(
+      "{{ true and false }}|{{ false or true }}|{{ not false }}",
+    );
+    expect(tmpl.render()).toBe("false|true|true");
+  });
+
+  test("grouping", () => {
+    const tmpl = env.fromString(
+      "{{ (true and false) or (false and true) and not false }}",
+    );
+    expect(tmpl.render()).toBe("false");
+  });
+
+  test("filter priority", () => {
+    const tmpl = env.fromString('{{ "foo"|upper + "bar"|upper }}');
+    expect(tmpl.render()).toBe("FOOBAR");
+  });
+
+  test.each([
+    ["{{ () }}"],
+    ["{{ (1, 2) }}"],
+    ["{{ (1, 2,) }}"],
+    ["{{ 1, }}"],
+    ["{{ 1, 2 }}"],
+    ["{% for foo, bar in seq %}...{% endfor %}"],
+    ["{% for x in foo, bar %}...{% endfor %}"],
+    ["{% for x in foo, %}...{% endfor %}"],
+  ])("tuple expression in '%s' is valid", (src) => {
+    env.fromString(src);
   });
 
   test("trailing_comma", () => {
@@ -279,8 +318,15 @@ describe("syntax", () => {
     expect(tmpl.render()).toBe("[1, 2]|[1, 2]|{'1': 2}");
   });
 
+  test("block-end name", () => {
+    env.fromString("{% block foo %}...{% endblock foo %}");
+    expect(() => env.fromString("{% block x %}{% endblock y %}")).toThrow(
+      TemplateSyntaxError,
+    );
+  });
+
   test.each([["True"], ["False"], ["None"]])(
-    "constant casing for '%s'",
+    "casing for '%s' literal",
     (title) => {
       const upper = title.toUpperCase();
       const lower = title.toLowerCase();
@@ -291,4 +337,161 @@ describe("syntax", () => {
       expect(tmpl.render()).toBe(`${expected}|${expected}|${expected}`);
     },
   );
+
+  test("chaining", () => {
+    expect(() => env.fromString("{{ foo is string is sequence }}")).toThrow(
+      TemplateSyntaxError,
+    );
+    expect(env.fromString("{{ 42 is string or 42 is number }}").render()).toBe(
+      "true",
+    );
+  });
+
+  test("string concatenation", () => {
+    const tmpl = env.fromString('{{ "foo" "bar" "baz" }}');
+    expect(tmpl.render()).toBe("foobarbaz");
+  });
+
+  test("notin", () => {
+    const bar = [...new Array(100)].map((_, i) => i);
+    const tmpl = env.fromString("{{ not 42 in bar }}");
+    expect(tmpl.render({ bar })).toBe("false");
+  });
+
+  test("operator precedence", () => {
+    const tmpl = env.fromString("{{ 2 * 3 + 4 % 2 + 1 - 2 }}");
+    expect(tmpl.render()).toBe("5");
+  });
+
+  test("raw", () => {
+    const tmpl = env.fromString("{% raw %}{{ FOO }} and {% BAR %}{% endraw %}");
+    expect(tmpl.render()).toBe("{{ FOO }} and {% BAR %}");
+  });
+
+  test("const", () => {
+    const tmpl = env.fromString(
+      "{{ true }}|{{ false }}|{{ none }}|" +
+        "{{ none is defined }}|{{ missing is defined }}",
+    );
+    expect(tmpl.render()).toBe("true|false|null|true|false");
+  });
+
+  test("negation filter priority", () => {
+    const node = env.parse("{{ -1|foo }}") as any;
+    t.Filter.assert(node.body[0].nodes[0]);
+    t.Neg.assert(node.body[0].nodes[0].node);
+  });
+
+  test("const assign", () => {
+    expect(() => env.fromString("{% set true = 42 %}")).toThrow(
+      TemplateSyntaxError,
+    );
+    expect(() => env.fromString("{% for none in seq %}{% endfor %}")).toThrow(
+      TemplateSyntaxError,
+    );
+  });
+
+  test("localset", () => {
+    const tmpl = env.fromString(
+      `{% set foo = 0 %}` +
+        "{% for item in [1, 2] %}{% set foo = 1 %}{% endfor %}" +
+        "{{ foo }}",
+    );
+    expect(tmpl.render()).toBe("0");
+  });
+
+  test("parse unary", () => {
+    let tmpl = env.fromString('{{ -foo["bar"] }}');
+    expect(tmpl.render({ foo: { bar: 42 } })).toBe("-42");
+    tmpl = env.fromString('{{ -foo["bar"]|abs }}');
+    expect(tmpl.render({ foo: { bar: 42 } })).toBe("42");
+  });
+
+  test("lstrip", () => {
+    env = new Environment({
+      async: false,
+      parserOpts: { lstripBlocks: true, trimBlocks: false },
+    });
+    const tmpl = env.fromString("    {% if True %}\n    {% endif %}");
+    expect(tmpl.render()).toBe("\n");
+  });
+
+  test("lstrip trim", () => {
+    env = new Environment({
+      async: false,
+      parserOpts: { lstripBlocks: true, trimBlocks: true },
+    });
+    const tmpl = env.fromString("    {% if True %}\n    {% endif %}");
+    expect(tmpl.render()).toBe("");
+  });
+
+  test("lstrip tag disable", () => {
+    env = new Environment({
+      async: false,
+      parserOpts: { lstripBlocks: true, trimBlocks: false },
+    });
+    const tmpl = env.fromString("    {%+ if True %}\n    {%+ endif %}");
+    expect(tmpl.render()).toBe("    \n    ");
+  });
+
+  test("lstrip blocks false with lstrip tag disable", () => {
+    env = new Environment({
+      async: false,
+      parserOpts: { lstripBlocks: false, trimBlocks: true },
+    });
+    const tmpl = env.fromString("    {% if True +%}\n    {% endif %}");
+    expect(tmpl.render()).toBe("    \n    ");
+  });
+
+  test("lstrip endline", () => {
+    env = new Environment({
+      async: false,
+      parserOpts: { lstripBlocks: true, trimBlocks: false },
+    });
+    const tmpl = env.fromString(
+      "    hello{% if True %}\n    goodbye{% endif %}",
+    );
+    expect(tmpl.render()).toBe("    hello\n    goodbye");
+  });
+
+  test("lstrip inline", () => {
+    env = new Environment({
+      async: false,
+      parserOpts: { lstripBlocks: true, trimBlocks: false },
+    });
+    const tmpl = env.fromString("    {% if True %}hello    {% endif %}");
+    expect(tmpl.render()).toBe("hello    ");
+  });
+
+  test("lstrip nested", () => {
+    env = new Environment({
+      async: false,
+      parserOpts: { lstripBlocks: true, trimBlocks: false },
+    });
+    const tmpl = env.fromString(
+      "    {% if True %}a {% if True %}b {% endif %}c {% endif %}",
+    );
+    expect(tmpl.render()).toBe("a b c ");
+  });
+
+  test("lstrip left chars", () => {
+    env = new Environment({
+      async: false,
+      parserOpts: { lstripBlocks: true, trimBlocks: false },
+    });
+    const tmpl = env.fromString(
+      `    abc {% if True %}
+    hello{% endif %}`,
+    );
+    expect(tmpl.render()).toBe("    abc \n    hello");
+  });
+
+  test("lstrip embedded strings", () => {
+    env = new Environment({
+      async: false,
+      parserOpts: { lstripBlocks: true, trimBlocks: false },
+    });
+    const tmpl = env.fromString(`    {% set x = " {% str %} " %}{{ x }}`);
+    expect(tmpl.render()).toBe(" {% str %} ");
+  });
 });

@@ -22,9 +22,13 @@
     "clean": "rimraf -rf ./dist",
     "compile": "tsc -p tsconfig.build.json",
     "prepublishOnly": "yarn run build",
-    "test": "yarn run build"
+    "test": "yarn run build",
+    "gen:idregex": "scripts/generate-identifier-regex.mjs"
   },
   "devDependencies": {
+    "@types/regenerate": "^1.4.3",
+    "@unicode/unicode-12.1.0": "^1.5.2",
+    "regenerate": "^1.4.2",
     "rimraf": "~3.0.2",
     "typescript": "^5.4.3"
   }
