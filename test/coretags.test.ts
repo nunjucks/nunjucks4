@@ -199,7 +199,7 @@ describe("for loop", () => {
     expect(tmpl.render()).toBe("");
   });
 
-  it.skip("loop filter", () => {
+  it("loop filter", () => {
     let tmpl = env.fromString(
       "{% for item in range(10) if item is even %}[{{ item }}]{% endfor %}",
     );
@@ -431,7 +431,7 @@ describe("macros", () => {
     expect(tmpl.render()).toBe("[[data]]");
   });
 
-  it.skip("caller undefined", () => {
+  it("caller undefined", () => {
     const tmpl = env.fromString(`
       {%- set caller = 42 -%}
       {%- macro test() %}{{ caller is not defined }}{% endmacro -%}
