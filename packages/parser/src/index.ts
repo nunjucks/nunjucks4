@@ -1,7 +1,12 @@
 import { types as t, builders as b, canAssign } from "@nunjucks/ast";
 import * as lexer from "./lexer";
-import { TemplateSyntaxError } from "./lexer";
-import type { Token } from "./lexer";
+import {
+  TemplateSyntaxError,
+  Token,
+  TokenStream,
+  Lexer,
+  getLexer,
+} from "./lexer";
 
 export interface Extension {
   tags: string[];
@@ -1483,7 +1488,7 @@ export class Parser {
 export function parse(
   src: string,
   extensions?: Extension[],
-  opts?: lexer.ParserOptions,
+  opts?: Partial<lexer.ParserOptions>,
 ): t.Template {
   const p = new Parser(lexer.lex(src, opts));
   if (extensions !== undefined) {
@@ -1494,3 +1499,5 @@ export function parse(
 export { TemplateSyntaxError };
 
 export type ParserOptions = lexer.ParserOptions;
+
+export { lexer, Token, TokenStream, Lexer, getLexer };

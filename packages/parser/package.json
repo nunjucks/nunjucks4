@@ -31,5 +31,8 @@
     "regenerate": "^1.4.2",
     "rimraf": "~3.0.2",
     "typescript": "^5.4.3"
+  },
+  "dependencies": {
+    "lru-cache": "^10.2.2"
   }
 }

@@ -19,7 +19,13 @@ import {
   range,
 } from "@nunjucks/runtime";
 import { types } from "@nunjucks/ast";
-import { parse, ParserOptions } from "@nunjucks/parser";
+import {
+  parse,
+  ParserOptions,
+  getLexer,
+  Lexer,
+  TokenStream,
+} from "@nunjucks/parser";
 import { CodeGenerator } from "@nunjucks/compiler";
 import {
   Template,
@@ -33,6 +39,7 @@ import type { Loader, AsyncLoader, SyncLoader } from "./loaders";
 import { chainMap, dict, joiner, cycler, lipsum } from "./utils";
 import DEFAULT_FILTERS from "./filters";
 import DEFAULT_TESTS from "./tests";
+import { Extension } from "./extensions";
 
 type Filter = (...args: any[]) => any;
 type Test = (...args: any[]) => boolean;
@@ -102,16 +109,16 @@ const _undef = undef;
 
 // eslint-disable-next-line @typescript-eslint/ban-types
 function createCache<V extends {}>({
-  maxSize,
+  max,
 }: {
-  maxSize: number;
+  max: number;
 }): null | Record<PropertyKey, V | undefined> {
-  if (maxSize < 0) {
+  if (max < 0) {
     return null;
-  } else if (maxSize === 0) {
+  } else if (max === 0) {
     return {};
   } else {
-    return new Proxy(new LRUCache<PropertyKey, V>({ max: maxSize }), {
+    return new Proxy(new LRUCache<PropertyKey, V>({ max }), {
       get(target, prop): V | undefined {
         return target.get(prop);
       },
@@ -123,13 +130,18 @@ function createCache<V extends {}>({
   }
 }
 
+export interface TemplateInfo {
+  name?: string | null;
+  filename?: string | null;
+}
+
 export class Environment<
   IsAsync extends boolean = boolean,
 > extends EventEmitter {
   autoescape: boolean | ((templateName?: string | null) => boolean);
   missing: Record<never, never>;
   async: IsAsync;
-  parserOpts: ParserOptions;
+  parserOpts: Partial<ParserOptions>;
   filters: Record<string, Filter>;
   tests: Record<string, Test>;
   globals: Record<string, any>;
@@ -162,6 +174,8 @@ export class Environment<
 
   cache: Record<PropertyKey, Template<IsAsync> | undefined> | null;
 
+  extensions: Extension[];
+
   constructor({
     autoescape = false,
     async,
@@ -171,6 +185,7 @@ export class Environment<
     tests = DEFAULT_TESTS,
     globals = {},
     undef = _undef,
+    extensions = [],
     /**
      *
      * The size of the cache.  Per default this is `400` which means
@@ -189,33 +204,22 @@ export class Environment<
     tests?: Record<string, Test>;
     globals?: Record<string, any>;
     undef?: typeof _undef;
-    /** foo */
     cacheSize?: number;
+    extensions?: Extension[];
   } = {}) {
     super();
     this.async = !!async as IsAsync;
     this.loaders = loaders;
     this.missing = MISSING;
-    this.parserOpts = {
-      blockStart: parserOpts.blockStart ?? "{%",
-      blockEnd: parserOpts.blockEnd ?? "%}",
-      variableStart: parserOpts.variableStart ?? "{{",
-      variableEnd: parserOpts.variableEnd ?? "}}",
-      commentStart: parserOpts.commentStart ?? "{#",
-      commentEnd: parserOpts.commentEnd ?? "#}",
-      trimBlocks: parserOpts.trimBlocks ?? false,
-      lstripBlocks: parserOpts.lstripBlocks ?? false,
-      lineCommentPrefix: parserOpts.lineCommentPrefix ?? null,
-      lineStatementPrefix: parserOpts.lineStatementPrefix ?? null,
-      keepTrailingNewline: parserOpts.keepTrailingNewline ?? false,
-      newlineSequence: parserOpts.newlineSequence ?? "\n",
-    };
+    this.parserOpts = parserOpts;
     this.autoescape = autoescape;
     this.filters = filters;
     this.tests = tests;
     this.globals = Object.assign({}, DEFAULT_NAMESPACE, globals);
     this.undef = undef;
-    this.cache = createCache<Template<IsAsync>>({ maxSize: cacheSize });
+    this.cache = createCache<Template<IsAsync>>({ max: cacheSize });
+    this.extensions = [...extensions];
+    this.extensions.sort((a, b) => a.priority - b.priority);
   }
 
   isAsync(): this is Environment<true> {
@@ -371,12 +375,55 @@ export class Environment<
       return func(...args);
     }
   }
-  parse(
+
+  get lexer(): Lexer {
+    return getLexer(this.parserOpts);
+  }
+
+  lex(
+    source: string,
+    { name = null, filename = null }: TemplateInfo = {},
+  ): Iterable<[number, string, string, number, string]> {
+    // eslint-disable-next-line no-useless-catch
+    try {
+      return this.lexer.tokeniter(source, { name, filename });
+    } catch (e) {
+      // if (e.type === "TemplateSyntaxError") {
+      //   this.handleException({ source });
+      // }
+      throw e;
+    }
+  }
+
+  preprocess(source: string, info: TemplateInfo): string {
+    return this.extensions.reduce((s, e) => e.preprocess(s, info), source);
+  }
+
+  /**
+   * Called by the parser to do the preprocessing and filtering
+   * for all the extensions.  Returns a TokenStream.
+   */
+  _tokenize(
     source: string,
     {
       name = null,
       filename = null,
-    }: { name?: string | null; filename?: string | null } = {},
+      state = null,
+    }: TemplateInfo & { state?: string | null },
+  ): TokenStream {
+    source = this.preprocess(source, { name, filename });
+    const stream = this.lexer.tokenize(source, { name, filename, state });
+    return this.extensions.reduce((prev, ext) => {
+      const stream = ext.filterStream(prev);
+      return stream instanceof TokenStream
+        ? stream
+        : new TokenStream(stream, { name, filename });
+    }, stream);
+  }
+
+  parse(
+    source: string,
+    { name = null, filename = null }: TemplateInfo = {},
   ): types.Template {
     return this._parse(source, { name, filename });
     // try {
@@ -388,17 +435,14 @@ export class Environment<
   }
   _parse(
     source: string,
-    {
-      name = null,
-      filename = null,
-    }: { name?: string | null; filename?: string | null },
+    { name = null, filename = null }: TemplateInfo,
   ): types.Template {
     return parse(source, [], this.parserOpts);
   }
 
   compile(
     source: types.Template | string,
-    opts?: { name?: string | null; filename?: string | null; raw?: false },
+    opts?: TemplateInfo & { raw?: false },
   ): {
     root: RenderFunc<IsAsync>;
     blocks: Record<string, RenderFunc<IsAsync>>;
@@ -406,7 +450,7 @@ export class Environment<
 
   compile(
     source: types.Template | string,
-    opts: { name?: string | null; filename?: string | null; raw: true },
+    opts: TemplateInfo & { raw: true },
   ): string;
   compile(
     source: string | types.Template,
@@ -414,9 +458,10 @@ export class Environment<
       raw,
       name = null,
       filename = null,
-    }: { name?: string | null; filename?: string | null; raw?: boolean } = {},
+    }: TemplateInfo & { raw?: boolean } = {},
   ) {
     let njAst: types.Template;
+    filename = filename ?? "<template>";
     if (typeof source === "string") {
       njAst = this._parse(source, { name, filename });
     } else {
@@ -432,10 +477,7 @@ export class Environment<
 
   _compile(
     source: string,
-    {
-      name = null,
-      filename = null,
-    }: { name?: string | null; filename?: string | null } = {},
+    { name = null, filename = null }: TemplateInfo = {},
   ): {
     root: RenderFunc<IsAsync>;
     blocks: Record<string, RenderFunc<IsAsync>>;
@@ -449,12 +491,13 @@ export class Environment<
 
   _generate(
     source: types.Template,
-    {
-      name = null,
-      filename = null,
-    }: { name?: string | null; filename?: string | null } = {},
+    { name = null, filename = null }: TemplateInfo = {},
   ): string {
-    const codegen = new CodeGenerator({ environment: this, name, filename });
+    const codegen = new CodeGenerator({
+      environment: this,
+      name,
+      filename,
+    });
     const ast = codegen.compile(source);
     const jsSource = generate(ast as any).code;
     return jsSource;

@@ -1,4 +1,7 @@
+import { LRUCache } from "lru-cache";
 import nameRe from "./identifiers";
+
+const cache = new LRUCache<string, Lexer>({ max: 50 });
 
 export class TemplateSyntaxError extends Error {
   name = "TemplateSyntaxError";
@@ -349,7 +352,10 @@ export class TokenStream implements Iterator<Token, TokenEof> {
 
   constructor(
     generator: Iterable<Token>,
-    { name, filename }: { name?: string; filename?: string } = {},
+    {
+      name = null,
+      filename = null,
+    }: { name?: string | null; filename?: string | null } = {},
   ) {
     this.name = name ?? null;
     this.filename = filename ?? null;
@@ -1018,8 +1024,34 @@ export class Lexer {
   }
 }
 
-export function lex(src: string, opts?: ParserOptions): TokenStream {
-  const lexer = new Lexer(opts);
+export function getLexer(opts: Partial<ParserOptions> = {}): Lexer {
+  const options: ParserOptions = {
+    blockStart: opts.blockStart ?? "{%",
+    blockEnd: opts.blockEnd ?? "%}",
+    variableStart: opts.variableStart ?? "{{",
+    variableEnd: opts.variableEnd ?? "}}",
+    commentStart: opts.commentStart ?? "{#",
+    commentEnd: opts.commentEnd ?? "#}",
+    trimBlocks: opts.trimBlocks ?? false,
+    lstripBlocks: opts.lstripBlocks ?? false,
+    lineCommentPrefix: opts.lineCommentPrefix ?? null,
+    lineStatementPrefix: opts.lineStatementPrefix ?? null,
+    keepTrailingNewline: opts.keepTrailingNewline ?? false,
+    newlineSequence: opts.newlineSequence ?? "\n",
+  };
+
+  const key = [...Object.values(options)].map((v) => `${v}`).join("|");
+  const lookup = cache.get(key);
+  if (typeof lookup !== "undefined") {
+    return lookup;
+  }
+  const lexer = new Lexer(options);
+  cache.set(key, lexer);
+  return lexer;
+}
+
+export function lex(src: string, opts?: Partial<ParserOptions>): TokenStream {
+  const lexer = getLexer(opts);
   const stream = lexer.tokenize(src);
   stream.str = src;
   return stream;
