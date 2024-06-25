@@ -1,11 +1,13 @@
 import { types as t, builders as b, canAssign } from "@nunjucks/ast";
 import * as lexer from "./lexer";
+import type { Environment } from "@nunjucks/environment";
 import {
   TemplateSyntaxError,
   Token,
   TokenStream,
   Lexer,
   getLexer,
+  makeToken,
 } from "./lexer";
 
 export interface Extension {
@@ -67,8 +69,18 @@ type StatementKeyword =
   | "with"
   | "autoescape";
 
+interface ParserOptions {
+  extensions?: Extension[];
+  name?: string | null;
+  filename?: string | null;
+}
+export type LexerOptions = lexer.LexerOptions;
+export type ParseOptions = lexer.LexerOptions & ParserOptions;
+
 export class Parser {
   stream: lexer.TokenStream;
+  name: string | null;
+  filename: string | null;
   peeked: lexer.Token | null;
   current: lexer.Token;
   breakOnBlocks: string[] | null;
@@ -82,15 +94,20 @@ export class Parser {
     (this: Parser) => t.Node | t.Node[]
   >;
 
-  constructor(stream: lexer.TokenStream) {
+  constructor(
+    stream: lexer.TokenStream,
+    { extensions = [], name = null, filename = null }: ParserOptions = {},
+  ) {
     this.stream = stream;
+    this.name = name;
+    this.filename = filename;
+    this.extensions = extensions;
     this.peeked = null;
     this.stream.current = stream.current;
     this.breakOnBlocks = null;
     this.dropLeadingWhitespace = false;
     this._endTokenStack = [];
     this._tagStack = [];
-    this.extensions = [];
     this._statementMethodMap = {
       for: this.parseFor.bind(this),
       if: this.parseIf.bind(this),
@@ -107,13 +124,39 @@ export class Parser {
     };
   }
 
+  static fromEnvironment(
+    environment: Environment,
+    source: string,
+    {
+      name = null,
+      filename = null,
+      state = null,
+    }: {
+      name?: string | null;
+      filename?: string | null;
+      state?: string | null;
+    } = {},
+  ): Parser {
+    const stream = environment._tokenize(source, { name, filename, state });
+    return new Parser(stream, {
+      name,
+      filename,
+      extensions: environment.extensions,
+      ...environment.parserOpts,
+    });
+  }
+
   error(msg: string, lineno?: number, colno?: number): TemplateSyntaxError {
     if (lineno === undefined || colno === undefined) {
       const tok = this.stream.current || {};
       lineno = tok.lineno;
       colno = tok.colno;
     }
-    return new TemplateSyntaxError(msg, { lineno });
+    return new TemplateSyntaxError(msg, {
+      lineno,
+      name: this.name,
+      filename: this.filename,
+    });
   }
 
   fail(msg: string, lineno?: number, colno?: number): never {
@@ -1336,8 +1379,9 @@ export class Parser {
       if (token.value === "filter") {
         return this.parseFilterBlock();
       }
+
       for (const ext of this.extensions) {
-        if (ext.tags.indexOf(token.value)) {
+        if (ext.tags.includes(token.value)) {
           return ext.parse(this, t, b, lexer);
         }
       }
@@ -1487,17 +1531,11 @@ export class Parser {
 
 export function parse(
   src: string,
-  extensions?: Extension[],
-  opts?: Partial<lexer.ParserOptions>,
+  { extensions, name, filename, ...opts }: Partial<ParseOptions> = {},
 ): t.Template {
-  const p = new Parser(lexer.lex(src, opts));
-  if (extensions !== undefined) {
-    p.extensions = extensions;
-  }
+  const p = new Parser(lexer.lex(src, opts), { extensions, name, filename });
   return p.parse();
 }
 export { TemplateSyntaxError };
 
-export type ParserOptions = lexer.ParserOptions;
-
-export { lexer, Token, TokenStream, Lexer, getLexer };
+export { lexer, Token, TokenStream, Lexer, getLexer, makeToken };

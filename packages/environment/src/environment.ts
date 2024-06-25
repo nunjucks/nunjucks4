@@ -21,10 +21,11 @@ import {
 import { types } from "@nunjucks/ast";
 import {
   parse,
-  ParserOptions,
+  LexerOptions,
   getLexer,
   Lexer,
   TokenStream,
+  Parser,
 } from "@nunjucks/parser";
 import { CodeGenerator } from "@nunjucks/compiler";
 import {
@@ -141,7 +142,7 @@ export class Environment<
   autoescape: boolean | ((templateName?: string | null) => boolean);
   missing: Record<never, never>;
   async: IsAsync;
-  parserOpts: Partial<ParserOptions>;
+  parserOpts: Partial<LexerOptions>;
   filters: Record<string, Filter>;
   tests: Record<string, Test>;
   globals: Record<string, any>;
@@ -198,14 +199,14 @@ export class Environment<
   }: {
     async?: IsAsync;
     loaders?: (IsAsync extends true ? AsyncLoader | SyncLoader : SyncLoader)[];
-    parserOpts?: Partial<ParserOptions>;
+    parserOpts?: Partial<LexerOptions>;
     autoescape?: boolean | ((templateName?: string | null) => boolean);
     filters?: Record<string, Filter>;
     tests?: Record<string, Test>;
     globals?: Record<string, any>;
     undef?: typeof _undef;
     cacheSize?: number;
-    extensions?: Extension[];
+    extensions?: (typeof Extension)[];
   } = {}) {
     super();
     this.async = !!async as IsAsync;
@@ -218,7 +219,8 @@ export class Environment<
     this.globals = Object.assign({}, DEFAULT_NAMESPACE, globals);
     this.undef = undef;
     this.cache = createCache<Template<IsAsync>>({ max: cacheSize });
-    this.extensions = [...extensions];
+
+    this.extensions = extensions.map((Ext) => new Ext(this));
     this.extensions.sort((a, b) => a.priority - b.priority);
   }
 
@@ -413,31 +415,41 @@ export class Environment<
   ): TokenStream {
     source = this.preprocess(source, { name, filename });
     const stream = this.lexer.tokenize(source, { name, filename, state });
-    return this.extensions.reduce((prev, ext) => {
-      const stream = ext.filterStream(prev);
-      return stream instanceof TokenStream
-        ? stream
-        : new TokenStream(stream, { name, filename });
-    }, stream);
+    return Object.assign(
+      this.extensions.reduce((prev, ext) => {
+        const stream = ext.filterStream(prev);
+        return stream instanceof TokenStream
+          ? stream
+          : new TokenStream(stream, { name, filename });
+      }, stream),
+      { str: source },
+    );
   }
 
   parse(
     source: string,
     { name = null, filename = null }: TemplateInfo = {},
   ): types.Template {
-    return this._parse(source, { name, filename });
-    // try {
-    //   return this._parse(source, { name, filename });
-    // } catch (e) {
-    //   if (e instanceof TemplateSyntaxError) {
-    //   }
-    // }
+    // eslint-disable-next-line no-useless-catch
+    try {
+      return this._parse(source, { name, filename });
+    } catch (e) {
+      // if (e.type === "TemplateSyntaxError") {
+      //   this.handleException({ source });
+      // }
+      throw e;
+    }
   }
+
   _parse(
     source: string,
     { name = null, filename = null }: TemplateInfo,
   ): types.Template {
-    return parse(source, [], this.parserOpts);
+    const parser = Parser.fromEnvironment(this, source, {
+      name,
+      filename,
+    });
+    return parser.parse();
   }
 
   compile(

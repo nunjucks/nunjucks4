@@ -270,7 +270,7 @@ export interface Token<T extends TokenType = TokenType> {
   raw: string;
 }
 
-function makeToken<T extends TokenType = TokenType>(
+export function makeToken<T extends TokenType = TokenType>(
   type: T,
   value: string,
   lineno: number,
@@ -479,7 +479,7 @@ const VARIABLE_END = "}}";
 const COMMENT_START = "{#";
 const COMMENT_END = "#}";
 
-export interface ParserOptions {
+export interface LexerOptions {
   blockStart: string;
   blockEnd: string;
   variableStart: string;
@@ -494,7 +494,7 @@ export interface ParserOptions {
   keepTrailingNewline: boolean;
 }
 
-function compileRules(opts: ParserOptions): [string, string][] {
+function compileRules(opts: LexerOptions): [string, string][] {
   const e = regexEscape;
   const rules: [number, string, string][] = [
     [opts.commentStart.length, TOKEN_COMMENT_START, e(opts.commentStart)],
@@ -576,7 +576,7 @@ export class Lexer {
 
   rules: Record<string, Rule[]>;
 
-  options: ParserOptions;
+  options: LexerOptions;
 
   tags: {
     BLOCK_START: string;
@@ -589,7 +589,7 @@ export class Lexer {
     LINE_STATEMENT_PREFIX: string | null;
   };
 
-  constructor(opts: Partial<ParserOptions> = {}) {
+  constructor(opts: Partial<LexerOptions> = {}) {
     this.options = {
       blockStart: opts.blockStart ?? BLOCK_START,
       blockEnd: opts.blockEnd ?? BLOCK_END,
@@ -746,10 +746,13 @@ export class Lexer {
     } = {},
   ): TokenStream {
     const stream = this.tokeniter(source, { name, filename, state });
-    return new TokenStream(this.wrap(stream), {
-      name: name ?? undefined,
-      filename: filename ?? undefined,
-    });
+    return Object.assign(
+      new TokenStream(this.wrap(stream), {
+        name: name ?? undefined,
+        filename: filename ?? undefined,
+      }),
+      { str: source },
+    );
   }
 
   *wrap(
@@ -1024,8 +1027,8 @@ export class Lexer {
   }
 }
 
-export function getLexer(opts: Partial<ParserOptions> = {}): Lexer {
-  const options: ParserOptions = {
+export function getLexer(opts: Partial<LexerOptions> = {}): Lexer {
+  const options: LexerOptions = {
     blockStart: opts.blockStart ?? "{%",
     blockEnd: opts.blockEnd ?? "%}",
     variableStart: opts.variableStart ?? "{{",
@@ -1050,7 +1053,7 @@ export function getLexer(opts: Partial<ParserOptions> = {}): Lexer {
   return lexer;
 }
 
-export function lex(src: string, opts?: Partial<ParserOptions>): TokenStream {
+export function lex(src: string, opts?: Partial<LexerOptions>): TokenStream {
   const lexer = getLexer(opts);
   const stream = lexer.tokenize(src);
   stream.str = src;
