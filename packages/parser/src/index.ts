@@ -141,7 +141,7 @@ export class Parser {
     return new Parser(stream, {
       name,
       filename,
-      extensions: environment.extensions,
+      extensions: environment.extensionsList,
       ...environment.parserOpts,
     });
   }

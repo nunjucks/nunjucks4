@@ -31,8 +31,12 @@ import {
 import { Path } from "./path";
 import { PathVisitor } from "./path-visitor";
 import { Visitor } from "./gen/visitor";
+import type { builders as Builders } from "./gen/builders";
+import type { NunjucksTypes } from "./gen/types";
 
 Object.assign(types, njkTypes);
+
+export type { Builders, NunjucksTypes };
 
 export {
   types,

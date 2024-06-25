@@ -1,8 +1,13 @@
 import { Environment } from "./environment";
 
-import type { TokenStream, Token } from "@nunjucks/parser";
+import type { TokenStream, Token, Lexer } from "@nunjucks/parser";
 import { Parser } from "@nunjucks/parser";
-import { types as t, builders as b } from "@nunjucks/ast";
+import {
+  types as t,
+  builders as b,
+  NunjucksTypes,
+  Builders,
+} from "@nunjucks/ast";
 
 export class Extension {
   tags: string[];
@@ -26,8 +31,16 @@ export class Extension {
     return stream;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  parse(parser: Parser): t.Node | t.Node[] {
+  parse(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    parser: Parser,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    types: NunjucksTypes,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    builders: Builders,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    lexer: Lexer,
+  ): t.Node | t.Node[] {
     throw new Error("Not implemented");
   }
 
@@ -53,7 +66,7 @@ export class Extension {
       dynArgs?: t.Expr | null;
       dynKwargs?: t.Expr | null;
       loc?: t.SourceLocation | null;
-    },
+    } = {},
   ): t.Call {
     return b.call.from({
       node: this.attr(name, loc),

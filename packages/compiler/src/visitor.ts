@@ -1128,7 +1128,7 @@ export class CodeGenerator<IsAsync extends boolean> {
         return memberExpr(`env.${node.name}`);
       },
       visitExtensionAttribute({ node }) {
-        return ast.expression`env.extensions[%%id%%].%%name`({
+        return ast.expression`env.extensions[%%id%%].%%name%%`({
           id: str(node.identifier),
           name: id(node.name),
         });
@@ -1166,14 +1166,15 @@ export class CodeGenerator<IsAsync extends boolean> {
         const { node } = path;
         const ctx = self.temporaryIdentifier();
         const statements: n.Statement[] = [];
+        const decls: n.VariableDeclaration[] = [];
         statements.push(
-          ast.statement`%%ctx%% = %%derived%%`({
+          ast.statement`let %%ctx%% = %%derived%%`({
             ctx: id(ctx),
             derived: self.deriveContext(frame),
           }),
           ast.statement`%%ctx%%.vars = %%rhs%%`({
             ctx: id(ctx),
-            rhs: self.visit(path.get("context"), state),
+            rhs: self.visitExpression(path.get("context"), state, decls),
           }),
         );
         self.pushContextReference(ctx);
@@ -1186,7 +1187,7 @@ export class CodeGenerator<IsAsync extends boolean> {
           ...self.leaveFrame(scopeFrame),
         );
         self.popContextReference();
-        return b.blockStatement(statements);
+        return b.blockStatement([...decls, ...statements]);
       },
       visitEvalContextModifier(path, state) {
         throw new Error("not implemented");

@@ -5,7 +5,8 @@ import {
   Extension,
 } from "@nunjucks/environment";
 import { describe, test, expect } from "@jest/globals";
-import { Token, TokenStream, makeToken } from "@nunjucks/parser";
+import { Parser, Token, TokenStream, makeToken } from "@nunjucks/parser";
+import { types, NunjucksTypes, Builders } from "@nunjucks/ast";
 
 class PreprocessorExtension extends Extension {
   preprocess(source: string): string {
@@ -146,7 +147,38 @@ describe("extensions", () => {
       priority = 2;
     }
     env = new Environment({ extensions: [T2, T1] });
-    expect(env.extensions[0]).toBeInstanceOf(T1);
-    expect(env.extensions[1]).toBeInstanceOf(T2);
+    expect(env.extensionsList[0]).toBeInstanceOf(T1);
+    expect(env.extensionsList[1]).toBeInstanceOf(T2);
+  });
+
+  test("overlay scopes", () => {
+    class MagicScopeExtension extends Extension {
+      identifier = "MagicScopeExtension";
+      tags = ["overlay"];
+      parse(parser: Parser, t: NunjucksTypes, b: Builders): types.Node {
+        const loc = parser.tokToLoc(parser.stream.next().value);
+        return b.overlayScope.from({
+          context: this.callMethod("getScope"),
+          body: parser.parseStatements(["name:endoverlay"], {
+            dropNeedle: true,
+          }),
+          loc,
+        });
+      }
+      getScope() {
+        return { x: [1, 2, 3] };
+      }
+    }
+    env = new Environment({ extensions: [MagicScopeExtension] });
+    const tmpl = env.fromString(
+      `
+      {{- x }}|{% set z = 99 %}
+      {%- overlay %}
+          {{- y }}|{{ z }}|{% for item in x %}[{{ item }}]{% endfor %}
+      {%- endoverlay %}|
+      {{- x -}}
+  `,
+    );
+    expect(tmpl.render({ x: 42, y: 23 })).toBe("42|23|99|[1][2][3]|42");
   });
 });

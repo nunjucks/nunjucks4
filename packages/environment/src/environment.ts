@@ -175,7 +175,8 @@ export class Environment<
 
   cache: Record<PropertyKey, Template<IsAsync> | undefined> | null;
 
-  extensions: Extension[];
+  extensionsList: Extension[];
+  extensions: Record<string, Extension>;
 
   constructor({
     autoescape = false,
@@ -220,8 +221,16 @@ export class Environment<
     this.undef = undef;
     this.cache = createCache<Template<IsAsync>>({ max: cacheSize });
 
-    this.extensions = extensions.map((Ext) => new Ext(this));
-    this.extensions.sort((a, b) => a.priority - b.priority);
+    this.extensionsList = extensions.map((Ext) => new Ext(this));
+    this.extensionsList.sort((a, b) => a.priority - b.priority);
+
+    this.extensions = {};
+
+    for (const ext of this.extensionsList) {
+      if (ext.identifier) {
+        this.extensions[ext.identifier] = ext;
+      }
+    }
   }
 
   isAsync(): this is Environment<true> {
@@ -398,7 +407,7 @@ export class Environment<
   }
 
   preprocess(source: string, info: TemplateInfo): string {
-    return this.extensions.reduce((s, e) => e.preprocess(s, info), source);
+    return this.extensionsList.reduce((s, e) => e.preprocess(s, info), source);
   }
 
   /**
@@ -416,7 +425,7 @@ export class Environment<
     source = this.preprocess(source, { name, filename });
     const stream = this.lexer.tokenize(source, { name, filename, state });
     return Object.assign(
-      this.extensions.reduce((prev, ext) => {
+      this.extensionsList.reduce((prev, ext) => {
         const stream = ext.filterStream(prev);
         return stream instanceof TokenStream
           ? stream
