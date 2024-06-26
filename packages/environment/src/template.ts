@@ -202,7 +202,39 @@ export class Template<IsAsync extends true | false> {
     this: Template<IsAsync>,
     context?: Record<string, any>,
   ): Promise<string> | string;
-  render(context: Record<string, any> = {}): Promise<string> | string {
+  render(
+    context?: Record<string, any>,
+    callback?: (err: any, res: string | undefined) => void,
+  ): void;
+  render(callback: (err: any, res: string | undefined) => void): void;
+  render(
+    context:
+      | Record<string, any>
+      | ((err: any, res: string | undefined) => void) = {},
+    callback?: (err: any, res: string | undefined) => void,
+  ): Promise<string> | string | void {
+    // backwards compat for old-style async callbacks
+    if (typeof context === "function") {
+      callback = context as unknown as (
+        err: any,
+        res: string | undefined,
+      ) => void;
+      context = {};
+    }
+    if (typeof callback === "function") {
+      if (this.isAsync()) {
+        this._renderAsync(context).then(
+          (res) => callback(undefined, res),
+          (err) => callback(err, undefined),
+        );
+      } else if (this.isSync()) {
+        try {
+          callback(undefined, this._renderSync(context));
+        } catch (err) {
+          callback(err, undefined);
+        }
+      }
+    }
     if (this.isAsync()) {
       return this._renderAsync(context);
     } else if (this.isSync()) {
