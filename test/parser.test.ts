@@ -494,4 +494,13 @@ describe("syntax", () => {
     const tmpl = env.fromString(`    {% set x = " {% str %} " %}{{ x }}`);
     expect(tmpl.render()).toBe(" {% str %} ");
   });
+
+  test("autoescape", () => {
+    env = new Environment({ autoescape: false });
+    const tmpl = env.fromString(
+      "{% macro m() %}<html>{% endmacro %}" +
+        "{% autoescape true %}{{ m() }}{% endautoescape %}",
+    );
+    expect(tmpl.render()).toBe("<html>");
+  });
 });

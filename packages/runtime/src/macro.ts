@@ -1,5 +1,6 @@
 import { Environment } from "@nunjucks/environment";
-import { EvalContext, markSafe, MISSING, isVarargs, isKwargs } from ".";
+import { EvalContext, markSafe, MISSING } from ".";
+import { isVarargs, isKwargs, PassArg } from "./utils";
 import type { IfAsync } from "./types";
 
 /**
@@ -16,6 +17,8 @@ export class Macro<IsAsync extends boolean> extends Function {
   _caller: boolean;
   explicitCaller: boolean;
   _defaultAutoescape: boolean;
+
+  __nunjucksPassArg: PassArg = "evalContext";
 
   constructor(
     environment: Environment<IsAsync>,

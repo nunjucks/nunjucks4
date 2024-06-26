@@ -1190,10 +1190,26 @@ export class CodeGenerator<IsAsync extends boolean> {
         return b.blockStatement([...decls, ...statements]);
       },
       visitEvalContextModifier(path, state) {
-        throw new Error("not implemented");
+        return this._evalContextModifierCommon(path, state);
       },
       visitScopedEvalContextModifier(path, state) {
-        throw new Error("not implemented");
+        const { self, frame } = state;
+        const oldCtxName = id(this.temporaryIdentifier());
+        const savedCtx = frame.evalCtx.save();
+        const statements: n.Statement[] = [
+          ast.statement`let %%oldCtxName%% = context.evalCtx.save()`({
+            oldCtxName,
+          }),
+          ...this._evalContextModifierCommon(path, state),
+        ];
+        path.get("body").each((child) => {
+          statements.push(...this.visitStatements(child, state));
+        });
+        frame.evalCtx.revert(savedCtx);
+        statements.push(
+          ast.statement`context.evalCtx.revert(%%oldCtxName%%)`({ oldCtxName }),
+        );
+        return statements;
       },
       visitCondExpr(path, state) {
         const { node } = path;
@@ -2425,5 +2441,38 @@ export class CodeGenerator<IsAsync extends boolean> {
         }),
       );
     }
+  }
+  _evalContextModifierCommon(
+    path: Path<t.EvalContextModifier | t.ScopedEvalContextModifier>,
+    state: State<IsAsync>,
+  ): n.Statement[] {
+    const { frame } = state;
+    const statements: n.Statement[] = [];
+    path.get("options").each((keyword) => {
+      const rhs = this.visitExpression(keyword.get("value"), state);
+      let val: unknown;
+      try {
+        val = toConst(frame.evalCtx, keyword.node.value);
+      } catch (e) {
+        if (e.name === "Impossible") {
+          frame.evalCtx.volatile = true;
+          return;
+        }
+        throw e;
+      }
+      (frame.evalCtx as any)[keyword.node.key] = val;
+
+      statements.push(
+        ast.statement`%%lhs%% = %%rhs%%`({
+          lhs: b.memberExpression(
+            b.memberExpression(id("context"), id("evalCtx")),
+            id(keyword.node.key),
+          ),
+          rhs,
+        }),
+      );
+    });
+
+    return statements;
   }
 }

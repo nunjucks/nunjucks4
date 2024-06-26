@@ -1,12 +1,22 @@
 import type { Environment } from "@nunjucks/environment";
 import { LoopContext } from "./loops";
 import type { IfAsync } from "./types";
-import { isPlainObject } from "./utils";
+import {
+  isPlainObject,
+  nunjucksFunction,
+  NunjucksFunction,
+  isVarargs,
+  isKwargs,
+  hasOwn,
+  identity,
+} from "./utils";
 import arrayFromAsync from "./arrayFromAsync";
 
 import { Macro } from "./macro";
 
 export type { IfAsync } from "./types";
+
+export { nunjucksFunction, isVarargs, isKwargs, hasOwn, identity };
 
 export class Missing {}
 
@@ -151,120 +161,11 @@ export function isUndefinedInstance(obj: unknown): obj is Undefined {
   return "_failWithUndefinedError" in obj;
 }
 
-export interface NunjuckArgsInfo {
-  varNames: string[];
-  varargs: boolean;
-  kwargs: boolean;
-}
-
-declare global {
-  interface Function {
-    __nunjucksPassArg?: "context" | "evalContext" | "environment";
-    __nunjucksArgs?: NunjuckArgsInfo;
-  }
-}
-
-export type NunjucksFunction = ((...args: any[]) => any) & {
-  __nunjucksPassArg?: "context" | "evalContext" | "environment";
-  __nunjucksArgs?: NunjuckArgsInfo;
-};
-
-export function isVarargs(o: unknown): o is any[] & { __isVarargs: true } {
-  return Array.isArray(o) && hasOwn(o, "__isVarargs") && !!o.__isVarargs;
-}
-
-export function isKwargs(
-  o: unknown,
-): o is Record<string, any> & { __isKwargs: true } {
-  return isPlainObject(o) && hasOwn(o, "__isKwargs") && !!o.__isKwargs;
-}
-
-export function nunjucksFunction(
-  varNames: string[],
-  options: {
-    kwargs?: boolean;
-    varargs?: boolean;
-    passArg?: "context" | "evalContext" | "environment";
-  } = {},
-) {
-  return function <T extends (...args: unknown[]) => unknown>(func: T): T {
-    const wrapper = function wrapper(...posargs: any[]) {
-      // shift off the first argument if it is an automatically passed argument
-      // (e.g. Context, EvalContext, or Environment)
-      const kwargs: Record<string, any> | null = options.kwargs ? {} : null;
-      let kwargsArg: Record<string, any> | null = null;
-      const kwargsIndex = posargs.findIndex((o) => isKwargs(o));
-      if (kwargsIndex > -1) {
-        [kwargsArg] = posargs.splice(kwargsIndex, 1);
-      }
-      let passedArg: any = undefined;
-      if (options.passArg) {
-        if (options.passArg === "environment" && kwargsArg?.__environment) {
-          passedArg = kwargsArg.__environment;
-        } else if (options.passArg === "evalContext" && kwargsArg?.__evalCtx) {
-          passedArg = kwargsArg.__evalCtx;
-        } else {
-          passedArg = posargs.shift();
-        }
-      }
-      delete kwargsArg?.__environment;
-      delete kwargsArg?.__evalCtx;
-
-      const args: any[] = posargs.slice(0, varNames.length);
-
-      const rest = posargs.slice(varNames.length);
-
-      Object.entries(kwargsArg ?? {}).forEach(([name, value]) => {
-        if (name === "__isKwargs") return;
-        const index = varNames.indexOf(name);
-        if (index >= 0) {
-          if (args[index] !== undefined) {
-            throw new TypeError(`got multiple values for argument ${name}`);
-          }
-          args[index] = value;
-        } else if (kwargs) {
-          kwargs[name] = value;
-        } else {
-          throw new TypeError(`got an unexpected keyword argument ${name}`);
-        }
-      });
-      if (options.kwargs) {
-        args.push({ ...kwargs, __isKwargs: true });
-      }
-      if (options.varargs) {
-        args.push(...rest);
-      }
-
-      if (options.passArg) args.unshift(passedArg);
-
-      return func.apply(this, args);
-    } as unknown as T;
-    wrapper.__nunjucksArgs = {
-      kwargs: true,
-      varargs: !!options.varargs,
-      // singleArgument: !!options.singleArgument,
-      varNames,
-    };
-    if (options.passArg) wrapper.__nunjucksPassArg = options.passArg;
-    return wrapper;
-  };
-}
-
 export type Block<IsAsync extends boolean> = IsAsync extends true
   ? (context: Context<IsAsync>) => AsyncGenerator<string> | Generator<string>
   : (context: Context<IsAsync>) => Generator<string>;
 
 export class KeyError extends Error {}
-
-export function hasOwn<K extends string>(
-  o: unknown,
-  key: K,
-): o is Record<K, unknown> {
-  return o && Object.prototype.hasOwnProperty.call(o, key);
-}
-export function identity<T>(val: T): T {
-  return val;
-}
 
 function concat(values: unknown[]): string {
   return values.map((val) => `${val}`).join("");
@@ -341,6 +242,23 @@ export class EvalContext<IsAsync extends boolean = boolean> {
   }
   isSync(): this is EvalContext<false> {
     return !this.environment.isSync();
+  }
+
+  save(): Record<string, unknown> {
+    const ret: Record<string, unknown> = {};
+    for (const prop of Object.getOwnPropertyNames(this)) {
+      ret[prop] = (this as any)[prop];
+    }
+    return ret;
+  }
+
+  revert(old: Record<string, unknown>): void {
+    for (const prop of Object.getOwnPropertyNames(this)) {
+      delete (this as any)[prop];
+    }
+    for (const [key, value] of Object.entries(old)) {
+      (this as any)[key] = value;
+    }
   }
 }
 
@@ -1030,9 +948,10 @@ export const namespace = nunjucksFunction(["__init"], { kwargs: true })(
         if (isKwargs(kwargs_)) kwargs = kwargs_;
       }
     }
-    const attrs: Record<string, any> = args.length
-      ? Object.fromEntries(Object.entries(args[0] as any))
-      : {};
+    const attrs: Record<string, any> =
+      args.length && isPlainObject(args[0])
+        ? Object.fromEntries(Object.entries(args[0]))
+        : {};
     return Object.assign(Object.create(null), {
       __isNamespace: true,
       ...attrs,
