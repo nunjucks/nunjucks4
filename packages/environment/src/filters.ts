@@ -830,6 +830,42 @@ const trim = nunjucksFunction(["value", "chars"])(function trim(
   );
 });
 
+/**
+ * Create an SGML/XML attribute string based on the items in a dict.
+ *
+ * If any key contains a space, this fails with an error. Values that
+ * are neither `none` nor `undefined` are automatically escaped.
+ */
+export const xmlattr = nunjucksFunction(["d", "autospace"], {
+  passArg: "evalContext",
+})(function xmlattr(
+  evalCtx: EvalContext,
+  d: Record<string, any>,
+  autospace = true,
+): string {
+  const items: string[] = [];
+  for (const [key, value] of Object.entries(d)) {
+    if (value === null || value === undefined || isUndefinedInstance(value)) {
+      continue;
+    }
+    if (key.match(/\s/)) {
+      throw new Error(`Spaces are not allowed in attributes: '${key}'`);
+    }
+
+    items.push(`${escape(key)}="${escape(value)}"`);
+  }
+  let rv = items.join(" ");
+  if (autospace && rv) {
+    rv = ` ${rv}`;
+  }
+
+  if (evalCtx.autoescape) {
+    rv = markSafe(rv);
+  }
+
+  return rv;
+});
+
 export default {
   abs,
   // attr,
@@ -882,6 +918,6 @@ export default {
   urlize,
   wordcount,
   // wordwrap,
-  // xmlattr,
+  xmlattr,
   // tosjon,
 };

@@ -473,6 +473,22 @@ describe("filters", () => {
     expect(tmpl.render()).toBe("20|30|20");
   });
 
+  it("xmlattr", () => {
+    const tmpl = env.fromString(
+      "{{ {'foo': 42, 'bar': 23, 'fish': none, " +
+        "'spam': missing, 'blub:blub': '<?>'}|xmlattr }}",
+    );
+    const out = tmpl
+      .render()
+      .trim()
+      .split(/[\n\s]+/g);
+    expect(out).toStrictEqual([
+      'foo="42"',
+      'bar="23"',
+      'blub:blub="&lt;?&gt;"',
+    ]);
+  });
+
   describe.skip("sort", () => {
     it("sort1", () => {
       const tmpl = env.fromString(
