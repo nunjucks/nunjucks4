@@ -26,7 +26,7 @@ import {
   VAR_LOAD_UNDEFINED,
 } from "./idtracking";
 import n = namedTypes;
-import toConst from "./const";
+import toConst, { Impossible } from "./const";
 
 type Bookmark = n.EmptyStatement & {
   _isBookmark: true;
@@ -849,7 +849,7 @@ export class CodeGenerator<IsAsync extends boolean> {
           const args: n.Expression[] = [];
           for (const item of body) {
             if (Array.isArray(item)) {
-              const val = item.map((i) => `${i}`).join("");
+              const val = item.map((i) => runtimeStr(i)).join("");
               args.push(b.stringLiteral(val));
             } else {
               const itemNodes = self.visit(item, state).filter((node) => {
@@ -870,7 +870,7 @@ export class CodeGenerator<IsAsync extends boolean> {
         } else {
           for (const item of body) {
             if (Array.isArray(item)) {
-              const val = item.map((i) => `${i}`).join("");
+              const val = item.map((i) => runtimeStr(i)).join("");
               innerNodes.push(
                 b.expressionStatement(b.yieldExpression(b.stringLiteral(val))),
               );
@@ -908,7 +908,14 @@ export class CodeGenerator<IsAsync extends boolean> {
         }
       },
       visitTemplateData({ node }, { self, frame }) {
-        return self.write(self.outputChildToConst(node, frame), frame);
+        try {
+          return str(self.outputChildToConst(node, frame));
+        } catch (e) {
+          if (e.name !== "Impossible") throw e;
+          return ast.expression`
+            (context.evalCtx.autoescape ? runtime.markSafe : runtime.identity)(%%data%%)
+          `({ data: str(node.data) });
+        }
       },
       visitGetattr(path, state) {
         const { self } = state;
@@ -1156,7 +1163,7 @@ export class CodeGenerator<IsAsync extends boolean> {
         frame.symbols.analyzeNode(node);
         const statements: n.Statement[] = [
           ...self.enterFrame(frame),
-          ...self.blockvisit(path.get("body"), state),
+          ...self.blockvisit(path.get("body"), { ...state, frame }),
           ...self.leaveFrame(frame),
         ];
         return b.blockStatement(statements);
@@ -2450,17 +2457,15 @@ export class CodeGenerator<IsAsync extends boolean> {
     const statements: n.Statement[] = [];
     path.get("options").each((keyword) => {
       const rhs = this.visitExpression(keyword.get("value"), state);
-      let val: unknown;
       try {
-        val = toConst(frame.evalCtx, keyword.node.value);
+        (frame.evalCtx as any)[keyword.node.key] = toConst(
+          frame.evalCtx,
+          keyword.node.value,
+        );
       } catch (e) {
-        if (e.name === "Impossible") {
-          frame.evalCtx.volatile = true;
-          return;
-        }
-        throw e;
+        if (e.name !== "Impossible") throw e;
+        frame.evalCtx.volatile = true;
       }
-      (frame.evalCtx as any)[keyword.node.key] = val;
 
       statements.push(
         ast.statement`%%lhs%% = %%rhs%%`({

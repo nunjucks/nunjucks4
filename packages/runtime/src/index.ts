@@ -33,7 +33,7 @@ export interface UndefinedOpts {
   exc?: new (message?: string) => Error;
 }
 
-function getObjectTypeName(obj: unknown) {
+export function getObjectTypeName(obj: unknown) {
   if (obj === undefined || obj === null) {
     return `${obj}`;
   }

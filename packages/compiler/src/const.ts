@@ -11,7 +11,7 @@ export type Serializable =
   | Serializable[]
   | { [key: string]: Serializable };
 
-class Impossible extends Error {
+export class Impossible extends Error {
   name = "Impossible";
   constructor(message = "Cannot convert to const") {
     super(message);

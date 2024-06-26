@@ -1,7 +1,12 @@
 import { Environment } from "@nunjucks/environment";
 import { describe, expect, test } from "@jest/globals";
 import { TemplateSyntaxError } from "@nunjucks/parser";
-import { UndefinedError, nunjucksFunction } from "@nunjucks/runtime";
+import {
+  UndefinedError,
+  nunjucksFunction,
+  getObjectTypeName,
+  isMarkup,
+} from "@nunjucks/runtime";
 import { types as t } from "@nunjucks/ast";
 let env: Environment<false>;
 
@@ -495,12 +500,101 @@ describe("syntax", () => {
     expect(tmpl.render()).toBe(" {% str %} ");
   });
 
-  test("autoescape", () => {
-    env = new Environment({ autoescape: false });
-    const tmpl = env.fromString(
-      "{% macro m() %}<html>{% endmacro %}" +
-        "{% autoescape true %}{{ m() }}{% endautoescape %}",
-    );
-    expect(tmpl.render()).toBe("<html>");
+  describe("autoescape", () => {
+    test("scoped setting false", () => {
+      env = new Environment({ autoescape: true });
+      const tmpl = env.fromString(
+        `
+        {{ "<HelloWorld>" }}
+        {% autoescape false %}
+            {{ "<HelloWorld>" }}
+        {% endautoescape %}
+        {{ "<HelloWorld>" }}
+        `,
+      );
+      expect(
+        tmpl
+          .render()
+          .trim()
+          .split(/[\s\n]+/g),
+      ).toStrictEqual([
+        "&lt;HelloWorld&gt;",
+        "<HelloWorld>",
+        "&lt;HelloWorld&gt;",
+      ]);
+    });
+
+    test("scoped setting true", () => {
+      env = new Environment({ autoescape: false });
+      const tmpl = env.fromString(
+        `
+        {{ "<HelloWorld>" }}
+        {% autoescape true %}
+            {{ "<HelloWorld>" }}
+        {% endautoescape %}
+        {{ "<HelloWorld>" }}
+        `,
+      );
+      expect(
+        tmpl
+          .render()
+          .trim()
+          .split(/[\s\n]+/g),
+      ).toStrictEqual(["<HelloWorld>", "&lt;HelloWorld&gt;", "<HelloWorld>"]);
+    });
+
+    test("macros", () => {
+      env = new Environment({ autoescape: false });
+      const tmpl = env.fromString(
+        "{% macro m() %}<html>{% endmacro %}" +
+          "{% autoescape true %}{{ m() }}{% endautoescape %}",
+      );
+      expect(tmpl.render()).toBe("<html>");
+    });
+
+    test("nonvolatile", () => {
+      env = new Environment({ autoescape: true });
+      let tmpl = env.fromString('{{ {"foo": "<test>"}|xmlattr|escape }}');
+      expect(tmpl.render()).toBe(' foo="&lt;test&gt;"');
+      tmpl = env.fromString(
+        '{% autoescape false %}{{ {"foo": "<test>"}' +
+          "|xmlattr|escape }}{% endautoescape %}",
+      );
+      expect(tmpl.render()).toBe(" foo=&#34;&amp;lt;test&amp;gt;&#34;");
+    });
+
+    test("scoping", () => {
+      env = new Environment();
+      const tmpl = env.fromString(
+        '{% autoescape true %}{% set x = "<x>" %}{{ x }}' +
+          '{% endautoescape %}{{ x }}{{ "<y>" }}',
+      );
+      expect(tmpl.render({ x: 1 })).toBe("&lt;x&gt;1<y>");
+    });
+
+    test("volatile scoping", () => {
+      env = new Environment();
+      const tmplsource = `
+        {% autoescape val %}
+            {% macro foo(x) %}
+                [{{ x }}]
+            {% endmacro %}
+            {{ type(foo()) }}
+        {% endautoescape %}
+        {{ '<testing>' }}
+        `;
+      const type = (o: unknown) =>
+        isMarkup(o) ? "Markup" : getObjectTypeName(o);
+      const tmpl = env.fromString(tmplsource);
+      expect(tmpl.render({ val: true, type })).toContain("Markup");
+      expect(tmpl.render({ val: false, type })).toContain("String");
+
+      env.autoescape = false;
+      expect(env.compile(tmplsource, { raw: true })).toContain("<testing>");
+      env.autoescape = true;
+      expect(env.compile(tmplsource, { raw: true })).toContain(
+        "&lt;testing&gt;",
+      );
+    });
   });
 });

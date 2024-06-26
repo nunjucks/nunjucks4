@@ -231,7 +231,7 @@ export class Parser {
     nameOnly,
     extraEndRules,
     withNamespace,
-  }: {
+  }?: {
     withTuple?: boolean;
     nameOnly?: boolean;
     extraEndRules?: string[];
