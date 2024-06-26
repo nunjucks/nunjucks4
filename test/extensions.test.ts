@@ -7,6 +7,43 @@ import {
 import { describe, test, expect } from "@jest/globals";
 import { Parser, Token, TokenStream, makeToken } from "@nunjucks/parser";
 import { types, NunjucksTypes, Builders } from "@nunjucks/ast";
+import { str } from "@nunjucks/runtime";
+
+class ExampleExtension extends Extension {
+  identifier = "ExampleExtension";
+  tags = ["test"];
+  extAttr = 42;
+  contextReferenceNodeType: "ContextReference" | "DerivedContextReference" =
+    "ContextReference";
+
+  parse(parser: Parser, t: NunjucksTypes, b: Builders): types.Node {
+    const loc = parser.tokToLoc(parser.stream.next().value);
+    return b.output.from({
+      nodes: [
+        this.callMethod("_dump", {
+          args: [
+            b.environmentAttribute("sandboxed"),
+            this.attr("extAttr"),
+            { type: this.contextReferenceNodeType },
+          ],
+        }),
+      ],
+      loc,
+    });
+  }
+
+  _dump(sandboxed: any, extAttr: any, context: any): string {
+    return [sandboxed, extAttr, context.blocks, context.get("test_var")]
+      .map((val) => str(val))
+      .join("|");
+  }
+}
+
+class DerivedExampleExtension extends ExampleExtension {
+  identifier = "DerivedExampleExtension";
+  contextReferenceNodeType: "ContextReference" | "DerivedContextReference" =
+    "DerivedContextReference";
+}
 
 class PreprocessorExtension extends Extension {
   preprocess(source: string): string {
@@ -180,5 +217,25 @@ describe("extensions", () => {
   `,
     );
     expect(tmpl.render({ x: 42, y: 23 })).toBe("42|23|99|[1][2][3]|42");
+  });
+
+  test("extension nodes", () => {
+    env = new Environment({ extensions: [ExampleExtension] });
+    const tmpl = env.fromString("{% test %}");
+    expect(tmpl.render()).toBe("false|42|{}|null");
+  });
+
+  test("ContextReference node passes context", () => {
+    env = new Environment({ extensions: [ExampleExtension] });
+    const tmpl = env.fromString('{% set test_var="test_content" %}{% test %}');
+    expect(tmpl.render()).toBe("false|42|{}|test_content");
+  });
+
+  test("ContextReference node can pass locals", () => {
+    env = new Environment({ extensions: [DerivedExampleExtension] });
+    const tmpl = env.fromString(
+      '{% for test_var in ["test_content"] %}{% test %}{% endfor %}',
+    );
+    expect(tmpl.render()).toBe("false|42|{}|test_content");
   });
 });

@@ -48,7 +48,7 @@ export class Extension {
     return b.extensionAttribute.from({
       identifier: this.identifier,
       name,
-      loc,
+      loc: loc ?? null,
     });
   }
 
