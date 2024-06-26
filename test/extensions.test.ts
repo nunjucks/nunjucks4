@@ -238,4 +238,41 @@ describe("extensions", () => {
     );
     expect(tmpl.render()).toBe("false|42|{}|test_content");
   });
+
+  test("basic scope behavior", () => {
+    class ScopeExt extends Extension {
+      tags = ["scope"];
+      parse(parser: Parser, t: NunjucksTypes, b: Builders): types.Node {
+        const loc = parser.tokToLoc(parser.stream.next().value);
+        // const body: types.Node[] = [];
+        const assignments: types.Node[] = [];
+        while (parser.stream.current.type !== "block_end") {
+          if (assignments.length) {
+            parser.stream.expect("comma");
+          }
+          const innerLoc = parser.tokToLoc(parser.stream.current);
+          const target = parser.parseAssignTarget();
+          parser.stream.expect("assign");
+          const expr = parser.parseExpression();
+          assignments.push(
+            b.assign.from({ target, node: expr, loc: innerLoc }),
+          );
+        }
+        return b.scope.from({
+          loc,
+          body: [
+            ...assignments,
+            ...parser.parseStatements(["name:endscope"], { dropNeedle: true }),
+          ],
+        });
+      }
+    }
+    env = new Environment({ extensions: [ScopeExt] });
+    const tmpl = env.fromString(
+      `{%- scope a=1, b=2, c=b, d=e, e=5 -%}
+           {{ a }}|{{ b }}|{{ c }}|{{ d }}|{{ e }}
+        {%- endscope -%}`,
+    );
+    expect(tmpl.render({ b: 3, e: 4 })).toBe("1|2|2|4|5");
+  });
 });
