@@ -62,7 +62,7 @@ const ignoreCase: {
 
 function makeAttrGetter(
   environment: Environment,
-  attribute: string | number,
+  attribute: string | number | null,
   options: { postprocess?: null | ((val: any) => any); default?: any } = {},
 ): (value: any) => any {
   const parts = _prepareAttributeParts(attribute);
@@ -83,7 +83,7 @@ function makeAttrGetter(
 
 function makeMultiAttrGetter(
   environment: Environment,
-  attribute: string | number,
+  attribute: string | number | null,
   options: { postprocess?: null | ((val: any) => any); default?: any } = {},
 ): (value: any) => any {
   const split: (string | number | null)[] =
@@ -690,6 +690,111 @@ export const sum: {
   ),
 );
 
+function doSort<V>(
+  environment: Environment,
+  value: V[],
+  reverse: boolean = false,
+  caseSensitive: boolean = false,
+  attribute: string | number | null = null,
+): V[] {
+  const keyFunc = makeMultiAttrGetter(environment, attribute, {
+    postprocess: caseSensitive ? null : ignoreCase,
+  });
+  const arr = [...value];
+  arr.sort((a, b) => {
+    const cmpA = keyFunc(a);
+    const cmpB = keyFunc(b);
+    return cmpA > cmpB ? 1 : cmpA === cmpB ? 0 : -1;
+  });
+  if (reverse) arr.reverse();
+  return arr;
+}
+
+function syncSort(
+  environment: Environment,
+  value: unknown,
+  reverse: boolean = false,
+  caseSensitive: boolean = false,
+  attribute: string | number | null = null,
+): unknown[] | string {
+  const arr = syncList(value);
+  const ret = doSort(environment, arr, reverse, caseSensitive, attribute);
+  return isString(value) ? ret.join("") : ret;
+}
+
+async function asyncSort(
+  environment: Environment,
+  value: unknown,
+  reverse: boolean = false,
+  caseSensitive: boolean = false,
+  attribute: string | number | null = null,
+): Promise<unknown[] | string> {
+  const arr = await asyncList(value);
+  const ret = doSort(environment, arr, reverse, caseSensitive, attribute);
+  return isString(value) ? ret.join("") : ret;
+}
+
+export const sort: {
+  <V>(
+    environment: Environment<false>,
+    iterable: Iterable<V>,
+    reverse?: boolean,
+    caseSensitive?: boolean,
+    attribute?: string | number | null,
+  ): V[];
+  <V>(
+    environment: Environment<true>,
+    iterable: Iterable<V> | AsyncIterable<V>,
+    reverse?: boolean,
+    caseSensitive?: boolean,
+    attribute?: string | number | null,
+  ): Promise<V[]>;
+  (
+    environment: Environment<false>,
+    iterable: string,
+    reverse?: boolean,
+    caseSensitive?: boolean,
+    attribute?: string | number | null,
+  ): string;
+  (
+    environment: Environment<true>,
+    iterable: string,
+    reverse?: boolean,
+    caseSensitive?: boolean,
+    attribute?: string | number | null,
+  ): Promise<string>;
+  (
+    environment: Environment<false>,
+    iterable: unknown,
+    reverse?: boolean,
+    caseSensitive?: boolean,
+    attribute?: string | number | null,
+  ): unknown[];
+  (
+    environment: Environment<true>,
+    iterable: unknown,
+    reverse?: boolean,
+    caseSensitive?: boolean,
+    attribute?: string | number | null,
+  ): Promise<unknown[]>;
+} = nunjucksFunction(["value", "reverse", "case_sensitive", "attribute"], {
+  passArg: "environment",
+})(function sort(
+  environment: Environment,
+  value: any,
+  reverse: boolean = false,
+  caseSensitive: boolean = false,
+  attribute: string | number | null = null,
+): any {
+  return (environment.isAsync() ? asyncSort : syncSort)(
+    environment,
+    value,
+    reverse,
+    caseSensitive,
+    attribute,
+  );
+});
+
 export function upper(str: unknown): string {
   str = normalize(str, "");
   return `${str}`.toUpperCase();
@@ -905,7 +1010,7 @@ export default {
   // select,
   // selectattr,
   slice,
-  // sort,
+  sort,
   string,
   // striptags,
   sum,

@@ -1,5 +1,5 @@
 import { Environment } from "@nunjucks/environment";
-import { markSafe } from "@nunjucks/runtime";
+import { markSafe, str } from "@nunjucks/runtime";
 import { describe, expect } from "@jest/globals";
 
 class Magic {
@@ -8,7 +8,7 @@ class Magic {
     this.value = value;
   }
   toString() {
-    return `${this.value}`;
+    return str(this.value);
   }
 }
 
@@ -20,7 +20,7 @@ class Magic2 {
     this.value2 = value2;
   }
   toString() {
-    return `${this.value1},${this.value2}`;
+    return `(${str(this.value1)},${str(this.value2)})`;
   }
 }
 
@@ -489,7 +489,7 @@ describe("filters", () => {
     ]);
   });
 
-  describe.skip("sort", () => {
+  describe("sort", () => {
     it("sort1", () => {
       const tmpl = env.fromString(
         "{{ [2, 3, 1]|sort }}|{{ [2, 3, 1]|sort(true) }}",
@@ -497,7 +497,7 @@ describe("filters", () => {
       expect(tmpl.render()).toBe("[1, 2, 3]|[3, 2, 1]");
     });
     it("sort2", () => {
-      const tmpl = env.fromString('{{ "".join(["c", "A", "b", "D"]|sort) }}');
+      const tmpl = env.fromString('{{ ["c", "A", "b", "D"].join("")|sort }}');
       expect(tmpl.render()).toBe("AbcD");
     });
     it("sort3", () => {
@@ -511,7 +511,7 @@ describe("filters", () => {
     });
     it("sort5", () => {
       const tmpl = env.fromString(`{{ items|sort(attribute='value.0')|join }}`);
-      const items = [3, 2, 4, 1].map((v) => new Magic(v));
+      const items = [[3], [2], [4], [1]].map((v) => new Magic(v));
       expect(tmpl.render({ items })).toBe("[1][2][3][4]");
     });
     it("sort6", () => {
@@ -547,10 +547,10 @@ describe("filters", () => {
         `{{ items|sort(attribute='value1.0,value2.0')|join }}`,
       );
       const items = [
-        [3, 1],
-        [2, 2],
-        [2, 1],
-        [2, 5],
+        [[3], [1]],
+        [[2], [2]],
+        [[2], [1]],
+        [[2], [5]],
       ].map(([x, y]) => new Magic2(x, y));
       expect(
         tmpl.render({
