@@ -744,7 +744,7 @@ describe("filters", () => {
     );
   });
 
-  it.skip("forceescape", () => {
+  it("forceescape", () => {
     const tmpl = env.fromString("{{ x|forceescape }}");
     expect(tmpl.render({ x: markSafe("<div />") })).toBe("&lt;div /&gt;");
   });

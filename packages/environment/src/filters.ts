@@ -211,13 +211,10 @@ export function first<T>(arr: T[]): T {
   return arr[0];
 }
 
-// TODO
-export const forceescape = escape;
-
-// function forceescape(str: unknown) {
-//   str = str === null || str === undefined ? "" : str;
-//   return r.markSafe(lib.escape(str.toString()));
-// }
+export function forceescape(value: unknown): MarkupType {
+  value = value ?? "";
+  return escape(`${str(value)}`);
+}
 
 /**
  * Return a copy of the string with each line indented by 4 spaces. The
@@ -988,7 +985,7 @@ export default {
   escape,
   first,
   float,
-  // forceescape,
+  forceescape,
   // format,
   // groupBy,
   indent,
