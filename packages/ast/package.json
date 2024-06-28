@@ -29,7 +29,7 @@
     "@nunjucks/environment": "workspace:*"
   },
   "devDependencies": {
-    "@pregenerator/ast-types": "1.1.1",
+    "@pregenerator/ast-types": "1.1.2",
     "@types/node": "^20.12.2",
     "@types/prettier": "^2.4.3",
     "ast-types": "^0.14.2",

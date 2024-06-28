@@ -2971,7 +2971,7 @@ __metadata:
   resolution: "@nunjucks/ast@workspace:packages/ast"
   dependencies:
     "@nunjucks/environment": "workspace:*"
-    "@pregenerator/ast-types": 1.1.1
+    "@pregenerator/ast-types": 1.1.2
     "@types/node": ^20.12.2
     "@types/prettier": ^2.4.3
     ast-types: ^0.14.2
@@ -2987,8 +2987,8 @@ __metadata:
   dependencies:
     "@babel/generator": ^7.18.7
     "@nunjucks/environment": "workspace:*"
-    "@pregenerator/ast-types": ^1.1.1
-    "@pregenerator/template": ^1.1.1
+    "@pregenerator/ast-types": 1.1.2
+    "@pregenerator/template": 1.1.2
     "@types/babel__generator": ^7.6.4
     rimraf: ~3.0.2
     typescript: ^5.4.3
@@ -3203,7 +3203,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@pregenerator/ast-types@npm:1.1.1, @pregenerator/ast-types@npm:^1.1.1":
+"@pregenerator/ast-types@npm:1.1.2":
+  version: 1.1.2
+  resolution: "@pregenerator/ast-types@npm:1.1.2"
+  checksum: f725ceba21ae65bd49cc18f67cb9498e3c527681fd59e3940abb0cae009b70dcfcce9d9c84200635cdd60f3df8a808bd47eba1b33c0b6caec2c7564069105fe6
+  languageName: node
+  linkType: hard
+
+"@pregenerator/ast-types@npm:^1.1.1":
   version: 1.1.1
   resolution: "@pregenerator/ast-types@npm:1.1.1"
   checksum: ceb5f702f3fe9aa9ccb867156de4fc0842aeb706b1e039cebdc5b849222f0d4782f9210511c832eb525fd9f4b0533efa4cf544047844764d6359236fa6636053
@@ -3220,15 +3227,15 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@pregenerator/template@npm:^1.1.1":
-  version: 1.1.1
-  resolution: "@pregenerator/template@npm:1.1.1"
+"@pregenerator/template@npm:1.1.2":
+  version: 1.1.2
+  resolution: "@pregenerator/template@npm:1.1.2"
   dependencies:
     "@pregenerator/ast-types": ^1.1.1
     "@pregenerator/parser": ^1.1.1
     acorn: ^8.3.0
     astring: ^1.7.5
-  checksum: a29ef4473bdb2fac14e25d153138b7aa30b140f5b96fde7c5f59233744f35ebf3e279d6dbf6299a92fd19369321c7ca98e1135ec9c2a3da9ff2254d89526e2a1
+  checksum: 45f31eccadd77f1ecaa6aa72c3331cfcd253b9bdec916a22b59e0dd03fe6e1fdd7e9e2f9942cd8553c73e709542d792f3e6e3c46e02f10363ce070ebec740624
   languageName: node
   linkType: hard
 

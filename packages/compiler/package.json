@@ -27,8 +27,8 @@
   "dependencies": {
     "@babel/generator": "^7.18.7",
     "@nunjucks/environment": "workspace:*",
-    "@pregenerator/ast-types": "^1.1.1",
-    "@pregenerator/template": "^1.1.1"
+    "@pregenerator/ast-types": "1.1.2",
+    "@pregenerator/template": "1.1.2"
   },
   "devDependencies": {
     "@types/babel__generator": "^7.6.4",
