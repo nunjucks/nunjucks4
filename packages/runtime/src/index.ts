@@ -1,6 +1,7 @@
 import type { Environment } from "@nunjucks/environment";
 import { LoopContext } from "./loops";
 import type { IfAsync } from "./types";
+import unescape from "./unescape";
 import {
   isPlainObject,
   nunjucksFunction,
@@ -792,6 +793,54 @@ export class Markup extends String {
         args.map((arg) => escape(arg)),
       ),
     );
+  }
+
+  /**
+   * unescape the markup, remove tags, and normalize whitespace to single
+   * spaces.
+   */
+  striptags(): string {
+    let value = `${this}`;
+
+    // Look for comments then tags separately. Otherwise, a comment that
+    // contains a tag would end early, leaving some of the comment behind.
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      // keep finding comment start marks
+      const start = value.indexOf("<!--");
+      if (start === -1) break;
+
+      // ind a comment end mark beyond the start, otherwise stop
+      const end = value.indexOf("-->", start);
+
+      if (end === -1) break;
+
+      value = value.substring(0, start) + value.substring(end + 3);
+    }
+    // remove tags using the same method
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      // keep finding comment start marks
+      const start = value.indexOf("<");
+      if (start === -1) break;
+
+      // ind a comment end mark beyond the start, otherwise stop
+      const end = value.indexOf(">", start);
+
+      if (end === -1) break;
+
+      value = value.substring(0, start) + value.substring(end + 1);
+    }
+    // collapse spaces
+    value = value
+      .trim()
+      .split(/[\s\n]+/g)
+      .join(" ");
+    return new Markup(value).unescape();
+  }
+
+  unescape(): string {
+    return unescape(`${this}`);
   }
 }
 const INFINITY = 1 / 0;

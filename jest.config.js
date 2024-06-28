@@ -7,6 +7,7 @@ module.exports = {
     "<rootDir>/packages/**/__tests__/**/*.{js,ts}",
     "<rootDir>/packages/**/*.{spec,test}.{js,ts}",
   ],
+  preset: "ts-jest/presets/js-with-ts",
   testPathIgnorePatterns: ["/node_modules/"],
   transform: {
     "^.+\\.tsx?$": [
@@ -14,9 +15,13 @@ module.exports = {
       {
         useESM: true,
         isolatedModules: true,
+        tsconfig: {
+          allowJs: true,
+        },
       },
     ],
   },
+  transformIgnorePatterns: ["<rootDir>/node_modules/(?!character-entities)"],
   moduleNameMapper: {
     "^@nunjucks/(.*)$": "<rootDir>/packages/$1/src/index.ts",
   },

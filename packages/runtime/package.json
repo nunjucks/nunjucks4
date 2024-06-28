@@ -28,5 +28,8 @@
     "@nunjucks/environment": "workspace:*",
     "rimraf": "~3.0.2",
     "typescript": "^5.4.3"
+  },
+  "dependencies": {
+    "character-entities": "^1.2.4"
   }
 }

@@ -14,6 +14,7 @@ import {
   isString,
   isIterable,
   isAsyncIterable,
+  Markup,
 } from "@nunjucks/runtime";
 import { TemplateError } from "@nunjucks/utils";
 import { Environment } from "./environment";
@@ -969,6 +970,10 @@ export const xmlattr = nunjucksFunction(["d", "autospace"], {
   return rv;
 });
 
+function striptags(value: string | MarkupType): string {
+  return new Markup(str(value)).striptags();
+}
+
 export default {
   abs,
   // attr,
@@ -1010,7 +1015,7 @@ export default {
   slice,
   sort,
   string,
-  // striptags,
+  striptags,
   sum,
   // title,
   trim,

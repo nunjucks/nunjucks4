@@ -3035,6 +3035,7 @@ __metadata:
   resolution: "@nunjucks/runtime@workspace:packages/runtime"
   dependencies:
     "@nunjucks/environment": "workspace:*"
+    character-entities: ^1.2.4
     rimraf: ~3.0.2
     typescript: ^5.4.3
   languageName: unknown
@@ -5048,6 +5049,13 @@ __metadata:
   version: 1.0.2
   resolution: "char-regex@npm:1.0.2"
   checksum: b563e4b6039b15213114626621e7a3d12f31008bdce20f9c741d69987f62aeaace7ec30f6018890ad77b2e9b4d95324c9f5acfca58a9441e3b1dcdd1e2525d17
+  languageName: node
+  linkType: hard
+
+"character-entities@npm:^1.2.4":
+  version: 1.2.4
+  resolution: "character-entities@npm:1.2.4"
+  checksum: e1545716571ead57beac008433c1ff69517cd8ca5b336889321c5b8ff4a99c29b65589a701e9c086cda8a5e346a67295e2684f6c7ea96819fe85cbf49bf8686d
   languageName: node
   linkType: hard
 

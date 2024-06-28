@@ -119,7 +119,7 @@ describe("filters", () => {
     });
   });
 
-  it.skip("striptags", () => {
+  it("striptags", () => {
     const tmpl = env.fromString("{{ foo|striptags }}");
     const foo = [
       '  <p>just a small   \n <a href="#">',
