@@ -40,14 +40,14 @@ describe("filters", () => {
     const tmpl = env.fromString('{{ "foo"|center(9) }}');
     expect(tmpl.render()).toBe("   foo   ");
   });
-  it.skip("default", () => {
+  it("default", () => {
     const tmpl = env.fromString(
       [
         "{{ missing|default('no') }}|{{ false|default('no') }}|",
         "{{ false|default('no', true) }}|{{ given|default('no') }}",
       ].join(""),
     );
-    expect(tmpl.render({ given: "yes" })).toBe("no|False|no|yes");
+    expect(tmpl.render({ given: "yes" })).toBe("no|false|no|yes");
   });
 
   it.each`

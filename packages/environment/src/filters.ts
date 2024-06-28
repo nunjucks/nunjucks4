@@ -147,13 +147,11 @@ function center(s: string, width = 80): string {
 
 exports.center = center;
 
-export function default_<T, U>(val: T, def: U, bool?: boolean): T | U {
-  if (bool) {
-    return isUndefinedInstance(val) ? def : val || def;
-  } else {
-    return val !== undefined && !isUndefinedInstance(val) ? val : def;
-  }
-}
+export const default_ = nunjucksFunction(["value", "default_value", "boolean"])(
+  function default_<T, U>(val: T, def: U, bool?: boolean): T | U {
+    return isUndefinedInstance(val) || (bool && !val) ? def : val;
+  },
+);
 
 export const dictsort = nunjucksFunction([
   "value",
