@@ -98,22 +98,6 @@ export class LoopContext<
     this._isAsync = async;
     this._iterator = this._toIterator(iterable);
 
-    //
-    //     if (async) {
-    //       this[Symbol.iterator] = () => this;
-    //     }
-
-    // return new Proxy(this, {
-    //   apply(target, thisArg, argArray) {
-    //     // TODO: throw error for wrong args
-    //     const iterable = argArray[0];
-    //     if (!target._recurse) {
-    //       throw new Error("function call on non-recursive LoopContext");
-    //     }
-    //     debugger;
-    //     return target._recurse(iterable, target._recurse, target.depth);
-    //   },
-    // });
     return Object.setPrototypeOf(LoopContextFunc.bind(this), this);
   }
 
@@ -145,59 +129,15 @@ export class LoopContext<
         }
           .call(this)
           [Symbol.iterator]();
-    // if (this._isAsync && Symbol.asyncIterator in iterable) {
-    //   return (iterable as any)[Symbol.asyncIterator]() as AsyncIterator<
-    //     UnwrapPromise<V>
-    //   > as IfAsync<
-    //     IsAsync,
-    //     AsyncIterator<UnwrapPromise<V>>,
-    //     Iterator<UnwrapPromise<V>>
-    //   >;
-    // }
-    // if (!(Symbol.iterator in iterable)) {
-    //   throw new Error(
-    //     "If async is false, iterable must have synchronous @@iterator"
-    //   );
-    // }
-    // return (iterable as any)[Symbol.iterator]() as Iterator<V> as IfAsync<
-    //   IsAsync,
-    //   Iterator<UnwrapPromise<V>>,
-    //   Iterator<V>
-    // >;
   }
 
   [Symbol.iterator]() {
     return this;
-    // if (!this._isAsync) {
-    //   // const iterator = this._toIterator(this._iterable);
-    //   return function* iterwrap() {
-    //     for (const item of this._iterable) {
-    //       yield [item, this];
-    //     }
-    //   }
-    //     .call(this)
-    //     [Symbol.iterator]();
-    // } else {
-    //   throw new Error("async LoopContext must be iterated over async");
-    // }
   }
 
   [Symbol.asyncIterator]() {
     return this;
-    // return async function* iterwrap() {
-    //   for await (const item of this._iterable) {
-    //     yield [item, this];
-    //   }
-    // }
-    //   .call(this)
-    //   [Symbol.asyncIterator]();
-    // return this._toIterator(this._iterable);
-    // return this;
   }
-
-  // [Symbol.iterator]() {
-  //   return this;
-  // }
 
   async _getLengthAsync(): Promise<number> {
     if (this._length !== null) return this._length;
