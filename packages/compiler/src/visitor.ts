@@ -1221,12 +1221,21 @@ export class CodeGenerator<IsAsync extends boolean> {
       visitCondExpr(path, state) {
         const { node } = path;
         const { self } = state;
+        const frame = state.frame.soft();
         // test consequent alternate
-        const consequent = self.visitExpression(path.get("expr1"), state);
-        const test = runtimeTest(self.visitExpression(path.get("test"), state));
+        const consequent = self.visitExpression(path.get("expr1"), {
+          ...state,
+          frame,
+        });
+        const test = runtimeTest(
+          self.visitExpression(path.get("test"), { ...state, frame }),
+        );
         let alternate: n.Expression;
         if (node.expr2) {
-          alternate = self.visitExpression(path.get("expr2"), state);
+          alternate = self.visitExpression(path.get("expr2"), {
+            ...state,
+            frame,
+          });
         } else {
           const pos = self.position(node);
           alternate = ast.expression`undef(%%err%%)`({

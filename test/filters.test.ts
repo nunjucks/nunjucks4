@@ -1011,7 +1011,7 @@ describe("filters", () => {
       );
     });
 
-    it.skip("inside condexpr", () => {
+    it("inside condexpr", () => {
       const t1 = env.fromString("{{ x|f if x is defined else 'foo' }}");
       const t2 = env.fromString("{{ 'foo' if x is not defined else x|f }}");
       expect(t1.render()).toBe("foo");
