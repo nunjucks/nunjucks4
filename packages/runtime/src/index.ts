@@ -985,6 +985,10 @@ export class TemplateRuntimeError extends Error {
   name = "TemplateRuntimeError";
 }
 
+export class FilterArgumentError extends TemplateRuntimeError {
+  name = "FilterArgumentError";
+}
+
 type Namespace = Record<string, any> & { __isNamespace: true };
 
 export const namespace = nunjucksFunction(["__init"], { kwargs: true })(

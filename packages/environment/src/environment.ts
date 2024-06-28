@@ -54,10 +54,6 @@ const DEFAULT_NAMESPACE: Record<string, any> = {
   joiner,
 };
 
-const PASS_ARG_EVAL_CONTEXT = Symbol.for("PASS_ARG_EVAL_CONTEXT");
-const PASS_ARG_CONTEXT = Symbol.for("PASS_ARG_CONTEXT");
-const PASS_ARG_ENVIRONMENT = Symbol.for("PASS_ARG_ENVIRONMENT");
-
 // const nativeFunc = "[native code] }";
 // const nativeFuncLength = nativeFunc.length;
 //
@@ -326,23 +322,23 @@ export class Environment<
       ? ret.bind(obj)
       : ret;
   }
-  _filterTestCommon({
-    name,
-    value,
-    args = [],
-    kwargs = {},
-    context,
-    evalCtx,
-    isFilter,
-  }: {
-    name: string | Undefined;
-    value: any;
-    args?: any[];
-    kwargs?: Record<string, any>;
-    context?: Context<IsAsync>;
-    evalCtx?: EvalContext<IsAsync>;
-    isFilter: boolean;
-  }): any {
+  _filterTestCommon(
+    name: string | Undefined,
+    value: any,
+    {
+      args = [],
+      kwargs = {},
+      context,
+      evalCtx,
+      isFilter,
+    }: {
+      args?: any[];
+      kwargs?: Record<string, any>;
+      context?: Context<IsAsync>;
+      evalCtx?: EvalContext<IsAsync>;
+      isFilter: boolean;
+    },
+  ): any {
     const envMap = isFilter ? this.filters : this.tests;
     const typeName = isFilter ? "filter" : "test";
     const func = name instanceof Undefined ? undefined : envMap[name];
@@ -358,16 +354,16 @@ export class Environment<
       throw new TemplateRuntimeError(msg);
     }
     args = [value, ...args];
-    if (hasOwn(func, "___nunjucksPassArg")) {
-      const passArg = func.___nunjucksPassArg;
-      if (passArg === PASS_ARG_CONTEXT) {
+    if (hasOwn(func, "__nunjucksPassArg")) {
+      const passArg = func.__nunjucksPassArg;
+      if (passArg === "context") {
         if (!context) {
           throw new TemplateRuntimeError(
             `Attempted to invoke a context ${typeName} without context`,
           );
         }
         args.unshift(context);
-      } else if (passArg === PASS_ARG_EVAL_CONTEXT) {
+      } else if (passArg === "evalContext") {
         if (!evalCtx) {
           if (context) {
             evalCtx = context.evalCtx;
@@ -376,7 +372,7 @@ export class Environment<
           }
         }
         args.unshift(evalCtx);
-      } else if (passArg === PASS_ARG_ENVIRONMENT) {
+      } else if (passArg === "environment") {
         args.unshift(this);
       }
     }
@@ -387,6 +383,59 @@ export class Environment<
     }
   }
 
+  /**
+   * Invoke a filter on a value the same way the compiler does.
+   */
+  callFilter(
+    name: string,
+    value: unknown,
+    {
+      args = [],
+      kwargs = {},
+      context,
+      evalCtx,
+    }: {
+      args?: any[];
+      kwargs?: Record<string, any>;
+      context?: Context<IsAsync>;
+      evalCtx?: EvalContext<IsAsync>;
+    } = {},
+  ): any {
+    return this._filterTestCommon(name, value, {
+      args: Object.assign(args, { __isVarargs: true }),
+      kwargs: { ...kwargs, __isKwargs: true },
+      context,
+      evalCtx,
+      isFilter: true,
+    });
+  }
+
+  /**
+   * Invoke a test on a value the same way the compiler does.
+   */
+  callTest(
+    name: string,
+    value: unknown,
+    {
+      args = [],
+      kwargs = {},
+      context,
+      evalCtx,
+    }: {
+      args?: any[];
+      kwargs?: Record<string, any>;
+      context?: Context<IsAsync>;
+      evalCtx?: EvalContext<IsAsync>;
+    } = {},
+  ): any {
+    return this._filterTestCommon(name, value, {
+      args: Object.assign(args, { __isVarargs: true }),
+      kwargs: { ...kwargs, __isKwargs: true },
+      context,
+      evalCtx,
+      isFilter: false,
+    });
+  }
   get lexer(): Lexer {
     return getLexer(this.parserOpts);
   }

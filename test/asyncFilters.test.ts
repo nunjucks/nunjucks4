@@ -91,4 +91,37 @@ describe("filters in async environment", () => {
       expect(await tmpl.render({ users })).toBe("foo, bar");
     });
   });
+
+  describe("map", () => {
+    it("simple", async () => {
+      const items = asyncGen(["1", "2", "3"]);
+      const tmpl = env.fromString('{{ items()|map("int")|sum }}');
+      expect(await tmpl.render({ items: () => Promise.resolve(items) })).toBe(
+        "6",
+      );
+    });
+
+    it("map sum", async () => {
+      const tmpl = env.fromString(
+        '{{ [[1,2], [3], [4,5,6]]|map("sum")|list }}',
+      );
+      expect(await tmpl.render()).toBe("[3, 3, 15]");
+    });
+
+    it("attribute argument", async () => {
+      const users = () =>
+        Promise.resolve(
+          asyncGen(["john", "jane", "mike"].map((name) => ({ name }))),
+        );
+      const tmpl = env.fromString(
+        '{{ users()|map(attribute="name")|join("|") }}',
+      );
+      expect(await tmpl.render({ users })).toBe("john|jane|mike");
+    });
+
+    it("empty map", async () => {
+      const tmpl = env.fromString('{{ none|map("upper")|list }}');
+      expect(await tmpl.render()).toBe("[]");
+    });
+  });
 });

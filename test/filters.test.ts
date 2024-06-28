@@ -781,7 +781,7 @@ describe("filters", () => {
     expect(values).toStrictEqual(results);
   });
 
-  describe.skip("map", () => {
+  describe("map", () => {
     it("simple", () => {
       const tmpl = env.fromString('{{ ["1", "2", "3"]|map("int")|sum }}');
       expect(tmpl.render()).toBe("6");
@@ -834,11 +834,11 @@ describe("filters", () => {
         '{{ users|map(attribute="lastname", default="")|join(", ") }}',
       );
 
-      expect(tmpl.render({ users })).toBe("lennon, edwards, None, smith");
+      expect(tmpl.render({ users })).toBe("lennon, edwards, null, smith");
       expect(test_list.render({ users })).toBe(
         "lennon, edwards, null, ['smith', 'x']",
       );
-      expect(test_str.render({ users })).toBe("lennon, edwards, None, ");
+      expect(test_str.render({ users })).toBe("lennon, edwards, null, ");
     });
   });
 

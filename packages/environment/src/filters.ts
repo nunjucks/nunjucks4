@@ -15,6 +15,8 @@ import {
   isIterable,
   isAsyncIterable,
   Markup,
+  Context,
+  FilterArgumentError,
   Float,
 } from "@nunjucks/runtime";
 import { TemplateError } from "@nunjucks/utils";
@@ -792,6 +794,129 @@ export const sort: {
   );
 });
 
+function prepareMap(
+  context: Context<boolean>,
+  {
+    args = [],
+    kwargs: { attribute = null, default: default_ = null, ...kwargs } = {},
+  }: {
+    args?: any[];
+    kwargs?: Record<string, any>;
+  },
+): (val: any) => any {
+  if (!args.length && attribute !== null) {
+    const kwargKeys = [...Object.keys(kwargs)];
+    if (kwargKeys.length) {
+      throw new FilterArgumentError(
+        `Unexpected keyword argument '${kwargKeys[0]}'`,
+      );
+    }
+    return makeAttrGetter(context.environment, attribute, {
+      default: default_,
+    });
+  } else {
+    if (!args.length)
+      throw new FilterArgumentError("map requires a filter argument");
+
+    const name = args.shift();
+
+    return (item: any): any =>
+      context.environment.callFilter(name, item, { args, kwargs, context });
+  }
+}
+
+/**
+ * Applies a filter on a sequence of objects or looks up an attribute.
+ * This is useful when dealing with lists of objects but you are really
+ * only interested in a certain value of it.
+ *
+ * The basic usage is mapping on an attribute.  Imagine you have a list
+ * of users but you are only interested in a list of usernames:
+ *
+ * ```jinja
+ * Users on this page: {{ users|map(attribute='username')|join(', ') }}
+ * ```
+ *
+ * You can specify a `default` value to use if an object in the list
+ * does not have the given attribute.
+ *
+ * ```jinja
+ * {{ users|map(attribute="username", default="Anonymous")|join(", ") }}
+ * ```
+ *
+ * Alternatively you can let it invoke a filter by passing the name of the
+ * filter and the arguments afterwards.  A good example would be applying a
+ * text conversion filter on a sequence:
+ *
+ * ```jinja
+ * Users on this page: {{ titles|map('lower')|join(', ') }}
+ * ```
+ */
+function* syncDoMap(
+  context: Context<boolean>,
+  value: Iterable<any>,
+  { args = [], kwargs = {} }: { args: any[]; kwargs: Record<string, any> },
+): Generator<any> {
+  let func: ((val: any) => any) | null = null;
+  if (value) {
+    for (const item of value) {
+      if (func === null) {
+        func = prepareMap(context, { args, kwargs });
+      }
+      yield func(item);
+    }
+  }
+}
+
+async function* asyncDoMap(
+  context: Context<boolean>,
+  value: Iterable<any> | AsyncIterable<any>,
+  { args = [], kwargs = {} }: { args: any[]; kwargs: Record<string, any> },
+) {
+  let func: ((val: any) => any) | null = null;
+  if (value) {
+    for await (const item of value) {
+      if (func === null) {
+        func = prepareMap(context, { args, kwargs });
+      }
+      yield await func(item);
+    }
+  }
+}
+
+export const map: {
+  (
+    context: Context<false>,
+    value: Iterable<any>,
+    kwargs?: Record<string, any>,
+    ...args: any[]
+  ): Generator<any>;
+  (
+    context: Context<true>,
+    value: Iterable<any> | AsyncIterable<any>,
+    kwargs?: Record<string, any>,
+    ...args: any[]
+  ): AsyncGenerator<any>;
+} = nunjucksFunction(["value"], {
+  passArg: "context",
+  kwargs: true,
+  varargs: true,
+})(function map(
+  context: Context<boolean>,
+  value: any,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  { __isKwargs, name, ...kwargs } = {},
+  ...args
+): any {
+  if (typeof name !== "undefined") {
+    args.unshift(name);
+  }
+  return (context.isAsync() ? asyncDoMap : syncDoMap)(context, value, {
+    args,
+    kwargs,
+  });
+});
+
 export function upper(str: unknown): string {
   str = normalize(str, "");
   return `${str}`.toUpperCase();
@@ -1032,7 +1157,7 @@ export default {
   list,
   lower,
   items,
-  // map
+  map,
   // min,
   // max,
   // pprint,
