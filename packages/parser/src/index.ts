@@ -226,12 +226,14 @@ export class Parser {
     withNamespace?: boolean;
   }): t.Name | t.Tuple | t.NSRef;
 
+  parseAssignTarget(): t.Tuple;
+
   parseAssignTarget({
     withTuple,
     nameOnly,
     extraEndRules,
     withNamespace,
-  }?: {
+  }: {
     withTuple?: boolean;
     nameOnly?: boolean;
     extraEndRules?: string[];
