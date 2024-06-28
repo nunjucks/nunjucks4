@@ -715,7 +715,7 @@ function syncSort(
 ): unknown[] | string {
   const arr = syncList(value);
   const ret = doSort(environment, arr, reverse, caseSensitive, attribute);
-  return isString(value) ? ret.join("") : ret;
+  return isString(value) ? copySafeness(value, ret.join("")) : ret;
 }
 
 async function asyncSort(
