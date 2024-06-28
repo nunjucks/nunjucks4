@@ -15,6 +15,7 @@ import {
   isIterable,
   isAsyncIterable,
   Markup,
+  Float,
 } from "@nunjucks/runtime";
 import { TemplateError } from "@nunjucks/utils";
 import { Environment } from "./environment";
@@ -428,8 +429,8 @@ function replaceCount(
   const originalStr = str;
 
   // Cast numbers in the replacement to string
-  if (typeof str === "number") {
-    str = "" + (str as number);
+  if (typeof str === "number" || (str as any) instanceof Number) {
+    str = "" + (str as unknown as number);
   }
 
   // If by now, we don't have a string, throw it back
@@ -449,7 +450,7 @@ function replaceCount(
   }
 
   // Cast Numbers in the search term to string
-  if (typeof old === "number") {
+  if (typeof old === "number" || (old as any) instanceof Number) {
     old = "" + old;
   } else if (typeof old !== "string") {
     // If it is something other than number or string,
@@ -892,11 +893,6 @@ export function wordcount(string: unknown): number | null {
   return words ? words.length : null;
 }
 
-export function float(val: string, def: number): number {
-  const res = Number(val);
-  return isNaN(res) ? def : res;
-}
-
 function isArrayLike<T = unknown>(x: any): x is ArrayLike<T> {
   return x && typeof x.length === "number" && typeof x !== "function";
 }
@@ -971,6 +967,46 @@ function striptags(value: string | MarkupType): string {
   return new Markup(str(value)).striptags();
 }
 
+export const float = nunjucksFunction(["value", "default"])(function float(
+  value: unknown,
+  default_: number = 0,
+): Float {
+  if (typeof value === "string") {
+    value = value.replace(/_/g, "");
+  }
+  const ret = Number(value);
+  return new Float(isNaN(ret) ? default_ : ret);
+});
+
+export const int = nunjucksFunction(["value", "default", "base"])(function int(
+  value: unknown,
+  default_: number = 0,
+  base: number = 10,
+): number {
+  if (typeof value === "string") {
+    let s = value.replace(/_/g, "");
+    if (base === 2) {
+      if (!s.startsWith("0b") && !s.startsWith("0B")) s = `0b${s}`;
+      base = 10;
+    }
+    if (base === 8) {
+      if (!s.startsWith("0o") && !s.startsWith("0O")) s = `0o${s}`;
+      base = 10;
+    }
+    if (base === 16) {
+      if (!s.startsWith("0x") && !s.startsWith("0X")) s = `0x${s}`;
+      base = 10;
+    }
+    value = s;
+  }
+  const ret =
+    base === 10
+      ? Number(float(value, NaN).toFixed(0))
+      : parseInt(`${value}`, base);
+
+  return isNaN(ret) ? default_ : ret;
+});
+
 export default {
   abs,
   // attr,
@@ -989,7 +1025,7 @@ export default {
   // format,
   // groupBy,
   indent,
-  // int,
+  int,
   join,
   last,
   length,

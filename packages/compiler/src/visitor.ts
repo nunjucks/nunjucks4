@@ -895,8 +895,8 @@ export class CodeGenerator<IsAsync extends boolean> {
       },
       visitConst(path) {
         const { node } = path;
-        if (typeof node.value === "number") {
-          return b.numericLiteral(node.value);
+        if (typeof node.value === "number" || node.value instanceof Number) {
+          return b.numericLiteral(node.value as number);
         } else if (typeof node.value === "string") {
           return b.stringLiteral(node.value);
         } else if (typeof node.value === "boolean") {

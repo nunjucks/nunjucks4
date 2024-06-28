@@ -4,6 +4,7 @@ import {
   isMarkup,
   isUndefinedInstance,
   nunjucksFunction,
+  Float,
 } from "@nunjucks/runtime";
 import type { Environment } from "./environment";
 
@@ -64,11 +65,17 @@ export function true_(value: unknown): value is true {
 }
 
 export function integer(value: unknown): value is number | BigInt {
-  return Number.isInteger(value) || typeof value === "bigint";
+  return (
+    (Number.isInteger(value) && !(value instanceof Float)) ||
+    typeof value === "bigint"
+  );
 }
 
 export function float(value: unknown): value is number {
-  return typeof value === "number" && !Number.isInteger(value);
+  return (
+    value instanceof Float ||
+    (typeof value === "number" && !Number.isInteger(value))
+  );
 }
 
 export function string(obj: unknown): obj is string {
@@ -96,7 +103,11 @@ export function mapping(
 }
 
 export function number(value: unknown): value is number | BigInt {
-  return typeof value === "number" || typeof value === "bigint";
+  return (
+    typeof value === "number" ||
+    value instanceof Number ||
+    typeof value === "bigint"
+  );
 }
 
 export function sequence(

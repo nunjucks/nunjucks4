@@ -1077,6 +1077,17 @@ export async function asyncIncludes(
   }
 }
 
+export class Float extends Number {
+  toString(radix?: number | undefined) {
+    const s = super.toString(radix);
+    if (radix !== undefined && radix !== 10) return s;
+    if (Number(s) === Number(Number(s).toFixed(0))) {
+      return this.toFixed(1);
+    }
+    return s;
+  }
+}
+
 export default {
   str,
   call,
