@@ -1,3 +1,5 @@
+import { str } from ".";
+
 // eslint-disable-next-line @typescript-eslint/ban-types
 export function isPlainObject(obj: any): obj is object {
   if (typeof obj !== "object" || obj === null) return false;
@@ -121,4 +123,24 @@ export function nunjucksFunction(
     if (options.passArg) wrapper.__nunjucksPassArg = options.passArg;
     return wrapper;
   };
+}
+
+export function toAscii(obj: string) {
+  const res = str(obj);
+  let res1 = "";
+  for (let i = 0; i < res.length; i++) {
+    const cp = res.charCodeAt(i);
+    if (cp < 128) {
+      res1 += res.charAt(i);
+    } else if (cp < 256) {
+      res1 += "\\x" + cp.toString(16);
+    } else {
+      let s = cp.toString(16);
+      if (s.length % 2 == 1) {
+        s = "0" + s;
+      }
+      res1 += "\\u" + s;
+    }
+  }
+  return res1;
 }

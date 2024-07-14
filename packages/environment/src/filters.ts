@@ -18,6 +18,7 @@ import {
   Context,
   FilterArgumentError,
   Float,
+  strMod,
 } from "@nunjucks/runtime";
 import { TemplateError } from "@nunjucks/utils";
 import { Environment } from "./environment";
@@ -1132,6 +1133,20 @@ export const int = nunjucksFunction(["value", "default", "base"])(function int(
   return isNaN(ret) ? default_ : ret;
 });
 
+const format = nunjucksFunction(["value"], { kwargs: true, varargs: true })(
+  function format(
+    value: string,
+    kwargs: Record<string, any> = {},
+    ...args: any[]
+  ): string {
+    if (args.length) {
+      return strMod(value, ...args);
+    } else {
+      return strMod(value, kwargs);
+    }
+  },
+);
+
 export default {
   abs,
   // attr,
@@ -1147,7 +1162,7 @@ export default {
   first,
   float,
   forceescape,
-  // format,
+  format,
   // groupBy,
   indent,
   int,

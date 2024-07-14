@@ -1,4 +1,5 @@
 import type { Environment } from "@nunjucks/environment";
+import { KeyError, UndefinedError, TemplateRuntimeError } from "./exceptions";
 import { LoopContext } from "./loops";
 import type { IfAsync } from "./types";
 import unescape from "./unescape";
@@ -15,6 +16,8 @@ import arrayFromAsync from "./arrayFromAsync";
 
 import { Macro } from "./macro";
 
+export * from "./exceptions";
+
 export type { IfAsync } from "./types";
 
 export { nunjucksFunction, isVarargs, isKwargs, hasOwn, identity };
@@ -22,10 +25,6 @@ export { nunjucksFunction, isVarargs, isKwargs, hasOwn, identity };
 export class Missing {}
 
 export const MISSING = Object.freeze(new Missing());
-
-export class UndefinedError extends Error {
-  name = "UndefinedError";
-}
 
 export interface UndefinedOpts {
   hint?: string | null;
@@ -165,8 +164,6 @@ export function isUndefinedInstance(obj: unknown): obj is Undefined {
 export type Block<IsAsync extends boolean> = IsAsync extends true
   ? (context: Context<IsAsync>) => AsyncGenerator<string> | Generator<string>
   : (context: Context<IsAsync>) => Generator<string>;
-
-export class KeyError extends Error {}
 
 function concat(values: unknown[]): string {
   return values.map((val) => `${val}`).join("");
@@ -981,14 +978,6 @@ export function setDelete<T>(set: Set<T>, ...values: T[]): void {
   values.forEach((value) => set.delete(value));
 }
 
-export class TemplateRuntimeError extends Error {
-  name = "TemplateRuntimeError";
-}
-
-export class FilterArgumentError extends TemplateRuntimeError {
-  name = "FilterArgumentError";
-}
-
 type Namespace = Record<string, any> & { __isNamespace: true };
 
 export const namespace = nunjucksFunction(["__init"], { kwargs: true })(
@@ -1126,3 +1115,6 @@ export default {
 };
 
 export { arrayFromAsync };
+
+import strMod from "./strModFormat";
+export { strMod };

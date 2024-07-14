@@ -179,9 +179,11 @@ describe("filters", () => {
     });
   });
 
-  it.skip("format", () => {
-    const tmpl = env.fromString("{{ '%s|%s'|format('a', 'b') }}");
+  it("format", () => {
+    let tmpl = env.fromString("{{ '%s|%s'|format('a', 'b') }}");
     expect(tmpl.render()).toBe("a|b");
+    tmpl = env.fromString("{{ '%(a)s|%(b)s'|format(a='A', b='B') }}");
+    expect(tmpl.render()).toBe("A|B");
   });
 
   describe("int", () => {
