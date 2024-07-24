@@ -1,4 +1,4 @@
-import { Environment } from "@nunjucks/environment";
+import type { Environment } from "@nunjucks/environment";
 import { EvalContext, markSafe, MISSING } from ".";
 import { isVarargs, isKwargs, PassArg } from "./utils";
 import type { IfAsync } from "./types";

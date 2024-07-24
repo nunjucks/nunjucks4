@@ -3,6 +3,7 @@
 
   "compilerOptions": {
     "baseUrl": ".",
+    "noEmit": true,
     "composite": true,
     "paths": {
       "nunjucks/*": ["packages/core/src/*"],

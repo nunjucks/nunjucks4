@@ -1,6 +1,5 @@
 {
   "compilerOptions": {
-    "outDir": "dist",
     "target": "esnext",
     "allowJs": true,
     "noImplicitAny": true,
@@ -9,7 +8,8 @@
     "downlevelIteration": true,
     "strictNullChecks": true,
     "forceConsistentCasingInFileNames": true,
-    "noEmit": true,
+    "noEmit": false,
+    "noEmitOnError": true,
     "esModuleInterop": true,
     "module": "commonjs",
     "moduleResolution": "node",
