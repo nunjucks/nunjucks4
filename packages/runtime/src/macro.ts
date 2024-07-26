@@ -1,7 +1,6 @@
-import type { Environment } from "@nunjucks/environment";
 import { EvalContext, markSafe, MISSING } from ".";
 import { isVarargs, isKwargs, PassArg } from "./utils";
-import type { IfAsync } from "./types";
+import type { IfAsync, IEnvironment as Environment } from "./types";
 
 /**
  * Wraps a macro function

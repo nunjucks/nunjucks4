@@ -20,8 +20,8 @@ import {
   Float,
   strMod,
 } from "@nunjucks/runtime";
+import type { IEnvironment as Environment } from "@nunjucks/runtime";
 import { TemplateError } from "@nunjucks/utils";
-import { Environment } from "./environment";
 
 function normalize<T>(value: T | null | undefined | false, defaultValue: T): T {
   if (value === null || value === undefined || value === false) {

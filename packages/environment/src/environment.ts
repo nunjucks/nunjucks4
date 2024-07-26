@@ -18,6 +18,7 @@ import {
   asyncSlice,
   range,
 } from "@nunjucks/runtime";
+import type { IEnvironment, RenderFunc } from "@nunjucks/runtime";
 import { types } from "@nunjucks/ast";
 import {
   parse,
@@ -28,12 +29,7 @@ import {
   Parser,
 } from "@nunjucks/parser";
 import { CodeGenerator } from "@nunjucks/compiler";
-import {
-  Template,
-  TemplateNotFound,
-  TemplatesNotFound,
-  RenderFunc,
-} from "./template";
+import { Template, TemplateNotFound, TemplatesNotFound } from "./template";
 // import { generate } from "astring";
 import generate from "@babel/generator";
 import type { Loader, AsyncLoader, SyncLoader } from "./loaders";
@@ -132,9 +128,10 @@ export interface TemplateInfo {
   filename?: string | null;
 }
 
-export class Environment<
-  IsAsync extends boolean = boolean,
-> extends EventEmitter {
+export class Environment<IsAsync extends boolean = boolean>
+  extends EventEmitter
+  implements IEnvironment<IsAsync>
+{
   autoescape: boolean | ((templateName?: string | null) => boolean);
   missing: Record<never, never>;
   async: IsAsync;

@@ -9,12 +9,24 @@ const isArray = builtInTypes.array;
 const isNumber = builtInTypes.number;
 const isString = builtInTypes.string;
 
-const assertIsArray: typeof isArray["assert"] = isArray.assert.bind(isArray);
-const assertIsNumber: typeof isNumber["assert"] =
+const assertIsArray: (typeof isArray)["assert"] = isArray.assert.bind(isArray);
+const assertIsNumber: (typeof isNumber)["assert"] =
   isNumber.assert.bind(isNumber);
 
-const assertIsString: typeof isString["assert"] =
+const assertIsString: (typeof isString)["assert"] =
   isString.assert.bind(isString);
+
+function isNodePathArray<T extends n.Node>(
+  o: NodePath<T, unknown>,
+): o is NodePath<T, any[]> {
+  return isArray.check(o.value);
+}
+
+function assertIsNodePathArray<T extends n.Node>(
+  o: NodePath<T, unknown>,
+): asserts o is NodePath<T, any[]> {
+  assertIsArray(o.value);
+}
 
 export type PathName = string | number;
 export type ChildCache = Record<PathName, NodePath>;
@@ -22,13 +34,11 @@ export type ChildCache = Record<PathName, NodePath>;
 export type MapCallback<T, U, V> = (this: T, childPath: U) => V;
 export type EachCallback<T, U> = MapCallback<T, U, void>;
 
-export interface NodePathConstructor {
-  new <N extends n.Node = n.Node, V = any>(
-    value: V,
-    parentPath?: any,
-    name?: PathName
-  ): NodePath<N, V>;
-}
+export type NodePathConstructor = new <N extends n.Node = n.Node, V = any>(
+  value: V,
+  parentPath?: any,
+  name?: PathName,
+) => NodePath<N, V>;
 
 const PRECEDENCE: any = {};
 [
@@ -54,7 +64,7 @@ type NodePathGetRetTKNumber<V, N extends n.Node> = V extends n.Node
 type NodePathGetRetTK<
   V,
   N extends n.Node,
-  K extends PropertyKey
+  K extends PropertyKey,
 > = K extends keyof N
   ? V extends n.Node
     ? NodePath<V, V, K>
@@ -63,15 +73,15 @@ type NodePathGetRetTK<
 type NodePathGetRetChildNodes<
   V,
   N extends n.Node,
-  K extends PropertyKey
+  K extends PropertyKey,
 > = K extends keyof N
   ? V extends n.Node
     ? NodePath<V, V, K>
     : V extends (infer L)[]
-    ? L extends n.Node
-      ? NodePath<L, L, number>
+      ? L extends n.Node
+        ? NodePath<L, L, number>
+        : never
       : never
-    : never
   : never;
 
 type NodePathGetRet<T extends n.Node, K extends PropertyKey> = K extends keyof T
@@ -79,22 +89,22 @@ type NodePathGetRet<T extends n.Node, K extends PropertyKey> = K extends keyof T
   : never;
 type NodePathListGetRetTK<
   V extends any[],
-  N extends n.Node
+  N extends n.Node,
 > = V extends (infer L)[] ? NodePathGetRetTKNumber<L, N> : never;
 
 type EachChildCallback<C, V, N extends n.Node> = V extends any[]
   ? (this: C, value: NodePathListGetRetTK<V, N>) => void
   : V extends n.Node
-  ? <K extends keyof V>(
-      this: C,
-      value: NodePathGetRetChildNodes<V[K], N, K>
-    ) => void
-  : never;
+    ? <K extends keyof V>(
+        this: C,
+        value: NodePathGetRetChildNodes<V[K], N, K>,
+      ) => void
+    : never;
 
 export class NodePath<
   N extends n.Node = n.Node,
   V = any,
-  K extends PropertyKey = PropertyKey
+  K extends PropertyKey = PropertyKey,
 > {
   __childCache: null | ChildCache;
   parentPath: NodePath | null;
@@ -104,7 +114,6 @@ export class NodePath<
   parent: NodePath | null;
   node: N;
 
-  // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
   constructor(value: V, parentPath?: any, name?: K | null) {
     if (parentPath) {
       if (!(parentPath instanceof this.constructor)) {
@@ -143,21 +152,21 @@ export class NodePath<
   }
   _getChildPath<T extends n.Node, K extends keyof T>(
     this: NodePath<n.Node, T>,
-    name: K
+    name: K,
   ): NodePathGetRet<T, K> & { parent: NodePath<N, V>; parentPath: NodePath<N> };
   _getChildPath<T extends any[]>(
     this: NodePath<n.Node, T>,
-    name: number
+    name: number,
   ): NodePathListGetRetTK<T, N> & {
     parent: NodePath<N, V>;
     parentPath: NodePath<N>;
   };
 
   _getChildPath(
-    name: PathName
+    name: PathName,
   ): NodePath & { parent: NodePath<N, V>; parentPath: NodePath<N> };
   _getChildPath(
-    name: PathName
+    name: PathName,
   ): NodePath & { parent: NodePath<N, V>; parentPath: NodePath<N> } {
     const cache = this._getChildCache();
     const actualChildValue = this.getValueProperty(name);
@@ -177,11 +186,11 @@ export class NodePath<
 
   get<T extends n.Node, K extends keyof T>(
     this: NodePath<n.Node, T>,
-    name: K
+    name: K,
   ): NodePathGetRet<T, K> & { parent: NodePath<N, V>; parentPath: NodePath<N> };
   get<T extends any[]>(
     this: NodePath<n.Node, T>,
-    name: number
+    name: number,
   ): NodePathListGetRetTK<T, N> & {
     parent: NodePath<N, V>;
     parentPath: NodePath<N>;
@@ -194,14 +203,14 @@ export class NodePath<
   each(callback: EachCallback<this, NodePath>): void;
   each<T = this>(callback: EachCallback<T, NodePath>, context?: T): void {
     const childPaths: NodePath[] = [];
-    assertIsArray(this.value);
+    assertIsNodePathArray(this);
     const len = this.value.length;
     let i;
 
     // Collect all the original child paths before invoking the callback.
     for (i = 0; i < len; ++i) {
       if (hasOwn.call(this.value, i)) {
-        childPaths[i] = this.get(i);
+        childPaths[i] = (this as any).get(i);
       }
     }
 
@@ -219,40 +228,45 @@ export class NodePath<
   map<V, T = this>(callback: MapCallback<T, NodePath, V>, context?: T): V[] {
     const result: V[] = [];
 
-    this.each<T>(function mapCallback(this: T, childPath: NodePath) {
-      result.push(callback.call(this, childPath));
-    }, (context || this) as T);
+    this.each<T>(
+      function mapCallback(this: T, childPath: NodePath) {
+        result.push(callback.call(this, childPath));
+      },
+      (context || this) as T,
+    );
 
     return result;
   }
 
   filter<T = this>(
     callback: MapCallback<T, NodePath, boolean>,
-    context?: T
+    context?: T,
   ): NodePath[] {
     const result: NodePath[] = [];
 
-    this.each<T>(function filterCallback(this: T, childPath: any) {
-      if (callback.call(this, childPath)) {
-        result.push(childPath);
-      }
-    }, (context || this) as T);
+    this.each<T>(
+      function filterCallback(this: T, childPath: any) {
+        if (callback.call(this, childPath)) {
+          result.push(childPath);
+        }
+      },
+      (context || this) as T,
+    );
 
     return result;
   }
 
   eachChild<T = this>(
     callback: EachChildCallback<T, V, N>,
-    context: T = this as any
+    context: T = this as any,
   ): void {
-    const value = this.value;
-    if (Array.isArray(value)) {
-      for (let i = 0; i < value.length; i++) {
-        callback.call(context, this.get(i));
+    if (isNodePathArray(this)) {
+      for (let i = 0; i < this.value.length; i++) {
+        callback.call(context, (this as any).get(i));
       }
-    } else if (n.Node.check(value)) {
-      getFieldNames(value).forEach((name) => {
-        const child = this.get(name);
+    } else if (n.Node.check(this.value)) {
+      getFieldNames(this.value).forEach((name) => {
+        const child = (this as unknown as NodePath<n.Node, any>).get(name);
         if (Array.isArray(child.value) && child.value.length) {
           for (let i = 0; i < child.value.length; i++) {
             if (n.Node.check(child.value[i])) {
@@ -301,7 +315,7 @@ export class NodePath<
 
     for (let i = start; i < end; ++i) {
       if (hasOwn.call(value, i)) {
-        const childPath = this.get(i);
+        const childPath = (this as unknown as NodePath<n.Node, any[]>).get(i);
         if (childPath.name !== i) {
           throw new Error("");
         }
@@ -414,7 +428,7 @@ export class NodePath<
     const parentCache = pp._getChildCache() as any;
 
     // Make sure parentCache[path.name] is populated.
-    if ((parentValue as any)[name] === this.value) {
+    if (parentValue[name] === this.value) {
       parentCache[name] = this;
     } else if (isArray.check(parentValue)) {
       // Something caused this.name to become out of date, so attempt to
@@ -428,11 +442,11 @@ export class NodePath<
       // If this.value disagrees with parentValue[this.name], and
       // this.name is not an array index, let this.value become the new
       // parentValue[this.name] and update parentCache accordingly.
-      (parentValue as any)[name] = this.value;
+      parentValue[name] = this.value;
       parentCache[name] = this;
     }
 
-    if ((parentValue as any)[name] !== this.value) {
+    if (parentValue[name] !== this.value) {
       throw new Error("");
     }
     if ((pp.get(name) as any) !== (this as any)) {
@@ -538,10 +552,10 @@ export class NodePath<
       if (this.value !== args[0]) {
         this.__childCache = null;
       }
-      this.value = (parentValue as any)[name] = args[0];
+      this.value = parentValue[name] = args[0];
       results.push(this as unknown as NodePath);
     } else if (args.length === 0) {
-      delete (parentValue as any)[name];
+      delete parentValue[name];
       this.value = undefined as unknown as V;
       this.__childCache = null;
 

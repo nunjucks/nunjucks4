@@ -1,7 +1,6 @@
-import type { Environment } from "@nunjucks/environment";
 import { KeyError, UndefinedError, TemplateRuntimeError } from "./exceptions";
 import { LoopContext } from "./loops";
-import type { IfAsync } from "./types";
+import type { IfAsync, IEnvironment } from "./types";
 import unescape from "./unescape";
 import {
   isPlainObject,
@@ -25,6 +24,8 @@ export { nunjucksFunction, isVarargs, isKwargs, hasOwn, identity };
 export class Missing {}
 
 export const MISSING = Object.freeze(new Missing());
+
+type Environment<IsAsync extends boolean = boolean> = IEnvironment<IsAsync>;
 
 export interface UndefinedOpts {
   hint?: string | null;
@@ -1118,3 +1119,6 @@ export { arrayFromAsync };
 
 import strMod from "./strModFormat";
 export { strMod };
+
+import type { ITemplate, ITemplateInfo, RenderFunc } from "./types";
+export type { ITemplate, IEnvironment, ITemplateInfo, RenderFunc };

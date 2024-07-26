@@ -1,5 +1,6 @@
 import { Environment } from "./environment";
-import { RenderFunc, Template, TemplateNotFound } from "./template";
+import type { RenderFunc } from "@nunjucks/runtime";
+import { Template, TemplateNotFound } from "./template";
 import * as path from "path";
 import * as fs from "fs";
 import * as fsPromises from "fs/promises";

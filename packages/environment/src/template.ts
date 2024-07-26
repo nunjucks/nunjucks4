@@ -5,22 +5,10 @@ import runtime, {
   Undefined,
   isUndefinedInstance,
 } from "@nunjucks/runtime";
-import type { Block, Markup } from "@nunjucks/runtime";
+import type { Block, Markup, ITemplate, RenderFunc } from "@nunjucks/runtime";
 import setDifference from "set.prototype.difference";
 
 export type Runtime = typeof runtime;
-
-export type RenderFunc<IsAsync extends boolean> = IsAsync extends true
-  ? (
-      runtime: Runtime,
-      environment: Environment<true>,
-      context: Context<true>,
-    ) => AsyncGenerator<string>
-  : (
-      runtime: Runtime,
-      environment: Environment<false>,
-      context: Context<false>,
-    ) => Generator<string>;
 
 interface NewContextOpts {
   vars?: Record<string, any>;
@@ -75,7 +63,9 @@ export class TemplatesNotFound extends TemplateNotFound {
   }
 }
 
-export class Template<IsAsync extends true | false> {
+export class Template<IsAsync extends true | false>
+  implements ITemplate<IsAsync>
+{
   async: IsAsync;
   environment: Environment<IsAsync>;
   // TODO environmentClass: typeof Environment = Environment;

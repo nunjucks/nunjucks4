@@ -1,6 +1,6 @@
 import { types as t, builders as b, canAssign } from "@nunjucks/ast";
 import * as lexer from "./lexer";
-import type { Environment } from "@nunjucks/environment";
+import type { IEnvironment } from "@nunjucks/runtime";
 import {
   TemplateSyntaxError,
   Token,
@@ -9,6 +9,7 @@ import {
   getLexer,
   makeToken,
 } from "./lexer";
+import { ITemplateInfo } from "@nunjucks/runtime";
 
 export interface Extension {
   tags: string[];
@@ -32,15 +33,17 @@ function isCompareOperator(val: string): val is CompareOperator {
   return (compareOperators as Set<string>).has(val);
 }
 
-type MathBuilders =
-  | typeof b.add
-  | typeof b.sub
-  | typeof b.mul
-  | typeof b.div
-  | typeof b.floorDiv
-  | typeof b.mod;
+interface BinaryBuilder {
+  (left: t.Expr, right: t.Expr): t.Expr;
+  from(params: {
+    left: t.Expr;
+    loc?: t.SourceLocation | null;
+    operator?: string;
+    right: t.Expr;
+  }): t.Expr;
+}
 
-const mathNodes: Readonly<Record<string, MathBuilders>> = Object.freeze({
+const mathNodes: Readonly<Record<string, BinaryBuilder>> = Object.freeze({
   add: b.add,
   sub: b.sub,
   mul: b.mul,
@@ -76,6 +79,17 @@ interface ParserOptions {
 }
 export type LexerOptions = lexer.LexerOptions;
 export type ParseOptions = lexer.LexerOptions & ParserOptions;
+
+type Environment<IsAsync extends boolean = boolean> = IEnvironment<IsAsync> & {
+  _tokenize(
+    source: string,
+    opts: ITemplateInfo & {
+      state: string | null;
+    },
+  ): TokenStream;
+  extensionsList: Extension[];
+  parserOpts: ParserOptions;
+};
 
 export class Parser {
   stream: lexer.TokenStream;

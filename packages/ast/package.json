@@ -34,9 +34,6 @@
     "bundle:types": "tsc --emitDeclarationOnly --declarationMap --outDir dist/types",
     "gen": "ts-node --transpile-only scripts/gen-types.ts"
   },
-  "dependencies": {
-    "@nunjucks/environment": "workspace:*"
-  },
   "devDependencies": {
     "@pregenerator/ast-types": "1.1.2",
     "@types/node": "^20.12.2",
