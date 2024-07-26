@@ -16,6 +16,9 @@
   "references": [
     {
       "path": "../ast"
+    },
+    {
+      "path": "../runtime"
     }
   ]
 }

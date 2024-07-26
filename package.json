@@ -11,9 +11,9 @@
     "packages/*"
   ],
   "scripts": {
-    "clean": "yarn workspaces foreach -tvp run clean",
-    "build": "yarn workspaces foreach -tvp run build",
-    "test": "yarn run jest",
+    "clean": "yarn workspaces foreach -Atvp run clean",
+    "build": "tsc --build ./tsconfig.packages.json && yarn workspaces foreach -Atvp run compile:cjs",
+    "test": "jest",
     "lint": "eslint --ext js,ts,tsx ."
   },
   "devDependencies": {

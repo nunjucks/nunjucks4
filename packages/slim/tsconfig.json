@@ -1,3 +1,17 @@
 {
-  "extends": "../../tsconfig.json"
+  "extends": "../../tsconfig.base.json",
+  "compileOnSave": false,
+  "compilerOptions": {
+    "noEmit": false,
+    "declaration": true,
+    "declarationMap": true,
+    "composite": true,
+    "rootDir": "src",
+    "declarationDir": "dist/types",
+    "outDir": "dist/esm",
+    "typeRoots": ["./node_modules/@types", "../../node_modules/@types", "../../typings"]
+  },
+  "exclude": ["dist", "node_modules", "**/*.spec.ts"],
+  "filesGlob": ["./src/**/*.ts"],
+  "include": ["src/**/*.ts", "../../typings/**/*.ts"]
 }

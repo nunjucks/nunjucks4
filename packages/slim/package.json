@@ -2,27 +2,22 @@
   "name": "@nunjucks/slim",
   "version": "4.0.0-alpha.1",
   "sideEffects": false,
+  "main": "./dist/cjs/index.js",
+  "types": "./dist/types/index.d.ts",
   "exports": {
     ".": {
-      "import": "./dist/index.min.mjs",
-      "require": "./dist/index.min.js"
-    }
+      "types": "./dist/types/index.d.ts",
+      "import": "./dist/esm/index.js",
+      "require": "./dist/cjs/index.js",
+      "default": "./dist/esm/index.js"
+    },
+    "./package.json": "./package.json"
   },
-  "main": "./dist/index.min.js",
-  "module": "./dist/index.min.mjs",
-  "browser": "./dist/browser.min.js",
-  "source": "./src/index.ts",
-  "types": "./dist/index.d.ts",
-  "files": [
-    "dist/",
-    "src/"
-  ],
+  "module": "./dist/esm/index.js",
   "scripts": {
-    "build": "yarn run clean && yarn run compile",
+    "build": "yarn run clean",
     "clean": "rimraf -rf ./dist",
-    "compile": "tsc -p tsconfig.build.json",
-    "prepublishOnly": "yarn run build",
-    "test": "yarn run build"
+    "prepublishOnly": "yarn run build"
   },
   "devDependencies": {
     "rimraf": "~3.0.2",

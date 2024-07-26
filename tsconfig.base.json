@@ -12,7 +12,7 @@
     "noEmit": true,
     "noEmitOnError": true,
     "esModuleInterop": true,
-    "module": "commonjs",
+    "module": "esnext",
     "moduleResolution": "node",
     "resolveJsonModule": true,
     "isolatedModules": false,

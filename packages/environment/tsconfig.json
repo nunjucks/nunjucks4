@@ -25,6 +25,9 @@
     },
     {
       "path": "../runtime"
+    },
+    {
+      "path": "../utils"
     }
   ]
 }

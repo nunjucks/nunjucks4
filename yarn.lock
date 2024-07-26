@@ -2451,11 +2451,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@nunjucks/ast@workspace:packages/ast":
+"@nunjucks/ast@workspace:*, @nunjucks/ast@workspace:packages/ast":
   version: 0.0.0-use.local
   resolution: "@nunjucks/ast@workspace:packages/ast"
   dependencies:
-    "@nunjucks/environment": "workspace:*"
     "@pregenerator/ast-types": "npm:1.1.2"
     "@types/node": "npm:^20.12.2"
     "@types/prettier": "npm:^2.4.3"
@@ -2466,12 +2465,14 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@nunjucks/compiler@workspace:packages/compiler":
+"@nunjucks/compiler@workspace:*, @nunjucks/compiler@workspace:packages/compiler":
   version: 0.0.0-use.local
   resolution: "@nunjucks/compiler@workspace:packages/compiler"
   dependencies:
     "@babel/generator": "npm:^7.18.7"
+    "@nunjucks/ast": "workspace:*"
     "@nunjucks/environment": "workspace:*"
+    "@nunjucks/runtime": "workspace:*"
     "@pregenerator/ast-types": "npm:1.1.2"
     "@pregenerator/template": "npm:1.1.2"
     "@types/babel__generator": "npm:^7.6.4"
@@ -2484,7 +2485,10 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@nunjucks/environment@workspace:packages/environment"
   dependencies:
+    "@nunjucks/compiler": "workspace:*"
+    "@nunjucks/parser": "workspace:*"
     "@nunjucks/runtime": "workspace:*"
+    "@nunjucks/utils": "workspace:*"
     astring: "npm:^1.8.6"
     lru-cache: "npm:^10.2.0"
     rimraf: "npm:~3.0.2"
@@ -2502,10 +2506,11 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@nunjucks/parser@workspace:packages/parser":
+"@nunjucks/parser@workspace:*, @nunjucks/parser@workspace:packages/parser":
   version: 0.0.0-use.local
   resolution: "@nunjucks/parser@workspace:packages/parser"
   dependencies:
+    "@nunjucks/runtime": "workspace:*"
     "@types/regenerate": "npm:^1.4.3"
     "@unicode/unicode-12.1.0": "npm:^1.5.2"
     lru-cache: "npm:^10.2.2"
@@ -2535,7 +2540,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@nunjucks/utils@workspace:packages/utils":
+"@nunjucks/utils@workspace:*, @nunjucks/utils@workspace:packages/utils":
   version: 0.0.0-use.local
   resolution: "@nunjucks/utils@workspace:packages/utils"
   dependencies:

@@ -24,14 +24,13 @@
   "source": "./src/index.ts",
   "scripts": {
     "build": "yarn run clean && yarn run compile",
+    "build:cjs": "yarn run clean && yarn run compile:cjs",
+    "build:esm": "yarn run clean && yarn run compile:esm",
     "clean": "rimraf -rf ./dist",
-    "compile": "tsc -p tsconfig.build.json",
+    "compile": "yarn run compile:cjs && yarn run compile:esm",
     "prepublishOnly": "yarn run build",
-    "test": "yarn run build",
-    "bundle": "yarn run bundle:cjs && yarn run bundle:esm && yarn run bundle:types",
-    "bundle:cjs": "tsc --project tsconfig.bundle.json --outDir dist/cjs --module commonjs",
-    "bundle:esm": "tsc --project tsconfig.bundle.json --outDir dist/esm --module esnext --target es2021",
-    "bundle:types": "tsc --emitDeclarationOnly --declarationMap --outDir dist/types"
+    "compile:cjs": "tsc --outDir dist/cjs --module commonjs",
+    "compile:esm": "tsc --outDir dist/esm --module esnext --target es2021"
   },
   "devDependencies": {
     "@types/node": "^20.14.12",
