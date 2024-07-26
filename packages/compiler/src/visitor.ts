@@ -17,7 +17,7 @@ import {
 } from "@pregenerator/ast-types";
 import ast from "@pregenerator/template";
 import { EvalContext, escape, str as runtimeStr } from "@nunjucks/runtime";
-import { Environment } from "@nunjucks/environment";
+import type { Environment } from "@nunjucks/environment";
 import { Frame } from "./frame";
 import {
   VAR_LOAD_ALIAS,

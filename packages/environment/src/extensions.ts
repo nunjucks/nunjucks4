@@ -1,7 +1,6 @@
 import { Environment } from "./environment";
 
-import type { TokenStream, Token, Lexer } from "@nunjucks/parser";
-import { Parser } from "@nunjucks/parser";
+import type { TokenStream, Token, Lexer, Parser } from "@nunjucks/parser";
 import {
   types as t,
   builders as b,

@@ -2,9 +2,17 @@
   "extends": "../../tsconfig.build.json",
 
   "compilerOptions": {
-    "outDir": "./dist"
+    "baseUrl": ".",
+    "outDir": "./dist",
+    "composite": true,
+    "paths": {
+      "nunjucks/*": ["packages/core/src/*"],
+      "@nunjucks/*": ["packages/*/src"]
+    },
   },
-
+  "references": [
+    { "path": "../runtime" }
+  ],
   "include": [
     "src/**/*"
   ]

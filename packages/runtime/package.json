@@ -2,27 +2,36 @@
   "name": "@nunjucks/runtime",
   "version": "4.0.0-alpha.1",
   "sideEffects": false,
+  "main": "./dist/cjs/index.js",
+  "types": "./dist/types/index.d.ts",
   "exports": {
     ".": {
-      "import": "./dist/index.min.mjs",
-      "require": "./dist/index.min.js"
-    }
+      "types": "./dist/types/index.d.ts",
+      "import": "./dist/esm/index.js",
+      "require": "./dist/cjs/index.js",
+      "default": "./dist/esm/index.js"
+    },
+    "./package.json": "./package.json"
   },
-  "main": "./dist/index.min.js",
-  "module": "./dist/index.min.mjs",
-  "browser": "./dist/browser.min.js",
-  "source": "./src/index.ts",
-  "types": "./dist/index.d.ts",
+  "module": "./dist/esm/index.js",
+  "publishConfig": {
+    "access": "public"
+  },
   "files": [
-    "dist/",
-    "src/"
+    "/dist",
+    "/src"
   ],
+  "source": "./src/index.ts",
   "scripts": {
     "build": "yarn run clean && yarn run compile",
     "clean": "rimraf -rf ./dist",
     "compile": "tsc -p tsconfig.build.json",
     "prepublishOnly": "yarn run build",
-    "test": "yarn run build"
+    "test": "yarn run build",
+    "bundle": "yarn run bundle:cjs && yarn run bundle:esm && yarn run bundle:types",
+    "bundle:cjs": "tsc --project tsconfig.bundle.json --outDir dist/cjs --module commonjs",
+    "bundle:esm": "tsc --project tsconfig.bundle.json --outDir dist/esm --module esnext --target es2021",
+    "bundle:types": "tsc --emitDeclarationOnly --declarationMap --outDir dist/types"
   },
   "devDependencies": {
     "@nunjucks/environment": "workspace:*",
