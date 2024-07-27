@@ -1545,12 +1545,36 @@ export class Parser {
   }
 }
 
+export function parse(src: string, opts?: Partial<ParseOptions>): t.Template;
 export function parse(
   src: string,
-  { extensions, name, filename, ...opts }: Partial<ParseOptions> = {},
+  extensions: Extension[],
+  opts?: Partial<ParseOptions>,
+): t.Template;
+
+export function parse(
+  src: string,
+  extensionsOrOpts?: Extension[] | Partial<ParseOptions>,
+  opts?: Partial<ParseOptions>,
 ): t.Template {
-  const p = new Parser(lexer.lex(src, opts), { extensions, name, filename });
-  return p.parse();
+  if (Array.isArray(extensionsOrOpts)) {
+    const extensions = extensionsOrOpts;
+    const { name, filename, ...lexerOpts } = opts ?? {};
+    const p = new Parser(lexer.lex(src, lexerOpts), {
+      extensions,
+      name,
+      filename,
+    });
+    return p.parse();
+  } else {
+    const { name, filename, extensions, ...lexerOpts } = extensionsOrOpts ?? {};
+    const p = new Parser(lexer.lex(src, lexerOpts), {
+      extensions,
+      name,
+      filename,
+    });
+    return p.parse();
+  }
 }
 export { TemplateSyntaxError };
 
