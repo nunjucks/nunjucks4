@@ -47,71 +47,6 @@ const PRECEDENCE: any = {};
   });
 });
 
-// type PathGetRetTKNumber<V, N extends n.Node> = V extends n.Node
-//   ? Path<V, V, number>
-//   : Path<N, V, number>;
-// type PathGetRetTK<
-//   V,
-//   N extends n.Node,
-//   K extends PropertyKey
-// > = K extends keyof N
-//   ? V extends n.Node
-//     ? Path<V, V, K>
-//     : Path<N, V, K>
-//   : never;
-// type PathGetRetChildNodes<
-//   V,
-//   N extends n.Node,
-//   K extends PropertyKey
-// > = K extends keyof N
-//   ? V extends n.Node
-//     ? Path<V, V, K>
-//     : V extends (infer L)[]
-//     ? L extends n.Node
-//       ? Path<L, L, number>
-//       : never
-//     : never
-//   : never;
-//
-// type PathGetRet<T extends n.Node, K extends PropertyKey> = K extends keyof T
-//   ? PathGetRetTK<T[K], T, K>
-//   : never;
-// type PathListGetRetTK<V extends any[], N extends n.Node> = V extends (infer L)[]
-//   ? PathGetRetTKNumber<L, N>
-//   : never;
-
-// type KeyOf<T> = T extends n.Node ? keyof T : never;
-// type NodeKeys<N extends n.Node> = Exclude<
-//   {
-//     [K in keyof N]: K;
-//   }[keyof N],
-//   undefined | "type" | "loc"
-// >;
-
-// type PathSafe<N, K extends PropertyKey> = N extends n.Node
-//   ? Path<N, N, K>
-//   : never;
-
-// type PathChild<V> = V extends (infer L)[]
-//   ? PathChild<L>
-//   : V extends n.Node
-//   ? Exclude<
-//       {
-//         [K in keyof V]: V[K] extends n.Node
-//           ? PathSafe<V[K], K>
-//           : V[K] extends (infer M)[]
-//           ? M extends n.Node
-//             ? PathSafe<M, number>
-//             : never
-//           : never;
-//       }[keyof V],
-//       undefined
-//     >
-//   : never;
-
-// type FooChild<N extends n.Node> = N extends any ? 1 : never;
-// type Test123 = PathChild<n.Dict>;
-
 type EachChildCallback<C, V, N extends n.Node> = V extends (infer U)[]
   ? (this: C, value: Path<PathNode<N, U>, U, number>) => void
   : V extends n.Node
@@ -308,20 +243,6 @@ export class Path<
       ? Path<PathNode<N, U>, U, number>[]
       : never;
   }
-  //   filter<T = this>(
-  //     callback: MapCallback<T, Path, boolean>,
-  //     context?: T
-  //   ): Path[] {
-  //     const result: Path[] = [];
-  //
-  //     this.each<T>(function filterCallback(this: T, childPath: any) {
-  //       if (callback.call(this, childPath)) {
-  //         result.push(childPath);
-  //       }
-  //     }, (context || this) as T);
-  //
-  //     return result;
-  //   }
 
   eachChild<T = this>(
     callback: EachChildCallback<T, V, N>,
@@ -330,7 +251,6 @@ export class Path<
     for (const child of this.iterChildNodes()) {
       callback.call(context, child);
     }
-    // this._eachChild<T>(callback as any, context);
   }
 
   *iterChildren(): Generator<Path> {

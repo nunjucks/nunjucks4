@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import {
   Path,
   PathVisitor,
@@ -10,7 +9,6 @@ import {
 import {
   NodePath as JSNodePath,
   namedTypes,
-  PredicateType,
   builders as b,
   Type as JsType,
   cloneNode,
@@ -26,11 +24,7 @@ import {
   VAR_LOAD_UNDEFINED,
 } from "./idtracking";
 import n = namedTypes;
-import toConst, { Impossible } from "./const";
-
-type Bookmark = n.EmptyStatement & {
-  _isBookmark: true;
-};
+import toConst from "./const";
 
 const OPERATORS = {
   eq: "==",
@@ -91,25 +85,6 @@ function forceExpression(
   }
   n.Expression.assert(node);
   return node;
-}
-
-function createBookmark(): Bookmark {
-  return {
-    type: "EmptyStatement",
-    _isBookmark: true,
-  };
-}
-
-const BookmarkType = new PredicateType(
-  "Bookmark",
-  (value) => n.BlockStatement.check(value) && !!(value as any)._isBookmark,
-);
-
-function getBookmark(astPath: JSNodePath): JSNodePath | null {
-  const newPath = astPath.find(BookmarkType);
-  if (!newPath) return null;
-  delete (newPath.value as any)._isBookmark;
-  return newPath;
 }
 
 function forceStatements(nodeOrNodes: n.Node | n.Node[]): n.Statement[] {
@@ -200,11 +175,6 @@ const findUndeclared = (nodes: t.Node[], names: string[]) => {
   return undeclared;
 };
 
-interface FinalizeInfo {
-  const?: (...args: unknown[]) => string;
-  src?: string | null;
-}
-
 interface State<IsAsync extends boolean> {
   self: CodeGenerator<IsAsync>;
   frame: Frame<IsAsync>;
@@ -225,7 +195,6 @@ export class CodeGenerator<IsAsync extends boolean> {
   filename: string | null;
   deferInit: boolean;
   importAliases: Record<string, string>;
-  /* self.blocks: t.Dict[str, nodes.Block] = {} */
   blocks: Record<string, Path<t.Block, t.Block>>;
   /** the number of extends statements so far */
   extendsSoFar: number;
@@ -258,8 +227,7 @@ export class CodeGenerator<IsAsync extends boolean> {
     name,
     filename,
     deferInit = false,
-  }: // optimized = true,
-  {
+  }: {
     environment: Environment<IsAsync>;
     name?: string | null;
     filename?: string | null;
@@ -288,7 +256,7 @@ export class CodeGenerator<IsAsync extends boolean> {
     return {
       visitTemplate(path, state) {
         const { node } = path;
-        const { self, astPath } = state;
+        const { self } = state;
         const evalCtx = new EvalContext({
           environment: this.environment,
           name: this.name,
@@ -510,7 +478,6 @@ export class CodeGenerator<IsAsync extends boolean> {
           );
         }
         const statements: n.Statement[] = [];
-        // let ifWrap: n.IfStatement | null = null;
         // if the number of extends statements in general is zero so
         // far, we don't have to add a check if something extended
         // the template before this one.
@@ -534,7 +501,6 @@ export class CodeGenerator<IsAsync extends boolean> {
           // as we know that the template execution will end here.
           if (self.hasKnownExtends) {
             return statements;
-            // throw new CompilerExit();
           }
         }
 
@@ -773,13 +739,6 @@ export class CodeGenerator<IsAsync extends boolean> {
           runtime.setDelete(context.exportedVars, %%names%%)
         `({ names: discardedNames.map((name) => str(name)) }),
         );
-        // statements.push(
-        //   ...discardedNames.map((name) =>
-        //     ast.statement`context.exportedVars.delete(%%name%%)`({
-        //       name: str(name),
-        //     }),
-        //   ),
-        // );
         return statements;
       },
       visitContinue() {
@@ -1061,7 +1020,6 @@ export class CodeGenerator<IsAsync extends boolean> {
         const { node } = path;
         const { self, frame } = state;
         const { forwardCaller = false, ...childState } = state;
-        // TODO: figure out what to do with kwargs and dynargs
         const func = self.visitExpression(path.get("node"), childState);
         const args = path
           .get("args")
@@ -1200,7 +1158,7 @@ export class CodeGenerator<IsAsync extends boolean> {
         return this._evalContextModifierCommon(path, state);
       },
       visitScopedEvalContextModifier(path, state) {
-        const { self, frame } = state;
+        const { frame } = state;
         const oldCtxName = id(this.temporaryIdentifier());
         const savedCtx = frame.evalCtx.save();
         const statements: n.Statement[] = [
@@ -1247,7 +1205,6 @@ export class CodeGenerator<IsAsync extends boolean> {
         return b.conditionalExpression(test, consequent, alternate);
       },
       visitCompare(path, state) {
-        const { node } = path;
         const { self } = state;
         const comparisons: [n.Expression, t.Operand["op"], n.Expression][] = [];
 
@@ -1431,10 +1388,8 @@ export class CodeGenerator<IsAsync extends boolean> {
         const testFrame = frame.inner();
         const elseFrame = frame.inner();
         const rootStatements: n.Statement[] = [];
-        // let currPath = astPath;
         let currStatements = rootStatements;
 
-        // const bodyChildNodes = [...path.get("body").iterChildren()];
         const undecl = findUndeclared(node.body, ["loop"]);
         // try to figure out if we have an extended loop.  An extended loop
         // is necessary if the loop is in recursive mode if the special loop
@@ -1457,13 +1412,6 @@ export class CodeGenerator<IsAsync extends boolean> {
           loopFilterFunc = self.temporaryIdentifier();
           testFrame.symbols.analyzeNode(node, { forBranch: "test" });
           // TODO: sourcemap to node.test
-          // astPath.push(
-          //   ast`function %%loopFilterFunc%%(fiter) {
-          //   %%bookmark%%
-          // }`({ loopFilterFunc, bookmark: createBookmark() })
-          // );
-          // const bookmark = getBookmark(astPath)!;
-          // const stmts = [];
           const target = forceExpression(
             self.visit(path.get("target"), {
               ...state,
@@ -1492,7 +1440,6 @@ export class CodeGenerator<IsAsync extends boolean> {
               consequent: b.expressionStatement(
                 b.yieldExpression(cloneNode(target)),
               ),
-              // yieldTarget: cloneNode(target),
             });
           stmt.await = this.isAsync;
           const blockStmt = self.wrapFrame(testFrame, [stmt]);
@@ -1558,9 +1505,6 @@ export class CodeGenerator<IsAsync extends boolean> {
           }
           target = b.arrayPattern(elements);
         }
-        // let target = n.ArrayExpression.check(_target)
-        //   ? b.arrayPattern(_target.elements as n.PatternLike[])
-        //   : _target;
 
         const assertTarget: (
           t: n.Node,
@@ -1678,7 +1622,6 @@ export class CodeGenerator<IsAsync extends boolean> {
         return statements;
       },
       visitCallBlock(path, state) {
-        const { node } = path;
         const { self, frame } = state;
         const decls: n.VariableDeclaration[] = [];
         const expr = self.visitExpression(
@@ -1889,6 +1832,7 @@ export class CodeGenerator<IsAsync extends boolean> {
     if (!this.paramDefBlock.length) return false;
     return this.paramDefBlock[this.paramDefBlock.length - 1].has(target);
   }
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   fail(msg: string, loc?: t.SourceLocation | null): never {
     throw new Error(msg);
   }
@@ -2028,18 +1972,6 @@ export class CodeGenerator<IsAsync extends boolean> {
           ]),
         ),
       );
-      // nodes.push(
-      //   b.callExpression(
-      //     b.memberExpression(
-      //       b.memberExpression(
-      //         b.identifier("context"),
-      //         b.identifier("exportedVars")
-      //       ),
-      //       b.identifier("push")
-      //     ),
-      //     publicNames.map((name) => b.stringLiteral(name))
-      //   )
-      // );
     }
 
     return nodes;
@@ -2179,7 +2111,6 @@ export class CodeGenerator<IsAsync extends boolean> {
             {
               id: id(idMap[name]),
               envdep: memberExpr(`env.${dependency}s`),
-              // dep: id(`${dependency}s`),
               name: b.stringLiteral(name),
               exc: runtimeExpr("TemplateRuntimeError"),
               msg: b.stringLiteral(`No ${dependency} named '${name}' found.`),
@@ -2189,17 +2120,8 @@ export class CodeGenerator<IsAsync extends boolean> {
       }
     }
     return statements;
-    // for (const [idMap, names, dependency] of [[this.filters, filters, "filters"]])
   }
 
-  // macroBody(
-  //   node: t.Macro | t.CallBlock,
-  //   state: State<IsAsync>
-  // ): {
-  //   frame: Frame<IsAsync>;
-  //   macroRef: MacroRef;
-  //   func: n.FunctionExpression;
-  // } {
   macroDef(
     path: Path<t.Macro | t.CallBlock>,
     state: State<IsAsync>,
@@ -2298,7 +2220,6 @@ export class CodeGenerator<IsAsync extends boolean> {
     const funcExpr: n.FunctionExpression = {
       ...funcDecl,
       type: "FunctionExpression",
-      // generator: true,
       async: !!this.isAsync,
     };
 

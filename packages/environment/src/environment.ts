@@ -5,7 +5,6 @@ import {
   Context,
   EvalContext,
   hasOwn,
-  newContext,
   TemplateRuntimeError,
   Undefined,
   MISSING,
@@ -21,7 +20,6 @@ import {
 import type { IEnvironment, RenderFunc } from "@nunjucks/runtime";
 import { types } from "@nunjucks/ast";
 import {
-  parse,
   LexerOptions,
   getLexer,
   Lexer,
@@ -32,7 +30,7 @@ import { CodeGenerator } from "@nunjucks/compiler";
 import { Template, TemplateNotFound, TemplatesNotFound } from "./template";
 // import { generate } from "astring";
 import generate from "@babel/generator";
-import type { Loader, AsyncLoader, SyncLoader } from "./loaders";
+import type { AsyncLoader, SyncLoader } from "./loaders";
 import { chainMap, dict, joiner, cycler, lipsum } from "./utils";
 import DEFAULT_FILTERS from "./filters";
 import DEFAULT_TESTS from "./tests";
@@ -97,8 +95,6 @@ function undef(
 }
 
 const _undef = undef;
-
-// const cache = new LRUCache({ max: 200 });
 
 // eslint-disable-next-line @typescript-eslint/ban-types
 function createCache<V extends {}>({

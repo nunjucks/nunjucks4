@@ -4,11 +4,6 @@ export interface TemplateErrorType extends Error {
   colno?: number;
   firstUpdate: boolean;
   Update(path: string): this;
-  // new (
-  //   message: Error | string,
-  //   lineno?: number,
-  //   colno?: number
-  // ): TemplateErrorType;
 }
 
 export type TemplateErrorConstructor = new (

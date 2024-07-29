@@ -65,7 +65,7 @@ export class Macro<IsAsync extends boolean> extends Function {
       autoescape = args[0].autoescape;
       args.shift();
     }
-    // const kwargs = args.pop();
+
     let kwargs = new Map<string, any>();
     let varargs: any[] = [];
     if (args.length) {

@@ -281,9 +281,6 @@ describe("inheritance", () => {
     expect(() => t1.render()).toThrow(TemplateRuntimeError);
     expect(() => t1.render()).toThrow("Required block 'x' not found");
 
-    // with pytest.raises(TemplateRuntimeError, match="Required block 'x' not found"):
-    //     assert t1.render()
-
     expect(t2.render()).toBe("[2]");
     expect(t3.render()).toBe("[2]");
   });

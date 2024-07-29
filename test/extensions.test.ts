@@ -244,7 +244,6 @@ describe("extensions", () => {
       tags = ["scope"];
       parse(parser: Parser, t: NunjucksTypes, b: Builders): types.Node {
         const loc = parser.tokToLoc(parser.stream.next().value);
-        // const body: types.Node[] = [];
         const assignments: types.Node[] = [];
         while (parser.stream.current.type !== "block_end") {
           if (assignments.length) {

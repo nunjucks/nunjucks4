@@ -45,24 +45,6 @@ export function mapFind<T, U>(
 
   return find(mapperGenerator, finder);
 }
-//
-// async function* asyncMap<T, U>(a: T[], fn: (x: T) => U) {
-//   for (const x of a) yield await fn(x);
-// }
-//
-// function asyncFind<T>(a: Generator<T, void, unknown>, fn: (x: T) => boolean) {
-//   for (const x of a) if (fn(x)) return x;
-// }
-//
-// export function mapFind<T, U>(
-//   collection: T[],
-//   mapper: (item: T) => U,
-//   finder: (item: U) => boolean,
-// ): U | undefined {
-//   const mapperGenerator = map(collection, mapper);
-//
-//   return find(mapperGenerator, finder);
-// }
 
 export function chainMap(
   ...maps: Record<string | symbol, any>[]

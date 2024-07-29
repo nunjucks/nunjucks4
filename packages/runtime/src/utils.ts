@@ -117,7 +117,6 @@ export function nunjucksFunction(
     wrapper.__nunjucksArgs = {
       kwargs: true,
       varargs: !!options.varargs,
-      // singleArgument: !!options.singleArgument,
       varNames,
     };
     if (options.passArg) wrapper.__nunjucksPassArg = options.passArg;

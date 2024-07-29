@@ -343,8 +343,6 @@ interface CompiledTemplate<IsAsync extends boolean> {
   blocks: Record<string, RenderFunc<IsAsync>>;
 }
 
-// function compiledTemplateIsAsync(compiled: { root: RenderFunc<boolean>; blocks: Record<string, RenderFunc<boolean>> })
-
 function isAsyncCompiledTemplate(
   obj: CompiledTemplate<true> | CompiledTemplate<false>,
 ): obj is CompiledTemplate<true> {
@@ -417,7 +415,6 @@ export class ObjectSourceLoader extends SyncLoader {
 
 export class WebLoader extends AsyncLoader {
   baseUrl: string;
-  // useCache: boolean;
   hasSourceAccess = true;
   requestInit: fetch.FetchOptions;
 
@@ -429,7 +426,6 @@ export class WebLoader extends AsyncLoader {
   ) {
     super();
 
-    // this.useCache = !!opts.useCache;
     this.requestInit = {
       cache: "no-cache",
       timeout: this.DEFAULT_TIMEOUT,

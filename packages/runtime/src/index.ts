@@ -966,11 +966,6 @@ export function copySafeness<T>(src: unknown, dest: T): T | MarkupType {
   return isMarkup(src) ? markSafe(dest) : dest;
 }
 
-// export const Markup = _Markup as unknown as (String & string) & {
-//   constructor(value: unknown): _Markup;
-// };
-// export type Markup = typeof Markup;
-
 export function setAdd<T>(set: Set<T>, ...values: T[]): void {
   values.forEach((value) => set.add(value));
 }
