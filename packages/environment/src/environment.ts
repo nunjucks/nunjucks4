@@ -128,6 +128,19 @@ export interface TemplateInfo {
   filename?: string | null;
 }
 
+export interface EnvironmentOptions<IsAsync extends boolean = boolean> {
+  async?: IsAsync;
+  loaders?: (IsAsync extends true ? AsyncLoader | SyncLoader : SyncLoader)[];
+  parserOpts?: Partial<LexerOptions>;
+  autoescape?: boolean | ((templateName?: string | null) => boolean);
+  filters?: Record<string, Filter>;
+  tests?: Record<string, Test>;
+  globals?: Record<string, any>;
+  undef?: typeof _undef;
+  cacheSize?: number;
+  extensions?: (typeof Extension)[];
+}
+
 export class Environment<IsAsync extends boolean = boolean>
   extends EventEmitter
   implements IEnvironment<IsAsync>
@@ -190,18 +203,7 @@ export class Environment<IsAsync extends boolean = boolean>
      * `-1` the cache will not be cleaned.
      */
     cacheSize = 400,
-  }: {
-    async?: IsAsync;
-    loaders?: (IsAsync extends true ? AsyncLoader | SyncLoader : SyncLoader)[];
-    parserOpts?: Partial<LexerOptions>;
-    autoescape?: boolean | ((templateName?: string | null) => boolean);
-    filters?: Record<string, Filter>;
-    tests?: Record<string, Test>;
-    globals?: Record<string, any>;
-    undef?: typeof _undef;
-    cacheSize?: number;
-    extensions?: (typeof Extension)[];
-  } = {}) {
+  }: EnvironmentOptions<IsAsync> = {}) {
     super();
     this.async = !!async as IsAsync;
     this.loaders = loaders;
@@ -560,7 +562,7 @@ export class Environment<IsAsync extends boolean = boolean>
     source: types.Template,
     { name = null, filename = null }: TemplateInfo = {},
   ): string {
-    const codegen = new CodeGenerator({
+    const codegen = new this.codeGeneratorClass({
       environment: this,
       name,
       filename,
@@ -572,10 +574,21 @@ export class Environment<IsAsync extends boolean = boolean>
 
   fromString(
     source: string,
-    { globals }: { globals?: Record<string, unknown> } = {},
+    {
+      globals,
+      name,
+      filename,
+    }: Partial<TemplateInfo> & { globals?: Record<string, unknown> } = {},
   ): Template<IsAsync> {
     const { root, blocks } = this.compile(source);
-    return new Template<IsAsync>({ environment: this, root, blocks, globals });
+    return new Template<IsAsync>({
+      environment: this,
+      root,
+      blocks,
+      globals,
+      name,
+      filename,
+    });
   }
 
   _loadTemplate(
@@ -644,6 +657,130 @@ export class Environment<IsAsync extends boolean = boolean>
    */
   joinPath(template: string, parent: string): string {
     return template;
+  }
+
+  render(
+    this: Environment<true>,
+    name: string,
+    context?: Record<string, any>,
+  ): Promise<string>;
+  render(
+    this: Environment<false>,
+    name: string,
+    context?: Record<string, any>,
+  ): string;
+  render(
+    this: Environment<IsAsync>,
+    name: string,
+    context?: Record<string, any>,
+  ): Promise<string> | string;
+  render(
+    name: string,
+    context?: Record<string, any>,
+    callback?: (err: any, res: string | undefined) => void,
+  ): void;
+  render(
+    name: string,
+    callback: (err: any, res: string | undefined) => void,
+  ): void;
+  render(
+    name: string,
+    context:
+      | Record<string, any>
+      | ((err: any, res: string | undefined) => void) = {},
+    callback?: (err: any, res: string | undefined) => void,
+  ): Promise<string> | string | void {
+    if (this.isSync()) {
+      const template = this.getTemplate(name);
+      return template.render(context, callback);
+    } else if (this.isAsync()) {
+      let ctx: Record<string, any> = {};
+      let cb: ((err: any, res: string | undefined) => void) | undefined =
+        callback;
+      if (typeof context === "object") {
+        ctx = context;
+      } else {
+        cb = context;
+      }
+      const promise = (async () => {
+        const template = await this.getTemplate(name);
+        return template.render(ctx);
+      })();
+      if (typeof cb === "undefined") {
+        return promise;
+      } else {
+        promise.then(
+          (res) => cb(null, res),
+          (err) => cb(err, undefined),
+        );
+      }
+    }
+  }
+
+  renderString(
+    this: Environment<true>,
+    src: string,
+    context: Record<string, any>,
+    opts?: Partial<TemplateInfo> & { globals?: Record<string, unknown> },
+  ): Promise<string>;
+  renderString(
+    this: Environment<false>,
+    src: string,
+    context: Record<string, any>,
+    opts?: Partial<TemplateInfo> & { globals?: Record<string, unknown> },
+  ): string;
+  renderString(
+    this: Environment<IsAsync>,
+    src: string,
+    context: Record<string, any>,
+    opts?: Partial<TemplateInfo> & { globals?: Record<string, unknown> },
+  ): Promise<string> | string;
+  renderString(
+    src: string,
+    context: Record<string, any>,
+    opts: Partial<TemplateInfo> & { globals?: Record<string, unknown> },
+    callback: (err: any, res: string | undefined) => void,
+  ): void;
+  renderString(
+    src: string,
+    context: Record<string, any>,
+    callback: (err: any, res: string | undefined) => void,
+  ): void;
+  renderString(
+    src: string,
+    context:
+      | Record<string, any>
+      | ((err: any, res: string | undefined) => void) = {},
+    callbackOrOpts:
+      | ((err: any, res: string | undefined) => void)
+      | (Partial<TemplateInfo> & { globals?: Record<string, unknown> }) = {},
+    callback?: (err: any, res: string | undefined) => void,
+  ): Promise<string> | string | void {
+    let cb: ((err: any, res: string | undefined) => void) | undefined =
+      callback;
+    let templateOpts: Partial<TemplateInfo> & {
+      globals?: Record<string, unknown>;
+    } = {};
+    if (typeof callbackOrOpts !== "function") {
+      templateOpts = callbackOrOpts;
+    } else {
+      cb = callbackOrOpts;
+    }
+    const template = this.fromString(src, templateOpts);
+
+    if (template.isSync()) {
+      return template.render(context, cb);
+    } else if (template.isAsync()) {
+      const promise = template.render(context);
+      if (typeof cb === "undefined") {
+        return promise;
+      } else {
+        promise.then(
+          (res) => cb(null, res),
+          (err) => cb(err, undefined),
+        );
+      }
+    }
   }
 
   getTemplate(

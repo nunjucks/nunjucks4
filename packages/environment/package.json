@@ -38,10 +38,15 @@
     "@nunjucks/utils": "workspace:*",
     "astring": "^1.8.6",
     "lru-cache": "^10.2.0",
-    "set.prototype.difference": "^1.1.4"
+    "make-fetch-happen": "^13.0.1",
+    "set.prototype.difference": "^1.1.4",
+    "sync-fetch": "^0.5.2"
   },
   "devDependencies": {
     "@nunjucks/parser": "workspace:*",
+    "@types/make-fetch-happen": "^10.0.4",
+    "@types/sync-fetch": "^0.4.3",
+    "node-fetch": "^3.3.2",
     "rimraf": "~3.0.2",
     "typescript": "^5.4.3"
   }

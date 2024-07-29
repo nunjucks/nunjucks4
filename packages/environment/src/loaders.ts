@@ -5,6 +5,16 @@ import * as path from "path";
 import * as fs from "fs";
 import * as fsPromises from "fs/promises";
 import EventEmitter from "events";
+import fetch from "make-fetch-happen";
+import syncFetch from "sync-fetch";
+import type { Response } from "node-fetch";
+
+type SyncRequestInit = typeof syncFetch extends (
+  url: any,
+  init?: infer T,
+) => any
+  ? T
+  : never;
 
 function splitTemplatePath(template: string): string[] {
   const pieces: string[] = [];
@@ -311,7 +321,7 @@ export class NodeResolveLoader extends SyncLoader {
 }
 
 export class NodeResolveSourceLoader extends SyncLoader {
-  hasSourceAccess = false;
+  hasSourceAccess = true;
   getSource<EnvAsync extends boolean>(
     environment: Environment<EnvAsync>,
     name: string,
@@ -402,5 +412,136 @@ export class ObjectSourceLoader extends SyncLoader {
     const source = this.templateSources[name];
 
     return { source, filename: name };
+  }
+}
+
+export class WebLoader extends AsyncLoader {
+  baseUrl: string;
+  // useCache: boolean;
+  hasSourceAccess = true;
+  requestInit: fetch.FetchOptions;
+
+  DEFAULT_TIMEOUT = 10;
+
+  constructor(
+    baseUrl: string | string[],
+    opts: Partial<fetch.FetchOptions> = {},
+  ) {
+    super();
+
+    // this.useCache = !!opts.useCache;
+    this.requestInit = {
+      cache: "no-cache",
+      timeout: this.DEFAULT_TIMEOUT,
+      method: "GET",
+      ...opts,
+    };
+
+    if (
+      Array.isArray(baseUrl) &&
+      (baseUrl.length !== 1 || typeof baseUrl[0] !== "string")
+    ) {
+      throw new Error(
+        "WebLoader baseUrl must be either a string or an array containing a single string",
+      );
+    }
+
+    this.baseUrl = Array.isArray(baseUrl) ? baseUrl[0] : baseUrl;
+    if (!this.baseUrl.endsWith("/")) {
+      this.baseUrl = `${this.baseUrl}/`;
+    }
+  }
+
+  async getSource(
+    environment: Environment<true>,
+    name: string,
+  ): Promise<AsyncLoaderSource> {
+    let response: Response;
+    const filename = `${this.baseUrl}${name}`;
+    try {
+      response = await fetch(`${this.baseUrl}${name}`, this.requestInit);
+    } catch (err) {
+      throw new TemplateNotFound(name, `${err}`, { cause: err });
+    }
+    if (!response.ok) {
+      throw new TemplateNotFound(name, `HTTP error: ${response.status}`);
+    }
+    const source = await response.text();
+    const cacheTime = response.headers.get("X-Local-Cache-Time");
+
+    return {
+      source,
+      filename,
+      uptodate: async () => {
+        if (
+          this.requestInit.method !== "GET" &&
+          this.requestInit.method !== "HEAD"
+        )
+          return false;
+
+        if (cacheTime === null) return false;
+
+        const newResponse = await fetch(filename, {
+          ...this.requestInit,
+          method: "HEAD",
+          cache: "no-cache",
+        });
+        const newCacheTime = newResponse.headers.get("X-Local-Cache-Time");
+        return newCacheTime === cacheTime;
+      },
+    };
+  }
+}
+type SyncResponse = ReturnType<typeof syncFetch>;
+
+export class SyncWebLoader extends SyncLoader {
+  baseUrl: string;
+  hasSourceAccess = true;
+  requestInit: SyncRequestInit;
+
+  DEFAULT_TIMEOUT = 10;
+
+  constructor(baseUrl: string | string[], opts: Partial<SyncRequestInit> = {}) {
+    super();
+
+    this.requestInit = {
+      timeout: this.DEFAULT_TIMEOUT,
+      method: "GET",
+      ...opts,
+    };
+
+    if (
+      Array.isArray(baseUrl) &&
+      (baseUrl.length !== 1 || typeof baseUrl[0] !== "string")
+    ) {
+      throw new Error(
+        "WebLoader baseUrl must be either a string or an array containing a single string",
+      );
+    }
+
+    this.baseUrl = Array.isArray(baseUrl) ? baseUrl[0] : baseUrl;
+    if (!this.baseUrl.endsWith("/")) {
+      this.baseUrl = `${this.baseUrl}/`;
+    }
+  }
+
+  getSource(environment: Environment<boolean>, name: string): SyncLoaderSource {
+    let response: SyncResponse;
+    const filename = `${this.baseUrl}${name}`;
+    try {
+      response = syncFetch(`${this.baseUrl}${name}`, this.requestInit);
+    } catch (err) {
+      throw new TemplateNotFound(name, `${err}`, { cause: err });
+    }
+    if (!response.ok) {
+      throw new TemplateNotFound(name, `HTTP error: ${response.status}`);
+    }
+    const source = response.text();
+
+    return {
+      source,
+      filename,
+      uptodate: () => false,
+    };
   }
 }

@@ -35,5 +35,13 @@
   "devDependencies": {
     "rimraf": "~3.0.2",
     "typescript": "^5.4.3"
+  },
+  "dependencies": {
+    "@nunjucks/ast": "workspace:*",
+    "@nunjucks/compiler": "workspace:*",
+    "@nunjucks/environment": "workspace:*",
+    "@nunjucks/parser": "workspace:*",
+    "@nunjucks/runtime": "workspace:*",
+    "@nunjucks/utils": "workspace:*"
   }
 }
