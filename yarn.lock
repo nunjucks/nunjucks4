@@ -2471,7 +2471,6 @@ __metadata:
   dependencies:
     "@babel/generator": "npm:^7.18.7"
     "@nunjucks/ast": "workspace:*"
-    "@nunjucks/environment": "workspace:*"
     "@nunjucks/runtime": "workspace:*"
     "@pregenerator/ast-types": "npm:1.1.2"
     "@pregenerator/template": "npm:1.1.2"
@@ -2485,6 +2484,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@nunjucks/environment@workspace:packages/environment"
   dependencies:
+    "@nunjucks/ast": "workspace:*"
     "@nunjucks/compiler": "workspace:*"
     "@nunjucks/parser": "workspace:*"
     "@nunjucks/runtime": "workspace:*"
@@ -2502,19 +2502,11 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@nunjucks/loaders@workspace:packages/loaders":
-  version: 0.0.0-use.local
-  resolution: "@nunjucks/loaders@workspace:packages/loaders"
-  dependencies:
-    rimraf: "npm:~3.0.2"
-    typescript: "npm:^5.4.3"
-  languageName: unknown
-  linkType: soft
-
 "@nunjucks/parser@workspace:*, @nunjucks/parser@workspace:packages/parser":
   version: 0.0.0-use.local
   resolution: "@nunjucks/parser@workspace:packages/parser"
   dependencies:
+    "@nunjucks/ast": "workspace:*"
     "@nunjucks/runtime": "workspace:*"
     "@types/regenerate": "npm:^1.4.3"
     "@unicode/unicode-12.1.0": "npm:^1.5.2"
@@ -2529,7 +2521,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@nunjucks/runtime@workspace:packages/runtime"
   dependencies:
-    "@nunjucks/environment": "workspace:*"
+    "@nunjucks/ast": "workspace:*"
     character-entities: "npm:^1.2.4"
     rimraf: "npm:~3.0.2"
     typescript: "npm:^5.4.3"

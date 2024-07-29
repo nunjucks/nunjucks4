@@ -33,11 +33,11 @@
     "compile:esm": "tsc --outDir dist/esm --module esnext --target es2021"
   },
   "devDependencies": {
-    "@nunjucks/environment": "workspace:*",
     "rimraf": "~3.0.2",
     "typescript": "^5.4.3"
   },
   "dependencies": {
+    "@nunjucks/ast": "workspace:*",
     "character-entities": "^1.2.4"
   }
 }

@@ -41,6 +41,7 @@
     "typescript": "^5.4.3"
   },
   "dependencies": {
+    "@nunjucks/ast": "workspace:*",
     "@nunjucks/runtime": "workspace:*",
     "lru-cache": "^10.2.2"
   }

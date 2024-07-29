@@ -33,7 +33,9 @@
     "compile:esm": "tsc --outDir dist/esm --module esnext --target es2021"
   },
   "dependencies": {
+    "@nunjucks/ast": "workspace:*",
     "@nunjucks/compiler": "workspace:*",
+    "@nunjucks/parser": "workspace:*",
     "@nunjucks/runtime": "workspace:*",
     "@nunjucks/utils": "workspace:*",
     "astring": "^1.8.6",
@@ -43,7 +45,6 @@
     "sync-fetch": "^0.5.2"
   },
   "devDependencies": {
-    "@nunjucks/parser": "workspace:*",
     "@types/make-fetch-happen": "^10.0.4",
     "@types/sync-fetch": "^0.4.3",
     "node-fetch": "^3.3.2",
