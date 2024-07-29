@@ -38,7 +38,7 @@
     "@nunjucks/parser": "workspace:*",
     "@nunjucks/runtime": "workspace:*",
     "@nunjucks/utils": "workspace:*",
-    "astring": "^1.8.6",
+    "@pregenerator/generator": "^1.1.2",
     "lru-cache": "^10.2.0",
     "make-fetch-happen": "^13.0.1",
     "set.prototype.difference": "^1.1.4",

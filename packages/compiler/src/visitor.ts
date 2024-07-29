@@ -1217,7 +1217,9 @@ export class CodeGenerator<IsAsync extends boolean> {
 
         const stmts: n.Statement[] = [];
         const tmp = self.temporaryIdentifier();
-        stmts.push(b.variableDeclaration("let", [id(tmp)]));
+        stmts.push(
+          b.variableDeclaration("let", [b.variableDeclarator(id(tmp))]),
+        );
         // Matching python semantics, intermediary expressions in the comparison
         // should only be evaluated once. So the expression
         //    w() < x() < y() < z()

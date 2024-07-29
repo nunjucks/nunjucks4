@@ -28,8 +28,7 @@ import {
 } from "@nunjucks/parser";
 import { CodeGenerator } from "@nunjucks/compiler";
 import { Template, TemplateNotFound, TemplatesNotFound } from "./template";
-// import { generate } from "astring";
-import generate from "@babel/generator";
+import generate from "@pregenerator/generator";
 import type { AsyncLoader, SyncLoader } from "./loaders";
 import { chainMap, dict, joiner, cycler, lipsum } from "./utils";
 import DEFAULT_FILTERS from "./filters";
@@ -564,7 +563,7 @@ export class Environment<IsAsync extends boolean = boolean>
       filename,
     });
     const ast = codegen.compile(source);
-    const jsSource = generate(ast as any).code;
+    const jsSource = generate(ast as any);
     return jsSource;
   }
 

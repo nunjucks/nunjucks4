@@ -33,14 +33,12 @@
     "compile:esm": "tsc --outDir dist/esm --module esnext --target es2021"
   },
   "dependencies": {
-    "@babel/generator": "^7.18.7",
     "@nunjucks/ast": "workspace:*",
     "@nunjucks/runtime": "workspace:*",
     "@pregenerator/ast-types": "1.1.2",
     "@pregenerator/template": "1.1.2"
   },
   "devDependencies": {
-    "@types/babel__generator": "^7.6.4",
     "rimraf": "~3.0.2",
     "typescript": "^5.4.3"
   }

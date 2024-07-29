@@ -112,17 +112,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@babel/generator@npm:^7.18.7":
-  version: 7.18.7
-  resolution: "@babel/generator@npm:7.18.7"
-  dependencies:
-    "@babel/types": "npm:^7.18.7"
-    "@jridgewell/gen-mapping": "npm:^0.3.2"
-    jsesc: "npm:^2.5.1"
-  checksum: 10/02feab45d5785968df0ca2df914341d28e1be6dc899bbe0e9a47771b4725cd97ad4bd6245bb1730f10509dd0fd49e4f90ddb99470fcc6264c8894ca0335c1d54
-  languageName: node
-  linkType: hard
-
 "@babel/generator@npm:^7.24.1, @babel/generator@npm:^7.7.2":
   version: 7.24.1
   resolution: "@babel/generator@npm:7.24.1"
@@ -1556,7 +1545,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@babel/types@npm:^7.0.0, @babel/types@npm:^7.18.7":
+"@babel/types@npm:^7.0.0":
   version: 7.18.7
   resolution: "@babel/types@npm:7.18.7"
   dependencies:
@@ -2001,17 +1990,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@jridgewell/gen-mapping@npm:^0.3.2":
-  version: 0.3.2
-  resolution: "@jridgewell/gen-mapping@npm:0.3.2"
-  dependencies:
-    "@jridgewell/set-array": "npm:^1.0.1"
-    "@jridgewell/sourcemap-codec": "npm:^1.4.10"
-    "@jridgewell/trace-mapping": "npm:^0.3.9"
-  checksum: 10/7ba0070be1aeda7d7694b09d847c3b95879409b26559b9d7e97a88ec94b838fb380df43ae328ee2d2df4d79e75d7afe6ba315199d18d79aa20839ebdfb739420
-  languageName: node
-  linkType: hard
-
 "@jridgewell/gen-mapping@npm:^0.3.5":
   version: 0.3.5
   resolution: "@jridgewell/gen-mapping@npm:0.3.5"
@@ -2034,13 +2012,6 @@ __metadata:
   version: 3.1.2
   resolution: "@jridgewell/resolve-uri@npm:3.1.2"
   checksum: 10/97106439d750a409c22c8bff822d648f6a71f3aa9bc8e5129efdc36343cd3096ddc4eeb1c62d2fe48e9bdd4db37b05d4646a17114ecebd3bbcacfa2de51c3c1d
-  languageName: node
-  linkType: hard
-
-"@jridgewell/set-array@npm:^1.0.1":
-  version: 1.1.2
-  resolution: "@jridgewell/set-array@npm:1.1.2"
-  checksum: 10/69a84d5980385f396ff60a175f7177af0b8da4ddb81824cb7016a9ef914eee9806c72b6b65942003c63f7983d4f39a5c6c27185bbca88eb4690b62075602e28e
   languageName: node
   linkType: hard
 
@@ -2082,16 +2053,6 @@ __metadata:
     "@jridgewell/resolve-uri": "npm:^3.1.0"
     "@jridgewell/sourcemap-codec": "npm:^1.4.14"
   checksum: 10/dced32160a44b49d531b80a4a2159dceab6b3ddf0c8e95a0deae4b0e894b172defa63d5ac52a19c2068e1fe7d31ea4ba931fbeec103233ecb4208953967120fc
-  languageName: node
-  linkType: hard
-
-"@jridgewell/trace-mapping@npm:^0.3.9":
-  version: 0.3.14
-  resolution: "@jridgewell/trace-mapping@npm:0.3.14"
-  dependencies:
-    "@jridgewell/resolve-uri": "npm:^3.0.3"
-    "@jridgewell/sourcemap-codec": "npm:^1.4.10"
-  checksum: 10/bceeb631a95ae0307ffa637a8b7a7fe87adc576381d0a618b7a315a65428b7e7ee70b51bf6be128387c85a60ab8e214528d57184b9ff1b049d8cd483ca2c21e8
   languageName: node
   linkType: hard
 
@@ -2469,12 +2430,10 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@nunjucks/compiler@workspace:packages/compiler"
   dependencies:
-    "@babel/generator": "npm:^7.18.7"
     "@nunjucks/ast": "workspace:*"
     "@nunjucks/runtime": "workspace:*"
     "@pregenerator/ast-types": "npm:1.1.2"
     "@pregenerator/template": "npm:1.1.2"
-    "@types/babel__generator": "npm:^7.6.4"
     rimraf: "npm:~3.0.2"
     typescript: "npm:^5.4.3"
   languageName: unknown
@@ -2489,9 +2448,9 @@ __metadata:
     "@nunjucks/parser": "workspace:*"
     "@nunjucks/runtime": "workspace:*"
     "@nunjucks/utils": "workspace:*"
+    "@pregenerator/generator": "npm:^1.1.2"
     "@types/make-fetch-happen": "npm:^10.0.4"
     "@types/sync-fetch": "npm:^0.4.3"
-    astring: "npm:^1.8.6"
     lru-cache: "npm:^10.2.0"
     make-fetch-happen: "npm:^13.0.1"
     node-fetch: "npm:^3.3.2"
@@ -2816,6 +2775,16 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@pregenerator/generator@npm:^1.1.2":
+  version: 1.1.2
+  resolution: "@pregenerator/generator@npm:1.1.2"
+  dependencies:
+    "@pregenerator/ast-types": "npm:^1.1.1"
+    astring: "npm:^1.7.5"
+  checksum: 10/0aca9196644a6adb11c94204d991a42bb04493b688c76f53c00579f3fa22962eb731c489f710b45fba810c9f47a2a81fc723c0745cd211e886e7936daaaef119
+  languageName: node
+  linkType: hard
+
 "@pregenerator/parser@npm:^1.1.1":
   version: 1.1.1
   resolution: "@pregenerator/parser@npm:1.1.1"
@@ -3001,15 +2970,6 @@ __metadata:
   dependencies:
     "@babel/types": "npm:^7.0.0"
   checksum: 10/b53c215e9074c69d212402990b0ca8fa57595d09e10d94bda3130aa22b55d796e50449199867879e4ea0ee968f3a2099e009cfb21a726a53324483abbf25cd30
-  languageName: node
-  linkType: hard
-
-"@types/babel__generator@npm:^7.6.4":
-  version: 7.6.4
-  resolution: "@types/babel__generator@npm:7.6.4"
-  dependencies:
-    "@babel/types": "npm:^7.0.0"
-  checksum: 10/34f361a0d54a0d85ea4c4b5122c4025a5738fe6795361c85f07a4f8f9add383de640e8611edeeb8339db8203c2d64bff30be266bdcfe3cf777c19e8d34f9cebc
   languageName: node
   linkType: hard
 
@@ -4172,15 +4132,6 @@ __metadata:
   bin:
     astring: bin/astring
   checksum: 10/0fbc2e0117880f53db6efe43c6522ff9c9c7b239c47dbff15de869adef8a523f6802346d9599365d0e2de476756625b00b5cd522ae3a577346ff7b2e5d5d7f59
-  languageName: node
-  linkType: hard
-
-"astring@npm:^1.8.6":
-  version: 1.8.6
-  resolution: "astring@npm:1.8.6"
-  bin:
-    astring: bin/astring
-  checksum: 10/5c1eb7cf3e8ff7da2021c887dddd887c6ae307767e76ee4418eb02dfee69794c397ea4dccaf3f28975ecd8eb32a5fe4dce108d35b2e4c6429c2a7ec9b7b7de57
   languageName: node
   linkType: hard
 
