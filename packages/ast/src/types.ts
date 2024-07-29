@@ -1,6 +1,11 @@
-const Op = Object.prototype;
-const objToStr = Op.toString;
-const hasOwn = Op.hasOwnProperty;
+function hasOwn<K extends string | number>(
+  o: unknown,
+  key: K,
+): o is Record<K, unknown> {
+  return o && Object.prototype.hasOwnProperty.call(o, key);
+}
+
+const objToStr = (o: unknown): string => Object.prototype.toString.call(o);
 
 type Deep = boolean | ((type: Type<any>, value: any) => void);
 
@@ -41,7 +46,7 @@ abstract class BaseType<T> {
   assert(value: any, deep?: Deep): asserts value is T {
     if (!this.check(value, deep)) {
       const str = shallowStringify(value);
-      throw new Error(str + " does not match type " + this);
+      throw new Error(`${str} does not match type ${this}`);
     }
   }
 
@@ -52,7 +57,7 @@ abstract class BaseType<T> {
 }
 
 export class ArrayType<T> extends BaseType<T> {
-  readonly kind: "ArrayType" = "ArrayType";
+  readonly kind = "ArrayType";
 
   constructor(
     public readonly elemType: Type<T extends (infer E)[] ? E : never>,
@@ -61,7 +66,7 @@ export class ArrayType<T> extends BaseType<T> {
   }
 
   toString(): string {
-    return "[" + this.elemType + "]";
+    return `[${this.elemType}]`;
   }
 
   check(value: any, deep?: Deep): value is T {
@@ -73,7 +78,7 @@ export class ArrayType<T> extends BaseType<T> {
 }
 
 export class IdentityType<T> extends BaseType<T> {
-  readonly kind: "IdentityType" = "IdentityType";
+  readonly kind = "IdentityType";
 
   constructor(public readonly value: T) {
     super();
@@ -93,7 +98,7 @@ export class IdentityType<T> extends BaseType<T> {
 }
 
 export class ObjectType<T> extends BaseType<T> {
-  readonly kind: "ObjectType" = "ObjectType";
+  readonly kind = "ObjectType";
 
   constructor(public readonly fields: Field<any>[]) {
     super();
@@ -105,7 +110,7 @@ export class ObjectType<T> extends BaseType<T> {
 
   check(value: any, deep?: Deep): value is T {
     return (
-      objToStr.call(value) === objToStr.call({}) &&
+      objToStr(value) === objToStr({}) &&
       this.fields.every((field) => {
         return field.type.check(value[field.name], deep);
       })
@@ -114,7 +119,7 @@ export class ObjectType<T> extends BaseType<T> {
 }
 
 export class OrType<T> extends BaseType<T> {
-  readonly kind: "OrType" = "OrType";
+  readonly kind = "OrType";
 
   constructor(public readonly types: Type<any>[]) {
     super();
@@ -132,7 +137,7 @@ export class OrType<T> extends BaseType<T> {
 }
 
 export class PredicateType<T> extends BaseType<T> {
-  readonly kind: "PredicateType" = "PredicateType";
+  readonly kind = "PredicateType";
 
   constructor(
     public readonly name: string,
@@ -204,9 +209,9 @@ export abstract class Def<T = any> {
       if (this.finalized !== true || that_.finalized !== true) {
         throw new Error("");
       }
-      return hasOwn.call(that_.allSupertypes, this.typeName);
+      return hasOwn(that_.allSupertypes, this.typeName);
     } else {
-      throw new Error(that + " is not a Def");
+      throw new Error(`${that} is not a Def`);
     }
   }
 
@@ -317,7 +322,7 @@ class Field<T> {
   }
 
   toString(): string {
-    return JSON.stringify(this.name) + ": " + this.type;
+    return `${JSON.stringify(this.name)}: ${this.type}`;
   }
 
   getValue(obj: Record<string, any>) {
@@ -369,11 +374,11 @@ export function shallowStringify(value: any): string {
 }
 
 export const Type = {
-  or(...types: any[]): Type<any> {
+  or(this: void, ...types: any[]): Type<any> {
     return new OrType(types.map((type) => Type.from(type)));
   },
 
-  from<T>(value: any, name?: string): Type<T> {
+  from<T>(this: void, value: any, name?: string): Type<T> {
     if (
       value instanceof ArrayType ||
       value instanceof IdentityType ||
@@ -432,14 +437,14 @@ export const Type = {
   // In particular, this system allows for circular and forward definitions.
   // The Def object d returned from Type.def may be used to configure the
   // type d.type by calling methods such as d.bases, d.build, and d.field.
-  def(typeName: string): Def {
-    return hasOwn.call(defCache, typeName)
+  def(this: void, typeName: string): Def {
+    return hasOwn(defCache, typeName)
       ? (defCache as any)[typeName]
-      : (defCache[typeName] = new DefImpl(typeName));
+      : ((defCache as any)[typeName] = new DefImpl(typeName));
   },
 
   hasDef(typeName: string): boolean {
-    return hasOwn.call(defCache, typeName);
+    return hasOwn(defCache, typeName);
   },
 };
 
@@ -463,11 +468,11 @@ function defBuiltInType<K extends keyof BuiltInTypes>(
   name: K,
   example: BuiltInTypes[K],
 ): PredicateType<BuiltInTypes[K]> {
-  const objStr: string = objToStr.call(example);
+  const objStr: string = objToStr(example);
 
   const type = new PredicateType<BuiltInTypes[K]>(
     name,
-    (value) => objToStr.call(value) === objStr,
+    (value) => objToStr(value) === objStr,
   );
 
   if (example && typeof example.constructor === "function") {
@@ -522,7 +527,7 @@ const defCache: Record<string, Def<any>> = Object.create(null);
 export function defFromValue(value: any): Def<any> | null {
   if (value && typeof value === "object") {
     const type = value.type;
-    if (typeof type === "string" && hasOwn.call(defCache, type)) {
+    if (typeof type === "string" && hasOwn(defCache, type)) {
       const d = defCache[type];
       if (d.finalized) {
         return d;
@@ -620,10 +625,10 @@ class DefImpl<T = any> extends Def<T> {
       arg: any,
       isArgAvailable: boolean,
     ) => {
-      if (hasOwn.call(built, param)) return;
+      if (hasOwn(built, param)) return;
 
       const all = this.allFields;
-      if (!hasOwn.call(all, param)) {
+      if (!hasOwn(all, param)) {
         throw new Error("" + param);
       }
 
@@ -655,11 +660,7 @@ class DefImpl<T = any> extends Def<T> {
 
       if (!type.check(value)) {
         throw new Error(
-          shallowStringify(value) +
-            " does not match field " +
-            field +
-            " of type " +
-            this.typeName,
+          `${shallowStringify(value)} does not match field ${field} of type ${this.typeName}`,
         );
       }
 
@@ -715,7 +716,7 @@ class DefImpl<T = any> extends Def<T> {
       const built: ASTNode = Object.create(nodePrototype);
 
       Object.keys(this.allFields).forEach(function (param) {
-        if (hasOwn.call(obj, param)) {
+        if (hasOwn(obj, param)) {
           addParam(built, param, obj[param], true);
         } else {
           addParam(built, param, null, false);
@@ -800,7 +801,7 @@ class DefImpl<T = any> extends Def<T> {
 
       this.fieldNames.length = 0;
       for (const fieldName in allFields) {
-        if (hasOwn.call(allFields, fieldName) && !allFields[fieldName].hidden) {
+        if (hasOwn(allFields, fieldName) && !allFields[fieldName].hidden) {
           this.fieldNames.push(fieldName);
         }
       }
@@ -822,7 +823,7 @@ class DefImpl<T = any> extends Def<T> {
 // Note that the list returned by this function is a copy of the internal
 // supertypeList, *without* the typeName itself as the first element.
 export function getSupertypeNames(typeName: string): string[] {
-  if (!hasOwn.call(defCache, typeName)) {
+  if (!hasOwn(defCache, typeName)) {
     throw new Error("");
   }
   const d = defCache[typeName];
@@ -838,17 +839,14 @@ export function getSupertypeNames(typeName: string): string[] {
 export function computeSupertypeLookupTable(candidates: any) {
   const table: Record<string, any> = {};
   const typeNames = Object.keys(defCache);
-  const typeNameCount = typeNames.length;
 
-  for (let i = 0; i < typeNameCount; ++i) {
-    const typeName = typeNames[i];
+  for (const typeName of typeNames) {
     const d = defCache[typeName];
     if (d.finalized !== true) {
       throw new Error("" + typeName);
     }
-    for (let j = 0; j < d.supertypeList.length; ++j) {
-      const superTypeName = d.supertypeList[j];
-      if (hasOwn.call(candidates, superTypeName)) {
+    for (const superTypeName of d.supertypeList) {
+      if (hasOwn(candidates, superTypeName)) {
         table[typeName] = superTypeName;
         break;
       }
@@ -983,8 +981,8 @@ function populateSupertypeList(typeName: any, list: any) {
 
     // If we saw typeName earlier in the breadth-first traversal,
     // delete the last-seen occurrence.
-    if (hasOwn.call(lastSeen, typeName)) {
-      delete list[lastSeen[typeName]];
+    if (hasOwn(lastSeen, typeName)) {
+      delete list[lastSeen[typeName] as any];
     }
 
     // Record the new index of the last-seen occurrence of typeName.
@@ -1000,7 +998,7 @@ function populateSupertypeList(typeName: any, list: any) {
   let from: number;
   let len: number;
   for (to = 0, from = to, len = list.length; from < len; ++from) {
-    if (hasOwn.call(list, from)) {
+    if (hasOwn(list, from)) {
       list[to++] = list[from];
     }
   }

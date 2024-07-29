@@ -2,8 +2,12 @@ import { builtInTypes, getFieldValue, getFieldNames, Type } from "./types";
 import * as n from "./gen/types";
 import "./def";
 
-const Op = Object.prototype;
-const hasOwn = Op.hasOwnProperty;
+function hasOwn<K extends string | number>(
+  o: unknown,
+  key: K,
+): o is Record<K, unknown> {
+  return o && Object.prototype.hasOwnProperty.call(o, key);
+}
 
 const isArray = builtInTypes.array;
 const isNumber = builtInTypes.number;
@@ -110,7 +114,7 @@ export class Path<
 
     // The name of the property of parentPath.value through which this
     // Path's value was reached.
-    this.name = name !== null && name !== undefined ? name : null;
+    this.name = name ?? null;
 
     // Calling path.get("child") multiple times always returns the same
     // child Path object, for both performance and consistency reasons.
@@ -123,7 +127,7 @@ export class Path<
 
   _getChildCache(): ChildCache {
     return (
-      this.__childCache ||
+      this.__childCache ??
       (this.__childCache = Object.create(null) as ChildCache)
     );
   }
@@ -135,7 +139,7 @@ export class Path<
     const actualChildValue = this.getValueProperty(name);
     let childPath = cache[name];
     if (
-      !hasOwn.call(cache, name) ||
+      !hasOwn(cache, name) ||
       // Ensure consistency between cache and reality.
       childPath.value !== actualChildValue
     ) {
@@ -155,9 +159,8 @@ export class Path<
       return this._getChildPath(names[0]) as PathGet<N, V, K>;
     }
     let path: Path = this as unknown as Path;
-
-    for (let i = 0; i < names.length; ++i) {
-      path = path._getChildPath(names[i]);
+    for (const name of names) {
+      path = path._getChildPath(name);
     }
 
     return path as PathGet<N, V, K>;
@@ -187,7 +190,7 @@ export class Path<
 
     // Collect all the original child paths before invoking the callback.
     for (i = 0; i < len; ++i) {
-      if (hasOwn.call(this.value, i)) {
+      if (hasOwn(this.value, i)) {
         childPaths[i] = this.get(i) as any;
       }
     }
@@ -197,8 +200,8 @@ export class Path<
     // semantics over cleverly invoking the callback on new elements because
     // this way is much easier to reason about.
     for (i = 0; i < len; ++i) {
-      if (hasOwn.call(childPaths, i)) {
-        callback.call((context || this) as T, childPaths[i], i);
+      if (hasOwn(childPaths, i)) {
+        callback.call((context ?? this) as T, childPaths[i], i);
       }
     }
   }
@@ -215,7 +218,7 @@ export class Path<
       function mapCallback(childPath) {
         result.push(callback.call(this, childPath));
       },
-      (context || this) as T,
+      (context ?? this) as T,
     );
 
     return result;
@@ -236,7 +239,7 @@ export class Path<
           result.push(childPath);
         }
       },
-      (context || this) as T,
+      (context ?? this) as T,
     );
 
     return result as V extends (infer U)[]
@@ -262,7 +265,7 @@ export class Path<
       }
     } else if (value && typeof value === "object") {
       for (const childName of getFieldNames(value)) {
-        if (!hasOwn.call(value, childName)) {
+        if (!hasOwn(value, childName)) {
           (value as any)[childName] = getFieldValue(value, childName);
         }
         childPaths.push(this.get(childName) as any);
@@ -314,7 +317,7 @@ export class Path<
   }
 
   // eslint-disable-next-line @typescript-eslint/no-empty-function
-  _emptyMoves(): void {}
+  _emptyMoves(this: void): void {}
 
   _getMoves(offset: number, start?: number, end?: number): () => void {
     const value = this.value;
@@ -347,7 +350,7 @@ export class Path<
     const cache = this._getChildCache();
 
     for (let i = start; i < end; ++i) {
-      if (hasOwn.call(value, i)) {
+      if (hasOwn(value, i)) {
         const childPath = this.get(i) as any;
         if (childPath.name !== i) {
           throw new Error("");
@@ -519,7 +522,7 @@ export class Path<
       pp = pp.parentPath;
     }
 
-    return pp || null;
+    return pp ?? null;
   }
 
   replace(...args: any[]): Path[] {
@@ -544,8 +547,8 @@ export class Path<
       const move = pp._getMoves(args.length - 1, name + 1);
 
       const spliceArgs: [number, number, ...any[]] = [name, 1];
-      for (let i = 0; i < args.length; ++i) {
-        spliceArgs.push(args[i]);
+      for (const arg of args) {
+        spliceArgs.push(arg);
       }
 
       const splicedOut = parentValue.splice(...spliceArgs);
@@ -618,7 +621,7 @@ export class Path<
       assertIsString(name);
       return getFieldValue(this.value, name);
     } else {
-      if (hasOwn.call(this.value, name)) {
+      if (hasOwn(this.value, name)) {
         return (this.value as any)[name];
       }
     }
