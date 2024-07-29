@@ -802,7 +802,6 @@ export class Markup extends String {
 
     // Look for comments then tags separately. Otherwise, a comment that
     // contains a tag would end early, leaving some of the comment behind.
-    // eslint-disable-next-line no-constant-condition
     while (true) {
       // keep finding comment start marks
       const start = value.indexOf("<!--");
@@ -816,7 +815,6 @@ export class Markup extends String {
       value = value.substring(0, start) + value.substring(end + 3);
     }
     // remove tags using the same method
-    // eslint-disable-next-line no-constant-condition
     while (true) {
       // keep finding comment start marks
       const start = value.indexOf("<");

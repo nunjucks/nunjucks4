@@ -34,7 +34,7 @@
     "gen": "ts-node --transpile-only scripts/gen-types.ts"
   },
   "devDependencies": {
-    "@pregenerator/ast-types": "1.1.2",
+    "@pregenerator/ast-types": "^1.1.3",
     "@types/node": "^20.12.2",
     "@types/prettier": "^2.4.3",
     "ast-types": "^0.14.2",

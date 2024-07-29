@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-function-type */
 function hasOwn<K extends string | number>(
   o: unknown,
   key: K,
@@ -488,7 +489,6 @@ function defBuiltInType<K extends keyof BuiltInTypes>(
 // that no subtyping is considered; so, for instance, isObject.check
 // returns false for [], /./, new Date, and null.
 const isString = defBuiltInType("string", "truthy");
-// eslint-disable-next-line @typescript-eslint/no-empty-function
 const isFunction = defBuiltInType("function", function () {});
 const isArray = defBuiltInType("array", []);
 const isObject = defBuiltInType("object", {});

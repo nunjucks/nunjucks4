@@ -12,7 +12,7 @@ import {
 import runtime from "@nunjucks/runtime";
 import { types as nodes, builders } from "@nunjucks/ast";
 import { lexer, parse, Parser } from "@nunjucks/parser";
-import { TemplateInfo } from "@nunjucks/environment/src/environment";
+import { TemplateInfo } from "@nunjucks/environment";
 
 const parser: { parse: typeof parse; Parser: typeof Parser } = {
   parse,

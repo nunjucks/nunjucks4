@@ -379,7 +379,6 @@ export class Parser {
     let locToken = this.stream.current;
     const expr = this.parseMath1();
     const ops: t.Operand[] = [];
-    // eslint-disable-next-line no-constant-condition
     while (true) {
       const tokenType = this.stream.current.type;
       if (isCompareOperator(tokenType)) {
@@ -595,7 +594,6 @@ export class Parser {
 
     let isTuple = false;
     const args: t.Expr[] = [];
-    // eslint-disable-next-line no-constant-condition
     while (true) {
       if (args.length) {
         this.stream.expect("comma");
@@ -678,7 +676,6 @@ export class Parser {
   }
 
   parsePostfix(node: t.Expr): t.Expr {
-    // eslint-disable-next-line no-constant-condition
     while (true) {
       const tokenType = this.stream.current.type;
       if (tokenType === "dot" || tokenType === "lbracket") {
@@ -693,7 +690,6 @@ export class Parser {
   }
 
   parseFilterExpr(node: t.Expr): t.Expr {
-    // eslint-disable-next-line no-constant-condition
     while (true) {
       const tokenType = this.stream.current.type;
       if (tokenType === lexer.TOKEN_PIPE) {
@@ -1233,7 +1229,6 @@ export class Parser {
       return false;
     };
 
-    // eslint-disable-next-line no-constant-condition
     while (true) {
       if (names.length) {
         this.stream.expect("comma");
@@ -1416,7 +1411,6 @@ export class Parser {
     const startTok = this.stream.expect("name:if");
     const result = { type: "If" } as t.If;
     let node: t.If = result;
-    // eslint-disable-next-line no-constant-condition
     while (true) {
       const currTok = this.stream.current;
       node.test = this.parseTuple({ withCondExpr: false });

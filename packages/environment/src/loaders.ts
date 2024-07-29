@@ -7,7 +7,8 @@ import * as fsPromises from "fs/promises";
 import EventEmitter from "events";
 import fetch from "make-fetch-happen";
 import syncFetch from "sync-fetch";
-import type { Response } from "node-fetch";
+
+type Response = typeof fetch extends (...args: any[]) => Promise<infer T> ? T : never;
 
 type SyncRequestInit = typeof syncFetch extends (
   url: any,
@@ -308,6 +309,7 @@ export class NodeResolveLoader extends SyncLoader {
     }
     // TODO add compiled code cache?
 
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { root, blocks } = require(name);
     return new Template<EnvAsync>({
       environment,

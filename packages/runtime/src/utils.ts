@@ -1,6 +1,5 @@
 import { str } from ".";
 
-// eslint-disable-next-line @typescript-eslint/ban-types
 export function isPlainObject(obj: any): obj is object {
   if (typeof obj !== "object" || obj === null) return false;
 

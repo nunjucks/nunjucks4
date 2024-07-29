@@ -65,7 +65,7 @@ function computeMethodNameTable(visitor: any) {
   return methodNameTable;
 }
 
-class AbortRequest {
+class AbortRequest extends Error {
   cancel?: () => void;
 }
 

@@ -60,7 +60,7 @@ const DEFAULT_NAMESPACE: Record<string, any> = {
 //   );
 // }
 //
-// // eslint-disable-next-line @typescript-eslint/ban-types
+// // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 // function getNativePrototype(obj: unknown): {} | undefined {
 //   let current: unknown = obj;
 //   while ((current = Object.getPrototypeOf(obj))) {
@@ -95,7 +95,7 @@ function undef(
 
 const _undef = undef;
 
-// eslint-disable-next-line @typescript-eslint/ban-types
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 function createCache<V extends {}>({
   max,
 }: {
@@ -633,7 +633,7 @@ export class Environment<IsAsync extends boolean = boolean>
         if (template !== null) break;
       }
       if (template === null) {
-        throw err;
+        throw err!;
       } else {
         return template;
       }
@@ -807,6 +807,7 @@ export class Environment<IsAsync extends boolean = boolean>
     } = {},
   ): Promise<Template<true>> | Template<false> {
     if (isUndefinedInstance(name)) {
+      // eslint-disable-next-line @typescript-eslint/only-throw-error
       throw name._failWithUndefinedError();
     }
     if (this.isSync()) {
@@ -906,6 +907,7 @@ export class Environment<IsAsync extends boolean = boolean>
     } = {},
   ): Template<false> | Promise<Template<true>> {
     if (isUndefinedInstance(names)) {
+      // eslint-disable-next-line @typescript-eslint/only-throw-error
       throw names._failWithUndefinedError();
     } else if (this.isAsync()) {
       return this._asyncSelectTemplate(

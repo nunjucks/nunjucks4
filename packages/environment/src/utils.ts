@@ -263,7 +263,6 @@ export const lipsum = nunjucksFunction(["n", "html", "min", "max"])(
       // each paragraph contains between 20 and 100 words
       const numWords = randrange(min, max);
       for (let j = 0; j < numWords; j++) {
-        // eslint-disable-next-line no-constant-condition
         while (true) {
           word = choice(words);
           if (word !== last) {

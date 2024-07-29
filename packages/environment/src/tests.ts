@@ -64,7 +64,7 @@ export function true_(value: unknown): value is true {
   return value === true;
 }
 
-export function integer(value: unknown): value is number | BigInt {
+export function integer(value: unknown): value is number | bigint {
   return (
     (Number.isInteger(value) && !(value instanceof Float)) ||
     typeof value === "bigint"
@@ -102,7 +102,7 @@ export function mapping(
   );
 }
 
-export function number(value: unknown): value is number | BigInt {
+export function number(value: unknown): value is number | bigint {
   return (
     typeof value === "number" ||
     value instanceof Number ||
