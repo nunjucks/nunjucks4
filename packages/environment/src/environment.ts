@@ -136,21 +136,25 @@ export interface EnvironmentOptions<IsAsync extends boolean = boolean> {
   extensions?: (typeof Extension)[];
 }
 
-export class Environment<IsAsync extends boolean = boolean>
+/**
+ * An Environment class that can execute templates, but is unable to
+ * parse and compile them.
+ *
+ * Used for the nunjucks "slim" package.
+ */
+export class EnvironmentBase<IsAsync extends boolean = boolean>
   extends EventEmitter
   implements IEnvironment<IsAsync>
 {
   autoescape: boolean | ((templateName?: string | null) => boolean);
   missing: Record<never, never>;
   async: IsAsync;
-  parserOpts: Partial<LexerOptions>;
   filters: Record<string, Filter>;
   tests: Record<string, Test>;
   globals: Record<string, any>;
   undef: typeof _undef;
   contextClass: typeof Context = Context;
   templateClass: typeof Template = Template;
-  codeGeneratorClass: typeof CodeGenerator = CodeGenerator;
 
   /**
    * if this environment is sandboxed.  Modifying this variable won't make
@@ -183,7 +187,6 @@ export class Environment<IsAsync extends boolean = boolean>
     autoescape = false,
     async,
     loaders = [],
-    parserOpts = {},
     filters = DEFAULT_FILTERS,
     tests = DEFAULT_TESTS,
     globals = {},
@@ -203,7 +206,6 @@ export class Environment<IsAsync extends boolean = boolean>
     this.async = !!async as IsAsync;
     this.loaders = loaders;
     this.missing = MISSING;
-    this.parserOpts = parserOpts;
     this.autoescape = autoescape;
     this.filters = filters;
     this.tests = tests;
@@ -430,162 +432,6 @@ export class Environment<IsAsync extends boolean = boolean>
       isFilter: false,
     });
   }
-  get lexer(): Lexer {
-    return getLexer(this.parserOpts);
-  }
-
-  lex(
-    source: string,
-    { name = null, filename = null }: TemplateInfo = {},
-  ): Iterable<[number, string, string, number, string]> {
-    // eslint-disable-next-line no-useless-catch
-    try {
-      return this.lexer.tokeniter(source, { name, filename });
-    } catch (e) {
-      // if (e.type === "TemplateSyntaxError") {
-      //   this.handleException({ source });
-      // }
-      throw e;
-    }
-  }
-
-  preprocess(source: string, info: TemplateInfo): string {
-    return this.extensionsList.reduce((s, e) => e.preprocess(s, info), source);
-  }
-
-  /**
-   * Called by the parser to do the preprocessing and filtering
-   * for all the extensions.  Returns a TokenStream.
-   */
-  _tokenize(
-    source: string,
-    {
-      name = null,
-      filename = null,
-      state = null,
-    }: TemplateInfo & { state?: string | null },
-  ): TokenStream {
-    source = this.preprocess(source, { name, filename });
-    const stream = this.lexer.tokenize(source, { name, filename, state });
-    return Object.assign(
-      this.extensionsList.reduce((prev, ext) => {
-        const stream = ext.filterStream(prev);
-        return stream instanceof TokenStream
-          ? stream
-          : new TokenStream(stream, { name, filename });
-      }, stream),
-      { str: source },
-    );
-  }
-
-  parse(
-    source: string,
-    { name = null, filename = null }: TemplateInfo = {},
-  ): types.Template {
-    // eslint-disable-next-line no-useless-catch
-    try {
-      return this._parse(source, { name, filename });
-    } catch (e) {
-      // if (e.type === "TemplateSyntaxError") {
-      //   this.handleException({ source });
-      // }
-      throw e;
-    }
-  }
-
-  _parse(
-    source: string,
-    { name = null, filename = null }: TemplateInfo,
-  ): types.Template {
-    const parser = Parser.fromEnvironment(this, source, {
-      name,
-      filename,
-    });
-    return parser.parse();
-  }
-
-  compile(
-    source: types.Template | string,
-    opts?: TemplateInfo & { raw?: false },
-  ): {
-    root: RenderFunc<IsAsync>;
-    blocks: Record<string, RenderFunc<IsAsync>>;
-  };
-
-  compile(
-    source: types.Template | string,
-    opts: TemplateInfo & { raw: true },
-  ): string;
-  compile(
-    source: string | types.Template,
-    {
-      raw,
-      name = null,
-      filename = null,
-    }: TemplateInfo & { raw?: boolean } = {},
-  ) {
-    let njAst: types.Template;
-    filename = filename ?? "<template>";
-    if (typeof source === "string") {
-      njAst = this._parse(source, { name, filename });
-    } else {
-      njAst = source;
-    }
-    const jsSource = this._generate(njAst, { name, filename });
-    if (raw) {
-      return jsSource;
-    } else {
-      return this._compile(jsSource, { name, filename });
-    }
-  }
-
-  _compile(
-    source: string,
-    { name = null, filename = null }: TemplateInfo = {},
-  ): {
-    root: RenderFunc<IsAsync>;
-    blocks: Record<string, RenderFunc<IsAsync>>;
-  } {
-    // eslint-disable-next-line @typescript-eslint/no-implied-eval
-    return new Function(source)() as {
-      root: RenderFunc<IsAsync>;
-      blocks: Record<string, RenderFunc<IsAsync>>;
-    };
-  }
-
-  _generate(
-    source: types.Template,
-    { name = null, filename = null }: TemplateInfo = {},
-  ): string {
-    const codegen = new this.codeGeneratorClass({
-      environment: this,
-      name,
-      filename,
-    });
-    const ast = codegen.compile(source);
-    const jsSource = generate(ast as any);
-    return jsSource;
-  }
-
-  fromString(
-    source: string,
-    {
-      globals,
-      name,
-      filename,
-    }: Partial<TemplateInfo> & { globals?: Record<string, unknown> } = {},
-  ): Template<IsAsync> {
-    const { root, blocks } = this.compile(source);
-    return new Template<IsAsync>({
-      environment: this,
-      root,
-      blocks,
-      globals,
-      name,
-      filename,
-    });
-  }
-
   _loadTemplate(
     this: Environment<true>,
     name: string,
@@ -701,72 +547,6 @@ export class Environment<IsAsync extends boolean = boolean>
         const template = await this.getTemplate(name);
         return template.render(ctx);
       })();
-      if (typeof cb === "undefined") {
-        return promise;
-      } else {
-        promise.then(
-          (res) => cb(null, res),
-          (err) => cb(err, undefined),
-        );
-      }
-    }
-  }
-
-  renderString(
-    this: Environment<true>,
-    src: string,
-    context: Record<string, any>,
-    opts?: Partial<TemplateInfo> & { globals?: Record<string, unknown> },
-  ): Promise<string>;
-  renderString(
-    this: Environment<false>,
-    src: string,
-    context: Record<string, any>,
-    opts?: Partial<TemplateInfo> & { globals?: Record<string, unknown> },
-  ): string;
-  renderString(
-    this: Environment<IsAsync>,
-    src: string,
-    context: Record<string, any>,
-    opts?: Partial<TemplateInfo> & { globals?: Record<string, unknown> },
-  ): Promise<string> | string;
-  renderString(
-    src: string,
-    context: Record<string, any>,
-    opts: Partial<TemplateInfo> & { globals?: Record<string, unknown> },
-    callback: (err: any, res: string | undefined) => void,
-  ): void;
-  renderString(
-    src: string,
-    context: Record<string, any>,
-    callback: (err: any, res: string | undefined) => void,
-  ): void;
-  renderString(
-    src: string,
-    context:
-      | Record<string, any>
-      | ((err: any, res: string | undefined) => void) = {},
-    callbackOrOpts:
-      | ((err: any, res: string | undefined) => void)
-      | (Partial<TemplateInfo> & { globals?: Record<string, unknown> }) = {},
-    callback?: (err: any, res: string | undefined) => void,
-  ): Promise<string> | string | void {
-    let cb: ((err: any, res: string | undefined) => void) | undefined =
-      callback;
-    let templateOpts: Partial<TemplateInfo> & {
-      globals?: Record<string, unknown>;
-    } = {};
-    if (typeof callbackOrOpts !== "function") {
-      templateOpts = callbackOrOpts;
-    } else {
-      cb = callbackOrOpts;
-    }
-    const template = this.fromString(src, templateOpts);
-
-    if (template.isSync()) {
-      return template.render(context, cb);
-    } else if (template.isAsync()) {
-      const promise = template.render(context);
       if (typeof cb === "undefined") {
         return promise;
       } else {
@@ -1055,5 +835,288 @@ export class Environment<IsAsync extends boolean = boolean>
       this.cache[name] = template;
     }
     return template;
+  }
+
+  lex(
+    _source: string,
+    _opts: TemplateInfo,
+  ): Iterable<[number, string, string, number, string]> {
+    throw new Error("Not implemented in a slim-mode Environment");
+  }
+  preprocess(_source: string, _info: TemplateInfo): string {
+    throw new Error("Not implemented in a slim-mode Environment");
+  }
+  parse(source: string, _info?: TemplateInfo): types.Template {
+    throw new Error("Not implemented in a slim-mode Environment");
+  }
+  compile(
+    source: types.Template | string,
+    opts?: TemplateInfo & { raw?: false },
+  ): {
+    root: RenderFunc<IsAsync>;
+    blocks: Record<string, RenderFunc<IsAsync>>;
+  };
+
+  compile(
+    source: types.Template | string,
+    opts: TemplateInfo & { raw: true },
+  ): string;
+  compile(
+    source: string | types.Template,
+    opts?: TemplateInfo & { raw?: boolean },
+  ): any {
+    throw new Error("Not implemented in a slim-mode Environment");
+  }
+  fromString(
+    _source: string,
+    _opts?: {
+      globals?: Record<string, unknown>;
+    },
+  ): Template<IsAsync> {
+    throw new Error("Not implemented in a slim-mode Environment");
+  }
+}
+
+export class Environment<IsAsync extends boolean = boolean>
+  extends EnvironmentBase<IsAsync>
+  implements IEnvironment<IsAsync>
+{
+  parserOpts: Partial<LexerOptions>;
+  codeGeneratorClass: typeof CodeGenerator = CodeGenerator;
+
+  constructor({
+    parserOpts = {},
+    ...baseOpts
+  }: EnvironmentOptions<IsAsync> = {}) {
+    super(baseOpts);
+    this.parserOpts = parserOpts;
+  }
+
+  isAsync(): this is Environment<true> {
+    return this.async;
+  }
+  isSync(): this is Environment<false> {
+    return !this.async;
+  }
+
+  get lexer(): Lexer {
+    return getLexer(this.parserOpts);
+  }
+
+  lex(
+    source: string,
+    { name = null, filename = null }: TemplateInfo = {},
+  ): Iterable<[number, string, string, number, string]> {
+    // eslint-disable-next-line no-useless-catch
+    try {
+      return this.lexer.tokeniter(source, { name, filename });
+    } catch (e) {
+      // if (e.type === "TemplateSyntaxError") {
+      //   this.handleException({ source });
+      // }
+      throw e;
+    }
+  }
+
+  preprocess(source: string, info: TemplateInfo): string {
+    return this.extensionsList.reduce((s, e) => e.preprocess(s, info), source);
+  }
+
+  /**
+   * Called by the parser to do the preprocessing and filtering
+   * for all the extensions.  Returns a TokenStream.
+   */
+  _tokenize(
+    source: string,
+    {
+      name = null,
+      filename = null,
+      state = null,
+    }: TemplateInfo & { state?: string | null },
+  ): TokenStream {
+    source = this.preprocess(source, { name, filename });
+    const stream = this.lexer.tokenize(source, { name, filename, state });
+    return Object.assign(
+      this.extensionsList.reduce((prev, ext) => {
+        const stream = ext.filterStream(prev);
+        return stream instanceof TokenStream
+          ? stream
+          : new TokenStream(stream, { name, filename });
+      }, stream),
+      { str: source },
+    );
+  }
+
+  parse(
+    source: string,
+    { name = null, filename = null }: TemplateInfo = {},
+  ): types.Template {
+    // eslint-disable-next-line no-useless-catch
+    try {
+      return this._parse(source, { name, filename });
+    } catch (e) {
+      // if (e.type === "TemplateSyntaxError") {
+      //   this.handleException({ source });
+      // }
+      throw e;
+    }
+  }
+
+  _parse(
+    source: string,
+    { name = null, filename = null }: TemplateInfo,
+  ): types.Template {
+    const parser = Parser.fromEnvironment(this, source, {
+      name,
+      filename,
+    });
+    return parser.parse();
+  }
+
+  compile(
+    source: types.Template | string,
+    opts?: TemplateInfo & { raw?: false },
+  ): {
+    root: RenderFunc<IsAsync>;
+    blocks: Record<string, RenderFunc<IsAsync>>;
+  };
+
+  compile(
+    source: types.Template | string,
+    opts: TemplateInfo & { raw: true },
+  ): string;
+  compile(
+    source: string | types.Template,
+    {
+      raw,
+      name = null,
+      filename = null,
+    }: TemplateInfo & { raw?: boolean } = {},
+  ) {
+    let njAst: types.Template;
+    filename = filename ?? "<template>";
+    if (typeof source === "string") {
+      njAst = this._parse(source, { name, filename });
+    } else {
+      njAst = source;
+    }
+    const jsSource = this._generate(njAst, { name, filename });
+    if (raw) {
+      return jsSource;
+    } else {
+      return this._compile(jsSource, { name, filename });
+    }
+  }
+
+  _compile(
+    source: string,
+    { name = null, filename = null }: TemplateInfo = {},
+  ): {
+    root: RenderFunc<IsAsync>;
+    blocks: Record<string, RenderFunc<IsAsync>>;
+  } {
+    // eslint-disable-next-line @typescript-eslint/no-implied-eval
+    return new Function(source)() as {
+      root: RenderFunc<IsAsync>;
+      blocks: Record<string, RenderFunc<IsAsync>>;
+    };
+  }
+
+  _generate(
+    source: types.Template,
+    { name = null, filename = null }: TemplateInfo = {},
+  ): string {
+    const codegen = new this.codeGeneratorClass({
+      environment: this,
+      name,
+      filename,
+    });
+    const ast = codegen.compile(source);
+    const jsSource = generate(ast as any);
+    return jsSource;
+  }
+
+  fromString(
+    source: string,
+    {
+      globals,
+      name,
+      filename,
+    }: Partial<TemplateInfo> & { globals?: Record<string, unknown> } = {},
+  ): Template<IsAsync> {
+    const { root, blocks } = this.compile(source);
+    return new Template<IsAsync>({
+      environment: this,
+      root,
+      blocks,
+      globals,
+      name,
+      filename,
+    });
+  }
+  renderString(
+    this: Environment<true>,
+    src: string,
+    context: Record<string, any>,
+    opts?: Partial<TemplateInfo> & { globals?: Record<string, unknown> },
+  ): Promise<string>;
+  renderString(
+    this: Environment<false>,
+    src: string,
+    context: Record<string, any>,
+    opts?: Partial<TemplateInfo> & { globals?: Record<string, unknown> },
+  ): string;
+  renderString(
+    this: Environment<IsAsync>,
+    src: string,
+    context: Record<string, any>,
+    opts?: Partial<TemplateInfo> & { globals?: Record<string, unknown> },
+  ): Promise<string> | string;
+  renderString(
+    src: string,
+    context: Record<string, any>,
+    opts: Partial<TemplateInfo> & { globals?: Record<string, unknown> },
+    callback: (err: any, res: string | undefined) => void,
+  ): void;
+  renderString(
+    src: string,
+    context: Record<string, any>,
+    callback: (err: any, res: string | undefined) => void,
+  ): void;
+  renderString(
+    src: string,
+    context:
+      | Record<string, any>
+      | ((err: any, res: string | undefined) => void) = {},
+    callbackOrOpts:
+      | ((err: any, res: string | undefined) => void)
+      | (Partial<TemplateInfo> & { globals?: Record<string, unknown> }) = {},
+    callback?: (err: any, res: string | undefined) => void,
+  ): Promise<string> | string | void {
+    let cb: ((err: any, res: string | undefined) => void) | undefined =
+      callback;
+    let templateOpts: Partial<TemplateInfo> & {
+      globals?: Record<string, unknown>;
+    } = {};
+    if (typeof callbackOrOpts !== "function") {
+      templateOpts = callbackOrOpts;
+    } else {
+      cb = callbackOrOpts;
+    }
+    const template = this.fromString(src, templateOpts);
+
+    if (template.isSync()) {
+      return template.render(context, cb);
+    } else if (template.isAsync()) {
+      const promise = template.render(context);
+      if (typeof cb === "undefined") {
+        return promise;
+      } else {
+        promise.then(
+          (res) => cb(null, res),
+          (err) => cb(err, undefined),
+        );
+      }
+    }
   }
 }

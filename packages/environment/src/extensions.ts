@@ -1,4 +1,4 @@
-import { Environment } from "./environment";
+import type { IEnvironment as Environment } from "@nunjucks/runtime";
 
 import type { TokenStream, Token, Lexer, Parser } from "@nunjucks/parser";
 import {
