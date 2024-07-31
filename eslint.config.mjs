@@ -2,12 +2,22 @@
 
 import eslint from "@eslint/js";
 import tseslint from "typescript-eslint";
-import eslintConfigPrettier from "eslint-config-prettier";
+import eslintPluginPrettierRecommended from "eslint-plugin-prettier/recommended";
+import { includeIgnoreFile } from "@eslint/compat";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const gitignorePath = path.resolve(__dirname, ".gitignore");
+const gitExcludePath = path.resolve(__dirname, ".git", "info", "exclude");
 
 export default tseslint.config(
+  includeIgnoreFile(gitignorePath),
+  includeIgnoreFile(gitExcludePath),
   eslint.configs.recommended,
   ...tseslint.configs.recommendedTypeChecked,
-  eslintConfigPrettier,
+  eslintPluginPrettierRecommended,
   {
     languageOptions: {
       parserOptions: {
