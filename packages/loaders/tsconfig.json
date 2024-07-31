@@ -3,10 +3,11 @@
   "compileOnSave": false,
   "compilerOptions": {
     "rootDir": "src",
-    "outDir": "dist",
     "composite": true,
     "noEmit": false,
     "declaration": true,
+    "declarationDir": "dist/types",
+    "outDir": "dist/esm",
     "typeRoots": ["./node_modules/@types", "../../node_modules/@types"]
   },
   "exclude": ["dist", "node_modules", "**/*.spec.ts"],
@@ -14,25 +15,7 @@
   "include": ["src/**/*.ts", "../../typings/**/*.ts"],
   "references": [
     {
-      "path": "../ast"
-    },
-    {
-      "path": "../environment"
-    },
-    {
-      "path": "../compiler"
-    },
-    {
-      "path": "../parser"
-    },
-    {
       "path": "../runtime"
-    },
-    {
-      "path": "../utils"
-    },
-    {
-      "path": "../loaders"
     }
   ]
 }

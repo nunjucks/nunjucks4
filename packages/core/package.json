@@ -32,12 +32,7 @@
     "access": "public"
   },
   "browser": {
-    "events": "events",
-    "fs": false,
-    "fs/promises": false,
-    "make-fetch-happen": "./dist/make-fetch-happen-browser.mjs",
-    "path": "path-browserify",
-    "sync-fetch": "sync-fetch/browser"
+    "@nunjucks/loaders": "@nunjucks/loaders/browser"
   },
   "tshy": {
     "exports": {
@@ -62,14 +57,7 @@
     "compile:esm": "tsc --outDir dist/esm --target es2021"
   },
   "devDependencies": {
-    "@microsoft/api-extractor": "^7.47.4",
-    "@types/events": "^3",
-    "@types/path-browserify": "^1",
-    "@types/sync-fetch": "^0.4.3",
-    "events": "^3.3.0",
-    "path-browserify": "^1.0.1",
     "rimraf": "~3.0.2",
-    "sync-fetch": "^0.5.2",
     "tshy": "^3.0.2",
     "tsup": "^8.2.3",
     "typescript": "^5.4.3"
@@ -78,6 +66,7 @@
     "@nunjucks/ast": "workspace:*",
     "@nunjucks/compiler": "workspace:*",
     "@nunjucks/environment": "workspace:*",
+    "@nunjucks/loaders": "workspace:*",
     "@nunjucks/parser": "workspace:*",
     "@nunjucks/runtime": "workspace:*",
     "@nunjucks/utils": "workspace:*"

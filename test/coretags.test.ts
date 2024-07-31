@@ -1,4 +1,5 @@
-import { Environment, ObjectSourceLoader } from "@nunjucks/environment";
+import { Environment } from "@nunjucks/environment";
+import { ObjectSourceLoader } from "@nunjucks/loaders";
 import { describe, expect, it } from "@jest/globals";
 import { TemplateSyntaxError } from "@nunjucks/parser";
 

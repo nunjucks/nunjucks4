@@ -4,6 +4,7 @@
     { "path": "./packages/ast" },
     { "path": "./packages/compiler" },
     { "path": "./packages/environment" },
+    { "path": "./packages/loaders" },
     { "path": "./packages/parser" },
     { "path": "./packages/runtime" },
     { "path": "./packages/utils" },

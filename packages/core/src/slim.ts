@@ -1,8 +1,5 @@
-import {
-  Environment,
-  PrecompiledLoader,
-  EnvironmentOptions,
-} from "@nunjucks/environment/slim";
+import { Environment, EnvironmentOptions } from "@nunjucks/environment/slim";
+import { PrecompiledLoader } from "@nunjucks/loaders/precompiled";
 import runtime, { Template } from "@nunjucks/runtime";
 
 export { Environment, runtime, Template, PrecompiledLoader };

@@ -1,4 +1,5 @@
-import { Environment, ObjectSourceLoader } from "@nunjucks/environment";
+import { Environment } from "@nunjucks/environment";
+import { ObjectSourceLoader } from "@nunjucks/loaders";
 import { describe, expect, test } from "@jest/globals";
 
 describe("async imports", () => {

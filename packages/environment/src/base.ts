@@ -23,7 +23,7 @@ import {
 import type { IEnvironment } from "@nunjucks/runtime";
 import type { types } from "@nunjucks/ast";
 
-import type { AsyncLoader, SyncLoader } from "./loaders";
+import type { AsyncLoader, SyncLoader } from "@nunjucks/loaders";
 import { chainMap, dict, joiner, cycler, lipsum } from "./utils";
 import DEFAULT_FILTERS from "./filters";
 import DEFAULT_TESTS from "./tests";

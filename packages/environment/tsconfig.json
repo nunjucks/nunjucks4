@@ -28,6 +28,9 @@
     },
     {
       "path": "../utils"
+    },
+    {
+      "path": "../loaders"
     }
   ]
 }

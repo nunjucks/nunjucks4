@@ -1,14 +1,15 @@
+import { Environment, EnvironmentOptions } from "@nunjucks/environment";
 import {
-  Environment,
   FileSystemLoader,
-  AsyncFileSystemLoader,
-  AsyncLoader,
-  SyncLoader,
   WebLoader,
   SyncWebLoader,
-  EnvironmentOptions,
-} from "@nunjucks/environment";
+  SyncLoader,
+  AsyncFileSystemLoader,
+  NodeResolveLoader,
+  ESMImportLoader,
+} from "@nunjucks/loaders";
 import runtime, { Template, ITemplateInfo } from "@nunjucks/runtime";
+export * from "@nunjucks/loaders";
 import { types as nodes, builders } from "@nunjucks/ast";
 import { lexer, parse, Parser } from "@nunjucks/parser";
 
@@ -26,10 +27,12 @@ export {
   lexer,
   Template,
   FileSystemLoader,
-  AsyncFileSystemLoader,
-  AsyncLoader,
-  SyncLoader,
   SyncLoader as Loader,
+  WebLoader,
+  SyncWebLoader,
+  AsyncFileSystemLoader,
+  NodeResolveLoader,
+  ESMImportLoader,
 };
 
 let e: Environment | undefined = undefined;
