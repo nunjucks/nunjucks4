@@ -1,6 +1,8 @@
-import { Environment } from "./environment";
-import type { RenderFunc } from "@nunjucks/runtime";
-import { Template, TemplateNotFound } from "./template";
+import type {
+  RenderFunc,
+  IEnvironment as Environment,
+} from "@nunjucks/runtime";
+import { Template, TemplateNotFound } from "@nunjucks/runtime";
 import * as path from "path";
 import * as fs from "fs";
 import * as fsPromises from "fs/promises";
@@ -8,7 +10,9 @@ import EventEmitter from "events";
 import fetch from "make-fetch-happen";
 import syncFetch from "sync-fetch";
 
-type Response = typeof fetch extends (...args: any[]) => Promise<infer T> ? T : never;
+type Response = typeof fetch extends (...args: any[]) => Promise<infer T>
+  ? T
+  : never;
 
 type SyncRequestInit = typeof syncFetch extends (
   url: any,
@@ -345,6 +349,13 @@ interface CompiledTemplate<IsAsync extends boolean> {
   blocks: Record<string, RenderFunc<IsAsync>>;
 }
 
+declare global {
+  // eslint-disable-next-line no-var
+  var _nunjucksPrecompiled:
+    | Record<string, CompiledTemplate<true>>
+    | Record<string, CompiledTemplate<false>>;
+}
+
 function isAsyncCompiledTemplate(
   obj: CompiledTemplate<true> | CompiledTemplate<false>,
 ): obj is CompiledTemplate<true> {
@@ -359,13 +370,12 @@ export class PrecompiledLoader extends SyncLoader {
   compiledTemplates:
     | Record<string, CompiledTemplate<true>>
     | Record<string, CompiledTemplate<false>>;
-  constructor(
-    compiledTemplates:
-      | Record<string, CompiledTemplate<true>>
-      | Record<string, CompiledTemplate<false>>,
-  ) {
+  constructor() {
     super();
-    this.compiledTemplates = compiledTemplates;
+    this.compiledTemplates = globalThis._nunjucksPrecompiled =
+      typeof globalThis._nunjucksPrecompiled === "object"
+        ? globalThis._nunjucksPrecompiled
+        : {};
   }
   hasSourceAccess = false;
 

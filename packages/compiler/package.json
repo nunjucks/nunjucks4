@@ -29,8 +29,8 @@
     "clean": "rimraf -rf ./dist",
     "compile": "yarn run compile:cjs && yarn run compile:esm",
     "prepublishOnly": "yarn run build",
-    "compile:cjs": "tsc --outDir dist/cjs --module commonjs",
-    "compile:esm": "tsc --outDir dist/esm --module esnext --target es2021"
+    "compile:cjs": "tsc --outDir dist/cjs --module commonjs --moduleResolution node",
+    "compile:esm": "tsc --outDir dist/esm --module esnext --moduleResolution node --target es2021"
   },
   "dependencies": {
     "@nunjucks/ast": "workspace:*",

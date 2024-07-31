@@ -2,20 +2,49 @@
   "name": "nunjucks",
   "version": "4.0.0-alpha.1",
   "sideEffects": false,
-  "main": "./dist/cjs/index.js",
-  "types": "./dist/types/index.d.ts",
+  "main": "./dist/commonjs/index.js",
+  "types": "./dist/commonjs/index.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/types/index.d.ts",
-      "import": "./dist/esm/index.js",
-      "require": "./dist/cjs/index.js",
-      "default": "./dist/esm/index.js"
+      "import": {
+        "types": "./dist/esm/index.d.ts",
+        "default": "./dist/esm/index.js"
+      },
+      "require": {
+        "types": "./dist/commonjs/index.d.ts",
+        "default": "./dist/commonjs/index.js"
+      }
+    },
+    "./slim": {
+      "import": {
+        "types": "./dist/esm/slim.d.ts",
+        "default": "./dist/esm/slim.js"
+      },
+      "require": {
+        "types": "./dist/commonjs/slim.d.ts",
+        "default": "./dist/commonjs/slim.js"
+      }
     },
     "./package.json": "./package.json"
   },
   "module": "./dist/esm/index.js",
   "publishConfig": {
     "access": "public"
+  },
+  "browser": {
+    "events": "events",
+    "fs": false,
+    "fs/promises": false,
+    "make-fetch-happen": "./dist/make-fetch-happen-browser.mjs",
+    "path": "path-browserify",
+    "sync-fetch": "sync-fetch/browser"
+  },
+  "tshy": {
+    "exports": {
+      ".": "./src/index.ts",
+      "./slim": "./src/slim.ts",
+      "./package.json": "./package.json"
+    }
   },
   "files": [
     "/dist",
@@ -26,14 +55,23 @@
     "build": "yarn run clean && yarn run compile",
     "build:cjs": "yarn run clean && yarn run compile:cjs",
     "build:esm": "yarn run clean && yarn run compile:esm",
-    "clean": "rimraf -rf ./dist",
-    "compile": "yarn run compile:cjs && yarn run compile:esm",
+    "clean": "rimraf -rf ./browser && rimraf -rf ./dist",
+    "compile": "tshy && tsup && tsup --minify",
     "prepublishOnly": "yarn run build",
-    "compile:cjs": "tsc --outDir dist/cjs --module commonjs",
-    "compile:esm": "tsc --outDir dist/esm --module esnext --target es2021"
+    "compile:cjs": "tshy",
+    "compile:esm": "tsc --outDir dist/esm --target es2021"
   },
   "devDependencies": {
+    "@microsoft/api-extractor": "^7.47.4",
+    "@types/events": "^3",
+    "@types/path-browserify": "^1",
+    "@types/sync-fetch": "^0.4.3",
+    "events": "^3.3.0",
+    "path-browserify": "^1.0.1",
     "rimraf": "~3.0.2",
+    "sync-fetch": "^0.5.2",
+    "tshy": "^3.0.2",
+    "tsup": "^8.2.3",
     "typescript": "^5.4.3"
   },
   "dependencies": {
@@ -43,5 +81,6 @@
     "@nunjucks/parser": "workspace:*",
     "@nunjucks/runtime": "workspace:*",
     "@nunjucks/utils": "workspace:*"
-  }
+  },
+  "type": "module"
 }

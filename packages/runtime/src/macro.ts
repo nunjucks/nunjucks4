@@ -1,6 +1,8 @@
-import { EvalContext, markSafe, MISSING } from ".";
+import { EvalContext } from "./context";
 import { isVarargs, isKwargs, PassArg } from "./utils";
 import type { IfAsync, IEnvironment as Environment } from "./types";
+import { markSafe } from "./markup";
+import { MISSING } from "./undef";
 
 /**
  * Wraps a macro function

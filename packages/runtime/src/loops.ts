@@ -5,7 +5,7 @@ import type {
   ConditionalAsync,
 } from "./types";
 
-import { MISSING, Undefined } from ".";
+import { MISSING, Undefined } from "./undef";
 
 type LoopRenderFunc<V> = (
   reciter: Iterable<V>,

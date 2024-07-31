@@ -1,6 +1,5 @@
 import {
   Environment,
-  Template,
   FileSystemLoader,
   AsyncFileSystemLoader,
   AsyncLoader,
@@ -9,10 +8,9 @@ import {
   SyncWebLoader,
   EnvironmentOptions,
 } from "@nunjucks/environment";
-import runtime from "@nunjucks/runtime";
+import runtime, { Template, ITemplateInfo } from "@nunjucks/runtime";
 import { types as nodes, builders } from "@nunjucks/ast";
 import { lexer, parse, Parser } from "@nunjucks/parser";
-import { TemplateInfo } from "@nunjucks/environment";
 
 const parser: { parse: typeof parse; Parser: typeof Parser } = {
   parse,
@@ -110,12 +108,12 @@ export function render(
 export function renderString(
   src: string,
   context: Record<string, any>,
-  opts?: Partial<TemplateInfo> & { globals?: Record<string, unknown> },
+  opts?: Partial<ITemplateInfo> & { globals?: Record<string, unknown> },
 ): Promise<string> | string;
 export function renderString(
   src: string,
   context: Record<string, any>,
-  opts: Partial<TemplateInfo> & { globals?: Record<string, unknown> },
+  opts: Partial<ITemplateInfo> & { globals?: Record<string, unknown> },
   callback: (err: any, res: string | undefined) => void,
 ): void;
 export function renderString(

@@ -1,9 +1,8 @@
+export { EnvironmentBase } from "./base";
 export {
-  EnvironmentBase,
   Environment,
   EnvironmentOptions,
   TemplateInfo,
 } from "./environment";
-export { Template, TemplateNotFound, TemplatesNotFound } from "./template";
 export * from "./loaders";
 export * from "./extensions";

@@ -32,5 +32,5 @@ export default tseslint.config(
       "no-unexpected-multiline": "off", // conflicts with prettier
       "@typescript-eslint/no-unused-vars": ["error", { caughtErrors: "none" }],
     },
-  }
+  },
 );

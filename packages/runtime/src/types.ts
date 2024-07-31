@@ -1,4 +1,6 @@
-import { Context, EvalContext, Undefined, UndefinedOpts } from ".";
+import { Context, EvalContext } from "./context";
+import { Undefined, UndefinedOpts } from "./undef";
+import type { Template } from "./template";
 import { types } from "@nunjucks/ast";
 type Filter = (...args: any[]) => any;
 type Test = (...args: any[]) => boolean;
@@ -21,22 +23,6 @@ export type RenderFunc<IsAsync extends boolean> = IsAsync extends true
       environment: IEnvironment<false>,
       context: Context<false>,
     ) => Generator<string>;
-
-export interface ITemplate<IsAsync extends true | false = boolean> {
-  async: IsAsync;
-  environment: IEnvironment<IsAsync>;
-  globals: Record<string, any>;
-  name: string | null;
-  filename: string | null;
-  render(context?: Record<string, any>): Promise<string> | string;
-  render(
-    context?: Record<string, any>,
-    callback?: (err: any, res: string | undefined) => void,
-  ): void;
-  render(callback: (err: any, res: string | undefined) => void): void;
-  isSync(): this is ITemplate<false>;
-  isAsync(): this is ITemplate<true>;
-}
 
 export interface IEnvironment<IsAsync extends boolean = boolean> {
   autoescape: boolean | ((templateName?: string | null) => boolean);
@@ -90,7 +76,7 @@ export interface IEnvironment<IsAsync extends boolean = boolean> {
     opts: ITemplateInfo,
   ): Iterable<[number, string, string, number, string]>;
   preprocess(source: string, info: ITemplateInfo): string;
-  parse(source: string, { name, filename }?: ITemplateInfo): types.Template;
+  parse(source: string, opts?: ITemplateInfo): types.Template;
   compile(
     source: types.Template | string,
     opts?: ITemplateInfo,
@@ -104,68 +90,68 @@ export interface IEnvironment<IsAsync extends boolean = boolean> {
     opts?: {
       globals?: Record<string, unknown>;
     },
-  ): ITemplate<IsAsync>;
+  ): Template<IsAsync>;
   joinPath(template: string, parent: string): string;
   getTemplate(
     this: IEnvironment<true>,
-    name: string | ITemplate<true> | Undefined,
+    name: string | Template<true> | Undefined,
     opts?: {
       parent?: string | null;
       globals?: Record<string, unknown>;
     },
-  ): Promise<ITemplate<true>>;
+  ): Promise<Template<true>>;
   getTemplate(
     this: IEnvironment<false>,
-    name: string | ITemplate<false> | Undefined,
+    name: string | Template<false> | Undefined,
     opts?: {
       parent?: string | null;
       globals?: Record<string, unknown>;
     },
-  ): ITemplate<false>;
+  ): Template<false>;
   selectTemplate(
     this: IEnvironment<true>,
     names:
-      | Iterable<string | ITemplate<true>>
-      | AsyncIterable<string | ITemplate<true>>
+      | Iterable<string | Template<true>>
+      | AsyncIterable<string | Template<true>>
       | Undefined,
     opts?: {
       parent?: string | null;
       globals?: Record<string, unknown>;
     },
-  ): Promise<ITemplate<true>>;
+  ): Promise<Template<true>>;
   selectTemplate(
     this: IEnvironment<false>,
-    names: Iterable<string | ITemplate<false>> | Undefined,
+    names: Iterable<string | Template<false>> | Undefined,
     opts?: {
       parent?: string | null;
       globals?: Record<string, unknown>;
     },
-  ): ITemplate<false>;
+  ): Template<false>;
   getOrSelectTemplate(
     this: IEnvironment<false>,
     ITemplateNameOrList:
-      | Iterable<string | ITemplate<false>>
+      | Iterable<string | Template<false>>
       | Undefined
       | string
-      | ITemplate<false>,
+      | Template<false>,
     opts?: {
       parent?: string | null;
       globals?: Record<string, unknown>;
     },
-  ): ITemplate<false> | Promise<ITemplate<true>>;
+  ): Template<false> | Promise<Template<true>>;
   getOrSelectTemplate(
     this: IEnvironment<true>,
     ITemplateNameOrList:
-      | Iterable<string | ITemplate<true>>
+      | Iterable<string | Template<true>>
       | Undefined
-      | AsyncIterable<string | ITemplate<true>>
+      | AsyncIterable<string | Template<true>>
       | string
-      | ITemplate<true>,
+      | Template<true>,
     opts?: {
       parent?: string | null;
       globals?: Record<string, unknown>;
     },
-  ): Promise<ITemplate<true>>;
+  ): Promise<Template<true>>;
   makeGlobals(o?: Record<string, unknown>): Record<string, unknown>;
 }
 

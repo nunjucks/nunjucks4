@@ -9,3 +9,5 @@ node_modules
 .pnp.*
 dist
 *.tsbuildinfo
+.tshy*
+packages/core/browser

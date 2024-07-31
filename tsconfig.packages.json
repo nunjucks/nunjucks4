@@ -7,5 +7,6 @@
     { "path": "./packages/parser" },
     { "path": "./packages/runtime" },
     { "path": "./packages/utils" },
+    { "path": "./packages/core" },
   ]
 }

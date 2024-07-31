@@ -1,4 +1,4 @@
-import { str } from ".";
+import { str } from "./markup";
 
 export function isPlainObject(obj: any): obj is object {
   if (typeof obj !== "object" || obj === null) return false;
@@ -141,4 +141,16 @@ export function toAscii(obj: string) {
     }
   }
   return res1;
+}
+
+export function concat(values: unknown[]): string {
+  return values.map((val) => `${val}`).join("");
+}
+
+export function getObjectTypeName(obj: unknown) {
+  if (obj === undefined || obj === null) {
+    return `${obj}`;
+  }
+  const prototype = Object.getPrototypeOf(obj);
+  return prototype.constructor.name;
 }

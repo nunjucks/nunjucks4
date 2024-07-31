@@ -1,14 +1,8 @@
-import { Environment } from "./environment";
-import runtime, {
-  newContext,
-  Context,
-  Undefined,
-  isUndefinedInstance,
-} from "@nunjucks/runtime";
-import type { Block, Markup, ITemplate, RenderFunc } from "@nunjucks/runtime";
-import setDifference from "set.prototype.difference";
-
-export type Runtime = typeof runtime;
+import { isUndefinedInstance, Undefined } from "./undef";
+import { Markup } from "./markup";
+import { Block, Context, newContext } from "./context";
+import type { IEnvironment, RenderFunc } from "./types";
+import runtime from "./runtime";
 
 interface NewContextOpts {
   vars?: Record<string, any>;
@@ -63,11 +57,25 @@ export class TemplatesNotFound extends TemplateNotFound {
   }
 }
 
-export class Template<IsAsync extends true | false>
-  implements ITemplate<IsAsync>
-{
+function setDifference<A = any, B = any>(a: Set<A>, b: Set<B>): Set<A> {
+  let res: Set<A>;
+  if (a.size <= b.size) {
+    res = new Set();
+    for (const elem of a) {
+      if (!b.has(elem as any)) res.add(elem);
+    }
+  } else {
+    res = new Set(a);
+    for (const elem of b) {
+      res.delete(elem as any);
+    }
+  }
+  return res;
+}
+
+export class Template<IsAsync extends true | false> {
   async: IsAsync;
-  environment: Environment<IsAsync>;
+  environment: IEnvironment<IsAsync>;
   // TODO environmentClass: typeof Environment = Environment;
   globals: Record<string, any>;
   name: string | null;
@@ -93,7 +101,7 @@ export class Template<IsAsync extends true | false>
     root,
     uptodate,
   }: {
-    environment: Environment<IsAsync>;
+    environment: IEnvironment<IsAsync>;
     globals?: Record<string, any>;
     name?: string | null;
     filename?: string | null;
@@ -341,7 +349,7 @@ export class Template<IsAsync extends true | false>
     namespace: { name = null, filename = null, blocks = {}, root },
     globals,
   }: {
-    environment: Environment<IsAsync>;
+    environment: IEnvironment<IsAsync>;
     namespace: TemplateNamespace<IsAsync>;
     globals: Record<string, any>;
   }): Template<IsAsync> {
