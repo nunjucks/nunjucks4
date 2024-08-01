@@ -1515,11 +1515,7 @@ export class CodeGenerator<IsAsync extends boolean> {
 
         assertTarget(target);
         if (loopRef) {
-          if (n.Identifier.check(target)) {
-            target = b.arrayPattern([target, id(loopRef)]);
-          } else {
-            target.elements.push(id(loopRef));
-          }
+          target = b.arrayPattern([target, id(loopRef)]);
         }
         target = b.variableDeclaration("let", [b.variableDeclarator(target)]);
 
