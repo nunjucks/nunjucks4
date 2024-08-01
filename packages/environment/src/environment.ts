@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { LRUCache } from "lru-cache";
 import { EnvironmentBase, EnvironmentBaseOptions, TemplateInfo } from "./base";
-import type { IEnvironment, RenderFunc } from "@nunjucks/runtime";
+import type { IEnvironment, RenderFunc, Callback } from "@nunjucks/runtime";
 import { types } from "@nunjucks/ast";
 import {
   LexerOptions,
@@ -14,6 +14,12 @@ import { CodeGenerator } from "@nunjucks/compiler";
 import { Template } from "@nunjucks/runtime";
 import generate from "@pregenerator/generator";
 import { Extension } from "./extensions";
+import {
+  AsyncLoader,
+  LegacyLoader,
+  Loader,
+  SyncLoader,
+} from "@nunjucks/loaders";
 
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 function createCache<V extends {}>({
@@ -37,14 +43,14 @@ function createCache<V extends {}>({
     }) as unknown as Record<PropertyKey, V | undefined>;
   }
 }
-export interface EnvironmentOptions<IsAsync extends boolean = boolean>
+export interface EnvironmentOptions<IsAsync extends boolean = false>
   extends EnvironmentBaseOptions<IsAsync> {
   parserOpts?: Partial<LexerOptions>;
   cacheSize?: number;
   extensions?: (typeof Extension)[];
 }
 
-export class Environment<IsAsync extends boolean = boolean>
+export class Environment<IsAsync extends boolean = false>
   extends EnvironmentBase<IsAsync>
   implements IEnvironment<IsAsync>
 {
@@ -53,23 +59,23 @@ export class Environment<IsAsync extends boolean = boolean>
   extensionsList: Extension[];
   extensions: Record<string, Extension>;
 
-  constructor({
-    parserOpts = {},
-    extensions = [],
-    /**
-     *
-     * The size of the cache.  Per default this is `400` which means
-     * that if more than 400 templates are loaded the loader will clean
-     * out the least recently used template.  If the cache size is set to
-     * `0` templates are recompiled all the time, if the cache size is
-     * `-1` the cache will not be cleaned.
-     */
-    cacheSize = 400,
-    ...baseOpts
-  }: EnvironmentOptions<IsAsync> = {}) {
-    super(baseOpts);
-    this.parserOpts = parserOpts;
-    this.extensionsList = extensions.map((Ext) => new Ext(this));
+  constructor(
+    loader: LegacyLoader<IsAsync> | Loader,
+    opts?: EnvironmentOptions<IsAsync>,
+  );
+
+  constructor(
+    loaders: (LegacyLoader<IsAsync> | Loader)[],
+    opts?: EnvironmentOptions<IsAsync>,
+  );
+
+  constructor(opts?: EnvironmentOptions<IsAsync>);
+
+  constructor(optsOrLoaders: any, options?: EnvironmentOptions<IsAsync>) {
+    super(optsOrLoaders, options);
+    const opts: EnvironmentOptions<IsAsync> = options ?? optsOrLoaders;
+    this.parserOpts = opts?.parserOpts || {};
+    this.extensionsList = (opts?.extensions || []).map((Ext) => new Ext(this));
     this.extensionsList.sort((a, b) => a.priority - b.priority);
 
     this.extensions = {};
@@ -80,7 +86,9 @@ export class Environment<IsAsync extends boolean = boolean>
       }
     }
 
-    this.cache = createCache<Template<IsAsync>>({ max: cacheSize });
+    this.cache = createCache<Template<IsAsync>>({
+      max: opts?.cacheSize ?? 400,
+    });
   }
 
   isAsync(): this is Environment<true> {
@@ -267,25 +275,22 @@ export class Environment<IsAsync extends boolean = boolean>
     src: string,
     context: Record<string, any>,
     opts: Partial<TemplateInfo> & { globals?: Record<string, unknown> },
-    callback: (err: any, res: string | undefined) => void,
+    callback: Callback<string>,
   ): void;
   renderString(
     src: string,
     context: Record<string, any>,
-    callback: (err: any, res: string | undefined) => void,
+    callback: Callback<string>,
   ): void;
   renderString(
     src: string,
-    context:
-      | Record<string, any>
-      | ((err: any, res: string | undefined) => void) = {},
+    context: Record<string, any> | Callback<string> = {},
     callbackOrOpts:
-      | ((err: any, res: string | undefined) => void)
+      | Callback<string>
       | (Partial<TemplateInfo> & { globals?: Record<string, unknown> }) = {},
-    callback?: (err: any, res: string | undefined) => void,
+    callback?: Callback<string>,
   ): Promise<string> | string | void {
-    let cb: ((err: any, res: string | undefined) => void) | undefined =
-      callback;
+    let cb: Callback<string> | undefined = callback;
     let templateOpts: Partial<TemplateInfo> & {
       globals?: Record<string, unknown>;
     } = {};

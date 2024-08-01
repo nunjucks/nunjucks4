@@ -24,8 +24,12 @@ export * from "./runtime";
 import runtime from "./runtime";
 export default runtime;
 
-
 import strMod from "./strModFormat";
 export { strMod };
 
-export type { IEnvironment, ITemplateInfo, RenderFunc } from "./types";
+export type {
+  IEnvironment,
+  ITemplateInfo,
+  RenderFunc,
+  Callback,
+} from "./types";

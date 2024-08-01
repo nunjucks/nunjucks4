@@ -5,6 +5,12 @@ import type {
 import { Template, TemplateNotFound } from "@nunjucks/runtime";
 import { SyncLoader } from "./base";
 
+export {
+  ObjectSourceLoader,
+  SyncLegacyLoaderWrapper,
+  AsyncLegacyLoaderWrapper,
+} from "./base";
+
 interface CompiledTemplate<IsAsync extends boolean> {
   root: RenderFunc<IsAsync>;
   blocks: Record<string, RenderFunc<IsAsync>>;

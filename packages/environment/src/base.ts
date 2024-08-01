@@ -21,10 +21,19 @@ import {
   TemplatesNotFound,
   isTemplate,
 } from "@nunjucks/runtime";
-import type { IEnvironment } from "@nunjucks/runtime";
+import type { Callback, IEnvironment } from "@nunjucks/runtime";
 import type { types } from "@nunjucks/ast";
 
-import type { AsyncLoader, SyncLoader } from "@nunjucks/loaders";
+import {
+  AsyncLoader,
+  Loader,
+  SyncLoader,
+  LegacyLoader,
+  SyncLegacyLoaderWrapper,
+  AsyncLegacyLoaderWrapper,
+  isLegacyLoader,
+  isLoader,
+} from "@nunjucks/loaders";
 import { chainMap, dict, joiner, cycler, lipsum } from "./utils";
 import DEFAULT_FILTERS from "./filters";
 import DEFAULT_TESTS from "./tests";
@@ -94,6 +103,8 @@ export interface TemplateInfo {
   filename?: string | null;
 }
 
+type LoaderType = typeof AsyncLoader | typeof SyncLoader;
+
 export interface EnvironmentBaseOptions<IsAsync extends boolean = boolean> {
   async?: IsAsync;
   loaders?: (IsAsync extends true ? AsyncLoader | SyncLoader : SyncLoader)[];
@@ -148,16 +159,80 @@ export class EnvironmentBase<IsAsync extends boolean = boolean>
 
   cache: Record<PropertyKey, Template<IsAsync> | undefined> | null;
 
-  constructor({
-    autoescape = false,
-    async,
-    loaders = [],
-    filters = DEFAULT_FILTERS,
-    tests = DEFAULT_TESTS,
-    globals = {},
-    undef = _undef,
-  }: EnvironmentBaseOptions<IsAsync> = {}) {
+  constructor(
+    loader: Loader | LegacyLoader<IsAsync>,
+    opts?: EnvironmentBaseOptions<IsAsync>,
+  );
+
+  constructor(
+    loaders: (Loader | LegacyLoader<IsAsync>)[],
+    opts?: EnvironmentBaseOptions<IsAsync>,
+  );
+
+  constructor(opts: EnvironmentBaseOptions<IsAsync>);
+
+  constructor(optsOrLoaders: any, options?: EnvironmentBaseOptions<IsAsync>) {
     super();
+
+    const opts: Required<EnvironmentBaseOptions<IsAsync>> = {
+      autoescape: false,
+      async: false as any,
+      loaders: [],
+      filters: DEFAULT_FILTERS,
+      tests: DEFAULT_TESTS,
+      globals: {},
+      undef: _undef,
+    };
+    if (Array.isArray(optsOrLoaders)) {
+      for (const loader of optsOrLoaders) {
+        if (isLegacyLoader(loader)) {
+          if (loader.async) {
+            opts.async = true as any;
+            opts.loaders.push(new AsyncLegacyLoaderWrapper(loader) as any);
+          } else {
+            opts.loaders.push(new SyncLegacyLoaderWrapper(loader));
+          }
+        } else if (!isLoader(loader)) {
+          throw new TypeError(
+            "If an array is passed as the first argument to the Environment " +
+              "constructor, it must be an array of loaders",
+          );
+        } else {
+          if (loader.async) {
+            opts.async = true as any;
+          }
+          opts.loaders.push(loader as any);
+        }
+      }
+      Object.assign(opts, options ?? {});
+    } else if (isLoader(optsOrLoaders)) {
+      const loader = optsOrLoaders;
+      if (loader.async) {
+        opts.async = true as any;
+      }
+      (opts as any).loaders = [loader];
+      Object.assign(opts, options ?? {});
+    } else if (isLegacyLoader(optsOrLoaders)) {
+      const loader = optsOrLoaders;
+      if (loader.async) {
+        opts.loaders.push(new AsyncLegacyLoaderWrapper(loader) as any);
+        opts.async = true as any;
+      } else {
+        opts.loaders.push(new SyncLegacyLoaderWrapper(loader));
+      }
+      Object.assign(opts, options ?? {});
+    } else {
+      Object.assign(opts, optsOrLoaders ?? {});
+    }
+    const {
+      autoescape = false,
+      async,
+      loaders = [],
+      filters = DEFAULT_FILTERS,
+      tests = DEFAULT_TESTS,
+      globals = {},
+      undef = _undef,
+    } = opts;
     this.async = !!async as IsAsync;
     this.loaders = loaders;
     this.missing = MISSING;
@@ -281,10 +356,10 @@ export class EnvironmentBase<IsAsync extends boolean = boolean>
   ): any {
     const envMap = isFilter ? this.filters : this.tests;
     const typeName = isFilter ? "filter" : "test";
-    const func = name instanceof Undefined ? undefined : envMap[name];
+    const func = isUndefinedInstance(name) ? undefined : envMap[name];
     if (func === undefined) {
       let msg = `No ${typeName} named '${name}' found.`;
-      if (name instanceof Undefined) {
+      if (isUndefinedInstance(name)) {
         try {
           name._failWithUndefinedError();
         } catch (e) {
@@ -468,26 +543,20 @@ export class EnvironmentBase<IsAsync extends boolean = boolean>
   render(
     name: string,
     context?: Record<string, any>,
-    callback?: (err: any, res: string | undefined) => void,
+    callback?: Callback<string>,
   ): void;
+  render(name: string, callback: Callback<string>): void;
   render(
     name: string,
-    callback: (err: any, res: string | undefined) => void,
-  ): void;
-  render(
-    name: string,
-    context:
-      | Record<string, any>
-      | ((err: any, res: string | undefined) => void) = {},
-    callback?: (err: any, res: string | undefined) => void,
+    context: Record<string, any> | Callback<string> = {},
+    callback?: Callback<string>,
   ): Promise<string> | string | void {
     if (this.isSync()) {
       const template = this.getTemplate(name);
       return template.render(context, callback);
     } else if (this.isAsync()) {
       let ctx: Record<string, any> = {};
-      let cb: ((err: any, res: string | undefined) => void) | undefined =
-        callback;
+      let cb: Callback<string> | undefined = callback;
       if (typeof context === "object") {
         ctx = context;
       } else {

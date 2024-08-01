@@ -171,3 +171,8 @@ export type ConditionalAsync<
 
 export type PromiseIfAsync<IsAsync extends boolean | undefined> =
   IsAsync extends true ? Promise<any> : any;
+
+export type Callback<T = any> = {
+  (err: null | undefined, res: T): void;
+  (err: Error, res?: undefined | null): void;
+};

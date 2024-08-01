@@ -1,7 +1,7 @@
 import { isUndefinedInstance, Undefined } from "./undef";
 import { Markup } from "./markup";
 import { Block, Context, newContext } from "./context";
-import type { IEnvironment, RenderFunc } from "./types";
+import type { IEnvironment, RenderFunc, Callback } from "./types";
 import runtime from "./runtime";
 
 interface NewContextOpts {
@@ -164,6 +164,7 @@ export class Template<IsAsync extends true | false> {
     }
     const ctx = this.newContext({ vars: context });
     const gen = this.rootRenderFunc(ctx);
+    // eslint-disable-next-line no-useless-catch
     try {
       const ret: string[] = [];
       for await (const s of gen) {
@@ -171,7 +172,6 @@ export class Template<IsAsync extends true | false> {
       }
       return ret.join("");
     } catch (e) {
-      console.log(e);
       // TODO this.environment.handleException(e);
       throw e;
     }
@@ -212,23 +212,15 @@ export class Template<IsAsync extends true | false> {
     this: Template<IsAsync>,
     context?: Record<string, any>,
   ): Promise<string> | string;
+  render(context?: Record<string, any>, callback?: Callback<string>): void;
+  render(callback: Callback<string>): void;
   render(
-    context?: Record<string, any>,
-    callback?: (err: any, res: string | undefined) => void,
-  ): void;
-  render(callback: (err: any, res: string | undefined) => void): void;
-  render(
-    context:
-      | Record<string, any>
-      | ((err: any, res: string | undefined) => void) = {},
-    callback?: (err: any, res: string | undefined) => void,
+    context: Record<string, any> | Callback<string> = {},
+    callback?: Callback<string>,
   ): Promise<string> | string | void {
     // backwards compat for old-style async callbacks
     if (typeof context === "function") {
-      callback = context as unknown as (
-        err: any,
-        res: string | undefined,
-      ) => void;
+      callback = context as Callback<string>;
       context = {};
     }
     if (typeof callback === "function") {
@@ -244,6 +236,7 @@ export class Template<IsAsync extends true | false> {
           callback(err, undefined);
         }
       }
+      return;
     }
     if (this.isAsync()) {
       return this._renderAsync(context);

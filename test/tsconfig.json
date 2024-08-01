@@ -1,0 +1,13 @@
+{
+    "compilerOptions": {
+        "baseUrl": ".",
+        "noEmit": true,
+        "paths": {
+          "nunjucks": ["../packages/core/src/index"],
+          "nunjucks/*": ["../packages/core/src/*"],
+          "@nunjucks/*": ["../packages/*/src"]
+        },
+      }
+    
+  }
+  

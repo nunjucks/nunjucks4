@@ -1,8 +1,22 @@
 import { Environment, EnvironmentOptions } from "@nunjucks/environment/slim";
-import { PrecompiledLoader } from "@nunjucks/loaders/precompiled";
+import {
+  PrecompiledLoader,
+  ObjectSourceLoader,
+  SyncLegacyLoaderWrapper,
+  AsyncLegacyLoaderWrapper,
+} from "@nunjucks/loaders/precompiled";
 import runtime, { Template } from "@nunjucks/runtime";
+import type { Callback } from "@nunjucks/runtime";
 
-export { Environment, runtime, Template, PrecompiledLoader };
+export {
+  Environment,
+  runtime,
+  Template,
+  PrecompiledLoader,
+  ObjectSourceLoader,
+  SyncLegacyLoaderWrapper,
+  AsyncLegacyLoaderWrapper,
+};
 
 let e: Environment | undefined = undefined;
 
@@ -35,18 +49,13 @@ export function render(
 export function render(
   name: string,
   context?: Record<string, any>,
-  callback?: (err: any, res: string | undefined) => void,
+  callback?: Callback<string>,
 ): void;
+export function render(name: string, callback: Callback<string>): void;
 export function render(
   name: string,
-  callback: (err: any, res: string | undefined) => void,
-): void;
-export function render(
-  name: string,
-  context:
-    | Record<string, any>
-    | ((err: any, res: string | undefined) => void) = {},
-  callback?: (err: any, res: string | undefined) => void,
+  context: Record<string, any> | Callback<string> = {},
+  callback?: Callback<string>,
 ): Promise<string> | string | void {
   const env = e ?? configure();
   return env.render(name, context, callback);

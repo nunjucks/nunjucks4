@@ -14,6 +14,7 @@
     "./package.json": "./package.json",
     "./browser": {
       "require": {
+        "source": "./src/browser.ts",
         "types": "./dist/types/browser.d.ts",
         "default": "./dist/cjs/browser.js"
       },
@@ -45,7 +46,7 @@
     "/shims"
   ],
   "browser": {
-    ".": "./src/browser.ts",
+    ".": "./browser",
     "events": "events",
     "fs": false,
     "fs/promises": false,

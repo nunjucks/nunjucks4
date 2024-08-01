@@ -7,9 +7,17 @@ import {
   AsyncFileSystemLoader,
   NodeResolveLoader,
   ESMImportLoader,
+  ObjectSourceLoader,
+  SyncLegacyLoaderWrapper,
+  AsyncLegacyLoaderWrapper,
 } from "@nunjucks/loaders";
-import runtime, { Template, ITemplateInfo } from "@nunjucks/runtime";
 export * from "@nunjucks/loaders";
+import runtime, {
+  Template,
+  ITemplateInfo,
+  TemplateOptions,
+  Callback,
+} from "@nunjucks/runtime";
 import { types as nodes, builders } from "@nunjucks/ast";
 import { lexer, parse, Parser } from "@nunjucks/parser";
 
@@ -18,6 +26,60 @@ const parser: { parse: typeof parse; Parser: typeof Parser } = {
   Parser,
 };
 
+export type LegacyTemplateSource = { type: "string"; obj: string };
+
+function isLegacyTemplateSource(o: unknown): o is LegacyTemplateSource {
+  return (
+    !!o &&
+    typeof o === "object" &&
+    "type" in o &&
+    (o.type === "string" || o.type === "code") &&
+    "obj" in o
+  );
+}
+
+class CompatTemplate<
+  IsAsync extends boolean = boolean,
+> extends Template<IsAsync> {
+  constructor(opts: TemplateOptions<IsAsync>);
+  constructor(src: string, env?: Environment<IsAsync>, path?: string);
+  constructor(
+    src: LegacyTemplateSource,
+    env?: Environment<IsAsync>,
+    path?: string,
+  );
+  constructor(
+    srcOrOpts: TemplateOptions<IsAsync> | LegacyTemplateSource | string,
+    legacyEnv?: Environment<IsAsync>,
+    legacyPath?: string,
+  ) {
+    let opts: TemplateOptions<IsAsync>;
+    if (isLegacyTemplateSource(srcOrOpts) || typeof srcOrOpts === "string") {
+      const env = legacyEnv || new Environment();
+      if (
+        (typeof srcOrOpts === "object" && (srcOrOpts.type as string)) === "code"
+      ) {
+        throw new Error(
+          "Calling the Template constructor with {type: 'code'} is no longer supported",
+        );
+      }
+      const src = typeof srcOrOpts === "string" ? srcOrOpts : srcOrOpts.obj;
+      const { root, blocks } = env.compile(src);
+      opts = {
+        environment: env,
+        root,
+        blocks,
+        globals: {},
+        name: legacyPath,
+        filename: legacyPath,
+      };
+    } else {
+      opts = srcOrOpts;
+    }
+    super(opts);
+  }
+}
+
 export {
   Environment,
   runtime,
@@ -25,7 +87,6 @@ export {
   builders,
   parser,
   lexer,
-  Template,
   FileSystemLoader,
   SyncLoader as Loader,
   WebLoader,
@@ -33,9 +94,13 @@ export {
   AsyncFileSystemLoader,
   NodeResolveLoader,
   ESMImportLoader,
+  ObjectSourceLoader,
+  SyncLegacyLoaderWrapper,
+  AsyncLegacyLoaderWrapper,
+  CompatTemplate as Template,
 };
 
-let e: Environment | undefined = undefined;
+let e: Environment<boolean> | undefined = undefined;
 
 export function configure(): Environment<false>;
 export function configure<IsAsync extends boolean>(
@@ -91,18 +156,13 @@ export function render(
 export function render(
   name: string,
   context?: Record<string, any>,
-  callback?: (err: any, res: string | undefined) => void,
+  callback?: Callback<string>,
 ): void;
+export function render(name: string, callback: Callback<string>): void;
 export function render(
   name: string,
-  callback: (err: any, res: string | undefined) => void,
-): void;
-export function render(
-  name: string,
-  context:
-    | Record<string, any>
-    | ((err: any, res: string | undefined) => void) = {},
-  callback?: (err: any, res: string | undefined) => void,
+  context: Record<string, any> | Callback<string> = {},
+  callback?: Callback<string>,
 ): Promise<string> | string | void {
   const env = e ?? configure();
   return env.render(name, context, callback);
@@ -117,20 +177,18 @@ export function renderString(
   src: string,
   context: Record<string, any>,
   opts: Partial<ITemplateInfo> & { globals?: Record<string, unknown> },
-  callback: (err: any, res: string | undefined) => void,
+  callback: Callback<string>,
 ): void;
 export function renderString(
   src: string,
   context: Record<string, any>,
-  callback: (err: any, res: string | undefined) => void,
+  callback: Callback<string>,
 ): void;
 export function renderString(
   src: string,
-  context:
-    | Record<string, any>
-    | ((err: any, res: string | undefined) => void) = {},
+  context: Record<string, any> | Callback<string> = {},
   callbackOrOpts: any = {},
-  callback?: (err: any, res: string | undefined) => void,
+  callback?: Callback<string>,
 ): Promise<string> | string | void {
   const env = e ?? configure();
   return callback

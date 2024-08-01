@@ -132,3 +132,84 @@ export class ObjectSourceLoader extends SyncLoader {
     return { source, filename: name };
   }
 }
+
+export type LegacyLoaderSource = {
+  src: string;
+  path: string;
+};
+
+export interface AsyncLegacyLoader {
+  async: true;
+  getSource(
+    name: string,
+    callback: (err: Error, res: LegacyLoaderSource | undefined) => void,
+  ): void;
+}
+
+export interface SyncLegacyLoader {
+  async?: false;
+  getSource(name: string): LegacyLoaderSource;
+}
+
+export type LegacyLoader<IsAsync extends boolean = boolean> =
+  IsAsync extends true
+    ? AsyncLegacyLoader
+    : IsAsync extends false
+      ? SyncLegacyLoader
+      : AsyncLegacyLoader | SyncLegacyLoader;
+
+export function isAsyncLegacyLoader(o: unknown): o is AsyncLegacyLoader {
+  return isLegacyLoader(o) && o.getSource.length === 2;
+}
+
+export function isLegacyLoader(o: unknown): o is LegacyLoader {
+  return !!o && typeof o === "object" && "getSource" in o && !("load" in o);
+}
+
+export function isLoader(o: unknown): o is Loader {
+  return !!o && typeof o === "object" && "load" in o && "hasSourceAccess" in o;
+}
+
+export class SyncLegacyLoaderWrapper extends SyncLoader {
+  hasSourceAccess = true;
+  legacyLoader: SyncLegacyLoader;
+
+  constructor(loader: SyncLegacyLoader) {
+    super();
+    this.legacyLoader = loader;
+  }
+
+  getSource<EnvAsync extends boolean>(
+    environment: Environment<EnvAsync>,
+    name: string,
+  ) {
+    const { src: source, path: filename } = this.legacyLoader.getSource(name);
+    return { source, filename };
+  }
+}
+
+export class AsyncLegacyLoaderWrapper extends AsyncLoader {
+  hasSourceAccess = true;
+  legacyLoader: AsyncLegacyLoader;
+
+  constructor(loader: AsyncLegacyLoader) {
+    super();
+    this.legacyLoader = loader;
+  }
+
+  getSource(
+    environment: Environment<true>,
+    name: string,
+  ): Promise<AsyncLoaderSource> {
+    return new Promise((resolve, reject) => {
+      this.legacyLoader.getSource(name, (err, res) => {
+        if (res) {
+          const { src: source, path: filename } = res;
+          resolve({ source, filename });
+        } else {
+          reject(err);
+        }
+      });
+    });
+  }
+}
