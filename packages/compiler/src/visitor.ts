@@ -1372,10 +1372,10 @@ export class CodeGenerator<IsAsync extends boolean> {
           ? b.blockStatement(
               self.visitStatements(path.get("else_"), { ...state, frame }),
             )
-          : undefined;
+          : null;
         const alternate =
           alternates.reduceRight(
-            (alt: n.Statement | undefined, { test, consequent }) =>
+            (alt: n.Statement | null, { test, consequent }) =>
               b.ifStatement(test, consequent, alt),
             else_,
           ) ?? null;

@@ -312,6 +312,13 @@ describe("if condition", () => {
     expect(tmpl.render()).toBe("...");
   });
 
+  it("elif without else", () => {
+    const tmpl = env.fromString(
+      "{% if false %}XXX{% elif true %}...{% endif %}",
+    );
+    expect(tmpl.render()).toBe("...");
+  });
+
   it("elif deep", () => {
     const elifs = [...new Array(1000)]
       .map((_, i) => `{% elif a == ${i} %}${i}`)
