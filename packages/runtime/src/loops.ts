@@ -14,24 +14,6 @@ type LoopRenderFunc<V> = (
 ) => string;
 
 /**
- * When iterating over nested data, render the body of the loop
- * recursively with the given inner iterable data.
- *
- * The loop must have the recursive marker for this to work.
- */
-const LoopContextFunc = function LoopContext<
-  IsAsync extends boolean | undefined,
-  V extends PromiseIfAsync<IsAsync> = any,
->(this: LoopContext<IsAsync, V>, iterable: Iterable<V>): string {
-  if (this._recurse === null) {
-    throw new TypeError(
-      "The loop must have the 'recursive' marker to be called recursively.",
-    );
-  }
-  return this._recurse(iterable, this._recurse, this.depth);
-};
-
-/**
  * A wrapper iterable for dynamic for loops, with information about the loop and iteration.
  */
 export class LoopContext<
@@ -97,8 +79,21 @@ export class LoopContext<
     this.depth0 = depth0;
     this._isAsync = async;
     this._iterator = this._toIterator(iterable);
+  }
 
-    return Object.setPrototypeOf(LoopContextFunc.bind(this), this);
+  /**
+   * When iterating over nested data, render the body of the loop
+   * recursively with the given inner iterable data.
+   *
+   * The loop must have the recursive marker for this to work.
+   */
+  __call__(iterable: Iterable<V>): string {
+    if (this._recurse === null) {
+      throw new TypeError(
+        "The loop must have the 'recursive' marker to be called recursively.",
+      );
+    }
+    return this._recurse(iterable, this._recurse, this.depth);
   }
 
   _toIterator(

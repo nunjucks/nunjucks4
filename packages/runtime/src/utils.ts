@@ -1,3 +1,4 @@
+import isCallable from "is-callable";
 import { str } from "./markup";
 
 export function isPlainObject(obj: any): obj is object {
@@ -153,4 +154,17 @@ export function getObjectTypeName(obj: unknown) {
   }
   const prototype = Object.getPrototypeOf(obj);
   return prototype.constructor.name;
+}
+
+export function call(func: (...args: any[]) => any, args: any[]) {
+  if (
+    !isCallable(func) &&
+    typeof func === "object" &&
+    func &&
+    isCallable((func as any)?.__call__)
+  ) {
+    return (func as any).__call__(...args);
+  } else {
+    return func(...args);
+  }
 }

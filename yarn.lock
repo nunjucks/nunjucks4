@@ -2679,7 +2679,9 @@ __metadata:
   resolution: "@nunjucks/runtime@workspace:packages/runtime"
   dependencies:
     "@nunjucks/ast": "workspace:*"
+    "@types/is-callable": "npm:^1.1.2"
     character-entities: "npm:^1.2.4"
+    is-callable: "npm:^1.2.7"
     rimraf: "npm:~3.0.2"
     typescript: "npm:^5.4.3"
   languageName: unknown
@@ -3375,6 +3377,13 @@ __metadata:
   dependencies:
     "@types/node": "npm:*"
   checksum: 10/79d746a8f053954bba36bd3d94a90c78de995d126289d656fb3271dd9f1229d33f678da04d10bce6be440494a5a73438e2e363e92802d16b8315b051036c5256
+  languageName: node
+  linkType: hard
+
+"@types/is-callable@npm:^1.1.2":
+  version: 1.1.2
+  resolution: "@types/is-callable@npm:1.1.2"
+  checksum: 10/e17dc408e5b3ac460bc5447b16891dfaf01a63b59c6072eba8ff941e66419636810ffb1c7e7a828209264461f6d36c1ade01f60193da7b95790e8e862994d2bd
   languageName: node
   linkType: hard
 

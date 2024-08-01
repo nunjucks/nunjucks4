@@ -1,5 +1,12 @@
 import { KeyError } from "./exceptions";
-import { NunjucksFunction, isVarargs, isKwargs, hasOwn, concat } from "./utils";
+import {
+  NunjucksFunction,
+  isVarargs,
+  isKwargs,
+  hasOwn,
+  concat,
+  call,
+} from "./utils";
 import type { IfAsync, IEnvironment } from "./types";
 
 import { Macro } from "./macro";
@@ -337,7 +344,7 @@ export class Context<IsAsync extends boolean> {
       Object.defineProperty(kwargs, "__isKwargs", { value: true });
       args.push(kwargs);
     }
-    return func(...args, ...varargs);
+    return call(func, [...args, ...varargs]);
   }
 
   isAsync(): this is Context<true> {

@@ -2,6 +2,7 @@ import { KeyError, TemplateRuntimeError } from "./exceptions";
 import { LoopContext } from "./loops";
 import { BlockReference, Context, EvalContext } from "./context";
 import {
+  call,
   isPlainObject,
   nunjucksFunction,
   isKwargs,
@@ -54,10 +55,6 @@ export function markupJoin(seq: Iterable<unknown>): string {
   } else {
     return concat(buf);
   }
-}
-
-function call(func: (...args: any[]) => any, args: any[]) {
-  return func(...args);
 }
 
 function test(obj: unknown): boolean {
