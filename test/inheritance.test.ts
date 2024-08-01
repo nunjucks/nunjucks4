@@ -113,7 +113,18 @@ describe("inheritance", () => {
     const tmpl = env.getTemplate("c");
     expect(tmpl.render()).toBe("--INTRO--|BEFORE|[(INNER)]|AFTER");
   });
-
+  it("should not autoescape super()", () => {
+    env = new Environment({
+      loaders: [
+        new ObjectSourceLoader({
+          base: "{% block block1 %}<b>Foo</b>{% endblock %}",
+          main: '{% extends "base" %}{% block block1 %}{{ super() }}{% endblock %}',
+        }),
+      ],
+    });
+    const tmpl = env.getTemplate("main");
+    expect(tmpl.render()).toBe("<b>Foo</b>");
+  });
   it("reuses blocks", () => {
     const tmpl = env.fromString(
       "{{ self.foo() }}|{% block foo %}42{% endblock %}|{{ self.foo() }}",

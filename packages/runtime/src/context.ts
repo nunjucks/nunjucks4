@@ -11,6 +11,7 @@ import type { IfAsync, IEnvironment } from "./types";
 
 import { Macro } from "./macro";
 import { MISSING, Undefined } from "./undef";
+import { markSafe } from "./markup";
 
 export type Block<IsAsync extends boolean> = IsAsync extends true
   ? (context: Context<IsAsync>) => AsyncGenerator<string> | Generator<string>
@@ -398,7 +399,8 @@ export class BlockReference<IsAsync extends boolean> extends Function {
         for await (const x of block(context)) {
           ret.push(x);
         }
-        return concat(ret);
+        const rv = concat(ret);
+        return this._context.evalCtx.autoescape ? markSafe(rv) : rv;
       })() as IfAsync<IsAsync, Promise<string>, string>;
     } else {
       const ret: string[] = [];
@@ -407,7 +409,12 @@ export class BlockReference<IsAsync extends boolean> extends Function {
       for (const x of block(context)) {
         ret.push(x);
       }
-      return concat(ret) as IfAsync<IsAsync, Promise<string>, string>;
+      const rv = concat(ret);
+      return (this._context.evalCtx.autoescape ? markSafe(rv) : rv) as IfAsync<
+        IsAsync,
+        Promise<string>,
+        string
+      >;
     }
   }
 
