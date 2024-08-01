@@ -623,7 +623,7 @@ export class CodeGenerator<IsAsync extends boolean> {
           statements.push(doRender);
         }
 
-        return statements;
+        return b.blockStatement(statements);
       },
       visitImport(path, state) {
         const { node } = path;
