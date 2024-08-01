@@ -150,8 +150,6 @@ function center(s: string, width = 80): string {
   return copySafeness(s, pre + string + post);
 }
 
-exports.center = center;
-
 export const default_ = nunjucksFunction(["value", "default_value", "boolean"])(
   function default_<T, U>(val: T, def: U, bool?: boolean): T | U {
     return isUndefinedInstance(val) || (bool && !val) ? def : val;
