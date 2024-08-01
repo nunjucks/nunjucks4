@@ -275,7 +275,7 @@ export class CodeGenerator<IsAsync extends boolean> {
           const ref = frame.symbols.declareParameter("self");
           inner.push(
             ast`const %%ref%% = new runtime.TemplateReference(context)`({
-              ref,
+              ref: id(ref),
             }),
           );
         }
@@ -342,7 +342,7 @@ export class CodeGenerator<IsAsync extends boolean> {
           if (undeclared.has("self")) {
             const ref = blockFrame.symbols.declareParameter("self");
             blockStatements.push(
-              ast`%%ref%% = new runtime.TemplateReference(context)`({
+              ast`const %%ref%% = new runtime.TemplateReference(context)`({
                 ref: id(ref),
               }),
             );
@@ -350,7 +350,7 @@ export class CodeGenerator<IsAsync extends boolean> {
           if (undeclared.has("super")) {
             const ref = blockFrame.symbols.declareParameter("super");
             blockStatements.push(
-              ast`%%ref%% = context.super({name: %%name%%, current: %%blockFnName%%})`(
+              ast`const %%ref%% = context.super({name: %%name%%, current: %%blockFnName%%})`(
                 {
                   ref: id(ref),
                   name: b.stringLiteral(name),
