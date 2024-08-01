@@ -1,7 +1,7 @@
 {
   "name": "@nunjucks/ast",
   "version": "4.0.0-alpha.1",
-  "sideEffects": false,
+  "sideEffects": true,
   "main": "./dist/cjs/index.js",
   "types": "./dist/types/index.d.ts",
   "exports": {
