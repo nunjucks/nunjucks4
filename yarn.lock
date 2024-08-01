@@ -2634,7 +2634,7 @@ __metadata:
     "@pregenerator/generator": "npm:^1.1.3"
     "@types/events": "npm:^3"
     events: "npm:^3.3.0"
-    lru-cache: "npm:^10.2.0"
+    lru-cache: "npm:^10.2.2"
     rimraf: "npm:~3.0.2"
     typescript: "npm:^5.4.3"
   languageName: unknown
