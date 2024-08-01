@@ -12,7 +12,7 @@
   ],
   "scripts": {
     "clean": "yarn workspaces foreach -Atvp run clean",
-    "build": "tsc --build ./tsconfig.packages.json && yarn workspaces foreach -Atvp run compile:cjs",
+    "build": "yarn clean && tsc --build ./tsconfig.packages.json && yarn workspaces foreach -Atvp run compile",
     "test": "jest",
     "lint": "eslint"
   },
