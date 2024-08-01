@@ -19,6 +19,7 @@ import {
   Template,
   TemplateNotFound,
   TemplatesNotFound,
+  isTemplate,
 } from "@nunjucks/runtime";
 import type { IEnvironment } from "@nunjucks/runtime";
 import type { types } from "@nunjucks/ast";
@@ -540,7 +541,7 @@ export class EnvironmentBase<IsAsync extends boolean = boolean>
       throw name._failWithUndefinedError();
     }
     if (this.isSync()) {
-      if (name instanceof Template) {
+      if (isTemplate(name)) {
         if (!name.isSync())
           throw new Error("template is async but environment is not");
         return name;
@@ -550,7 +551,7 @@ export class EnvironmentBase<IsAsync extends boolean = boolean>
       }
       return this._loadTemplate(name, globals);
     } else {
-      if (name instanceof Template && !name.isAsync()) {
+      if (isTemplate(name) && !name.isAsync()) {
         throw new Error("environment is async but template is not");
       }
       return this._asyncGetTemplate(name, parent, globals);
@@ -582,7 +583,7 @@ export class EnvironmentBase<IsAsync extends boolean = boolean>
     }
 
     for (let name of templateNames) {
-      if (name instanceof Template) {
+      if (isTemplate(name)) {
         return name;
       }
       if (parent !== null) {
@@ -657,7 +658,7 @@ export class EnvironmentBase<IsAsync extends boolean = boolean>
     }
 
     for (let name of templateNames) {
-      if (name instanceof Template) {
+      if (isTemplate(name)) {
         return name;
       }
       if (parent !== null) {
@@ -722,7 +723,8 @@ export class EnvironmentBase<IsAsync extends boolean = boolean>
   ): Template<false> | Promise<Template<true>> {
     if (
       typeof templateNameOrList === "string" ||
-      isUndefinedInstance(templateNameOrList)
+      isUndefinedInstance(templateNameOrList) ||
+      isTemplate(templateNameOrList)
     ) {
       return (this as any).getTemplate(templateNameOrList, { parent, globals });
     }
@@ -738,7 +740,7 @@ export class EnvironmentBase<IsAsync extends boolean = boolean>
     parent: string | null = null,
     globals: Record<string, unknown> = {},
   ): Promise<Template<true>> {
-    if (name instanceof Template) return name;
+    if (isTemplate(name)) return name;
     if (parent !== null) name = this.joinPath(name, parent);
     return this._loadTemplate(name, globals);
   }

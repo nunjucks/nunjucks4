@@ -463,6 +463,20 @@ describe("macros", () => {
     expect(tmpl.render()).toBe("[foo]");
   });
 
+  it("include passed template objects", () => {
+    env = new Environment({
+      async: false,
+      loaders: [
+        new ObjectSourceLoader({
+          include: "{% macro test(foo) %}[{{ foo }}]{% endmacro %}",
+        }),
+      ],
+    });
+    const t = env.fromString('{% from tmpl import test %}{{ test("foo") }}');
+    const toInclude = env.getTemplate("include");
+    expect(t.render({ tmpl: toInclude })).toBe("[foo]");
+  });
+
   it("macro api", () => {
     const tmpl = env.fromString(
       [

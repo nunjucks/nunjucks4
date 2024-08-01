@@ -73,7 +73,29 @@ function setDifference<A = any, B = any>(a: Set<A>, b: Set<B>): Set<A> {
   return res;
 }
 
+export type TemplateOptions<IsAsync extends boolean = boolean> = {
+  environment: IEnvironment<IsAsync>;
+  globals?: Record<string, any>;
+  name?: string | null;
+  filename?: string | null;
+  blocks?: Record<string, RenderFunc<IsAsync>>;
+  root?: RenderFunc<IsAsync>;
+  uptodate?: IsAsync extends true
+    ? () => Promise<boolean> | boolean
+    : () => boolean;
+};
+
+export function isTemplate(o: unknown): o is Template<boolean> {
+  return (
+    !!o &&
+    typeof o === "object" &&
+    "__nj" in o &&
+    Object.prototype.toString.call(o) === "[object Template]"
+  );
+}
+
 export class Template<IsAsync extends true | false> {
+  __nj = true;
   async: IsAsync;
   environment: IEnvironment<IsAsync>;
   // TODO environmentClass: typeof Environment = Environment;
@@ -100,17 +122,7 @@ export class Template<IsAsync extends true | false> {
     environment,
     root,
     uptodate,
-  }: {
-    environment: IEnvironment<IsAsync>;
-    globals?: Record<string, any>;
-    name?: string | null;
-    filename?: string | null;
-    blocks?: Record<string, RenderFunc<IsAsync>>;
-    root?: RenderFunc<IsAsync>;
-    uptodate?: IsAsync extends true
-      ? () => Promise<boolean> | boolean
-      : () => boolean;
-  }) {
+  }: TemplateOptions<IsAsync>) {
     this.async = !!environment.isAsync() as IsAsync;
     this.globals = Object.assign({}, globals, environment.globals);
     this.name = name;
@@ -363,7 +375,12 @@ export class Template<IsAsync extends true | false> {
     template.rootRenderFunc = root;
     return template;
   }
+
+  get [Symbol.toStringTag]() {
+    return "Template";
+  }
 }
+
 interface TemplateNamespace<IsAsync extends boolean> {
   name?: string | null;
   filename?: string | null;
