@@ -1416,6 +1416,7 @@ export class Parser {
       node.test = this.parseTuple({ withCondExpr: false });
       node.body = this.parseStatements([
         "name:elif",
+        "name:elseif",
         "name:else",
         "name:endif",
       ]);
@@ -1423,7 +1424,7 @@ export class Parser {
       node.else_ = [];
       node.loc = this.tokToLoc(currTok, this.stream.current);
       const nextTok = this.stream.next().value;
-      if (this.test(nextTok, "name:elif")) {
+      if (this.testAny(nextTok, ["name:elif", "name:elseif"])) {
         node = { type: "If" } as t.If;
         result.elif.push(node);
         continue;
