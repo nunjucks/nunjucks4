@@ -619,6 +619,27 @@ describe("set", () => {
     expect(tmpl.render()).toBe("11");
     expect((tmpl.module as any).foo).toBe("11");
   });
+
+  it("nested set blocks", () => {
+    const tmpl = env.fromString(
+      "{% set block_content %}" +
+        "{% set inner_block_content %}" +
+        "{% for i in [1, 2, 3] %}" +
+        "item {{ i }} " +
+        "{% endfor %}" +
+        "{% endset %}" +
+        "{% for i in [1, 2, 3] %}" +
+        'inner {{i}}: "{{ inner_block_content }}" ' +
+        "{% endfor %}" +
+        "{% endset %}" +
+        "{{ block_content | safe }}",
+    );
+    expect(tmpl.render()).toBe(
+      'inner 1: "item 1 item 2 item 3 " ' +
+        'inner 2: "item 1 item 2 item 3 " ' +
+        'inner 3: "item 1 item 2 item 3 " ',
+    );
+  });
 });
 
 describe("with", () => {

@@ -346,10 +346,12 @@ export class FrameSymbolVisitor {
         return false;
       },
       visitCallBlock(path) {
-        this.traverse(path.get("call"));
+        self.visit(path.get("call"));
+        return false;
       },
       visitFilterBlock(path) {
-        this.traverse(path.get("filter"));
+        self.visit(path.get("filter"));
+        return false;
       },
       visitWith({ node }) {
         node.values.forEach((target) => {
@@ -358,7 +360,8 @@ export class FrameSymbolVisitor {
         return false;
       },
       visitAssignBlock(path) {
-        this.traverse(path.get("target"));
+        self.visit(path.get("target"));
+        return false;
       },
       visitScope() {
         // Stop visiting at scopes.
