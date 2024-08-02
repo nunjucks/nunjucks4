@@ -1,4 +1,10 @@
-import { Environment, EnvironmentOptions } from "@nunjucks/environment";
+import {
+  Environment,
+  EnvironmentOptions,
+  Extension,
+  ExprStmtExtension,
+  LoopControlExtension,
+} from "@nunjucks/environment";
 import {
   FileSystemLoader,
   WebLoader,
@@ -82,6 +88,10 @@ class CompatTemplate<
 
 export {
   Environment,
+  EnvironmentOptions,
+  Extension,
+  ExprStmtExtension,
+  LoopControlExtension,
   runtime,
   nodes,
   builders,
