@@ -189,6 +189,17 @@ export class Parser {
     return rules.some((r) => this.test(token, r));
   }
 
+  nodeLoc(node: t.Node, endNode?: t.Node): t.SourceLocation {
+    const start = node.loc!.start;
+    const endLoc = (endNode ?? node).loc!;
+    const end = endLoc.end!;
+    return {
+      start,
+      end,
+      source: this.stream.str.substring(start.pos, end.pos),
+    };
+  }
+
   tokToLoc(token: Token, endToken?: Token): t.SourceLocation {
     const source = endToken
       ? this.stream.str.substring(token.pos, endToken.pos + endToken.raw.length)
@@ -203,14 +214,18 @@ export class Parser {
         endColumn++;
       }
     }
+    const startPos = token.pos;
+    const endPos = (endToken ?? token).pos + (endToken ?? token).raw.length;
     return {
       start: {
         line: token.lineno,
         column: token.colno,
+        pos: startPos,
       },
       end: {
         line: endLine,
         column: endColumn,
+        pos: endPos,
       },
       source,
     };
@@ -720,7 +735,7 @@ export class Parser {
           node,
           attr: attrToken.value,
           ctx: "load",
-          loc: this.tokToLoc(token, this.stream.current),
+          loc: this.tokToLoc(token, attrToken),
         });
       } else if (attrToken.type !== lexer.TOKEN_INT) {
         const { lineno, colno } = attrToken;
@@ -881,6 +896,7 @@ export class Parser {
   }
 
   parseCall(node: t.Expr): t.Call {
+    const start = this.stream.previous;
     const token = this.stream.current;
     const { args, kwargs, dynArgs, dynKwargs } = this.parseCallArgs();
     return b.call.from({
@@ -889,7 +905,7 @@ export class Parser {
       kwargs,
       dynArgs,
       dynKwargs,
-      loc: this.tokToLoc(token, this.stream.current),
+      loc: this.tokToLoc(start ?? token, this.stream.previous!),
     });
   }
 
@@ -1022,6 +1038,7 @@ export class Parser {
   }
 
   parseFor(): t.Loop {
+    const startTok = this.stream.previous!;
     const forTok = this.stream.current;
     let nodeBuilder: keyof typeof b;
     let endBlock: string;
@@ -1062,7 +1079,7 @@ export class Parser {
       else_,
       test,
       recursive,
-      loc: this.tokToLoc(forTok, this.stream.current),
+      loc: this.tokToLoc(startTok, this.stream.current),
     });
   }
 
@@ -1342,7 +1359,6 @@ export class Parser {
   }
 
   parsePrint(): t.Output {
-    const token = this.stream.next().value;
     const nodes: t.Expr[] = [];
     while (this.stream.current.type !== lexer.TOKEN_BLOCK_END) {
       if (nodes.length) {
@@ -1350,9 +1366,15 @@ export class Parser {
       }
       nodes.push(this.parseExpression());
     }
+    let loc: t.SourceLocation | null = null;
+    if (nodes.length) {
+      const first = nodes[0];
+      const last = nodes[nodes.length - 1];
+      loc = this.nodeLoc(first, last);
+    }
     return b.output.from({
       nodes,
-      loc: this.tokToLoc(token, this.stream.current),
+      loc,
     });
   }
 
@@ -1408,7 +1430,8 @@ export class Parser {
   }
 
   parseIf(): t.If {
-    const startTok = this.stream.expect("name:if");
+    const startTok = this.stream.previous ?? this.stream.current;
+    this.stream.expect("name:if");
     const result = { type: "If" } as t.If;
     let node: t.If = result;
     while (true) {
@@ -1440,7 +1463,8 @@ export class Parser {
   }
 
   parseSet(): t.Assign | t.AssignBlock {
-    const startTok = this.stream.expect("name:set");
+    const startTok = this.stream.previous!;
+    this.stream.expect("name:set");
     const target = this.parseAssignTarget({ withNamespace: true });
     if (this.stream.skipIf("assign")) {
       const expr = this.parseTuple();
@@ -1472,10 +1496,14 @@ export class Parser {
 
     const flushData = (): void => {
       if (dataBuffer.length) {
+        const loc = this.nodeLoc(
+          dataBuffer[0],
+          dataBuffer[dataBuffer.length - 1],
+        );
         body.push(
           b.output.from({
             nodes: dataBuffer.slice(),
-            loc: this.tokToLoc(this.stream.current),
+            loc,
           }),
         );
         dataBuffer = [];

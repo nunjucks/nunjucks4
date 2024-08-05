@@ -344,6 +344,7 @@ export class TokenStream implements Iterator<Token, TokenEof> {
   _pushed: Token[] = [];
   closed = false;
   current: Token;
+  previous: Token | null;
   str: string;
 
   position = 0;
@@ -360,6 +361,7 @@ export class TokenStream implements Iterator<Token, TokenEof> {
     this.name = name ?? null;
     this.filename = filename ?? null;
     this.current = makeToken(TOKEN_INITIAL, "", 1, 0, 0, "");
+    this.previous = null;
     this._iter = generator[Symbol.iterator]();
     this.next();
   }
@@ -391,11 +393,13 @@ export class TokenStream implements Iterator<Token, TokenEof> {
     }
     const looked = this.current;
     this.push(looked);
+    this.previous = looked;
     this.current = result.value;
     return looked;
   }
 
   close(): void {
+    this.previous = this.current;
     this.current = makeToken(
       TOKEN_EOF,
       "",
@@ -414,6 +418,7 @@ export class TokenStream implements Iterator<Token, TokenEof> {
 
   next(): IteratorResult<Token, TokenEof> {
     const value = this.current;
+    this.previous = value;
     if (this._pushed.length) {
       this.current = this._pushed.shift()!;
     } else if (this.current.type !== TOKEN_EOF) {
@@ -566,6 +571,33 @@ function rule(
   command?: string,
 ): Rule {
   return { regex, tokens, command };
+}
+
+class SourcePosition {
+  linePos: number[];
+
+  constructor(text: string) {
+    const nl = /\n\r?|\r/g;
+    this.linePos = [0];
+    while (nl.exec(text)) {
+      this.linePos.push(nl.lastIndex);
+    }
+    if (this.linePos[this.linePos.length - 1] != text.length) {
+      this.linePos.push(text.length);
+    }
+  }
+
+  /** Find the line and column of the given source location. */
+  lookup(sourcePos: number): { lineno: number; colno: number } | null {
+    if (sourcePos < 0) {
+      return null;
+    }
+    let i = 1;
+    while (i < this.linePos.length && sourcePos >= this.linePos[i]) {
+      i++;
+    }
+    return { lineno: i, colno: sourcePos - this.linePos[i - 1] };
+  }
 }
 
 export class Lexer {
@@ -756,9 +788,9 @@ export class Lexer {
   }
 
   *wrap(
-    stream: Iterable<[number, string, string, number, string]>,
+    stream: Iterable<[number, number, string, string, number, string]>,
   ): Iterable<Token> {
-    for (const [lineno, token_, valueStr, pos, raw] of stream) {
+    for (const [lineno, colno, token_, valueStr, pos, raw] of stream) {
       let token = token_;
       if (ignoredTokens.has(token)) continue;
 
@@ -787,7 +819,7 @@ export class Lexer {
       } else if (token === TOKEN_OPERATOR) {
         token = operators[valueStr];
       }
-      yield makeToken(token as TokenType, value, lineno, 0, pos, raw);
+      yield makeToken(token as TokenType, value, lineno, colno, pos, raw);
     }
   }
 
@@ -802,15 +834,19 @@ export class Lexer {
       filename?: string | null;
       state?: string | null;
     } = {},
-  ): Iterable<[number, string, string, number, string]> {
+  ): Iterable<[number, number, string, string, number, string]> {
     const lines = source.split(newlineRe).filter((_, i) => i % 2 === 0);
     if (!this.keepTrailingNewline && lines[lines.length - 1] === "") {
       lines.pop();
     }
 
     source = lines.join("\n");
+
+    const sourcePositions = new SourcePosition(source);
+
     let pos = 0;
     let lineno = 1;
+    let colno = 0;
     const stack: string[] = ["root"];
 
     if (state !== null && state !== "root") {
@@ -823,7 +859,6 @@ export class Lexer {
     let statetokens = this.rules[stack[stack.length - 1]];
     const sourceLength = source.length;
     const balancingStack: string[] = [];
-    let newlinesStripped = 0;
     let lineStarting = true;
 
     while (true) {
@@ -863,8 +898,6 @@ export class Lexer {
             if (stripSign === "-") {
               // Strip all whitespace between the text and the tag.
               const stripped = text.trimEnd();
-              newlinesStripped =
-                text.substring(stripped.length).match(/\n/g)?.length ?? 0;
               groups[0] = stripped;
             } else if (
               // Not marked for preserving whitespace.
@@ -909,8 +942,8 @@ export class Lexer {
                     matchPos >= 0 && matchPos < m[0].length
                       ? m.index + matchPos
                       : m.index;
-                  yield [lineno, key, value, index, value];
-                  lineno += value.match(/\n/g)?.length ?? 0;
+                  ({ lineno, colno } = sourcePositions.lookup(index)!);
+                  yield [lineno, colno, key, value, index, value];
                   break;
                 }
               }
@@ -922,10 +955,9 @@ export class Lexer {
                   matchPos >= 0 && matchPos < m[0].length
                     ? m.index + matchPos
                     : m.index;
-                yield [lineno, token, data, index, data];
+                ({ lineno, colno } = sourcePositions.lookup(index)!);
+                yield [lineno, colno, token, data, index, data];
               }
-              lineno += (data.match(/\n/g)?.length ?? 0) + newlinesStripped;
-              newlinesStripped = 0;
             }
           }
         } else {
@@ -959,9 +991,9 @@ export class Lexer {
           }
           // yield items
           if (data || !ignoreIfEmpty.has(tokens)) {
-            yield [lineno, tokens, data, m.index, m[0]];
+            ({ lineno, colno } = sourcePositions.lookup(m.index)!);
+            yield [lineno, colno, tokens, data, m.index, m[0]];
           }
-          lineno += data?.match(/\n/g)?.length ?? 0;
         }
 
         lineStarting = (m[0] ?? "").endsWith("\n");

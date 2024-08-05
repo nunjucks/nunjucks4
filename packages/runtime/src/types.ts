@@ -74,7 +74,7 @@ export interface IEnvironment<IsAsync extends boolean = boolean> {
   lex(
     source: string,
     opts: ITemplateInfo,
-  ): Iterable<[number, string, string, number, string]>;
+  ): Iterable<[number, number, string, string, number, string]>;
   preprocess(source: string, info: ITemplateInfo): string;
   parse(source: string, opts?: ITemplateInfo): types.Template;
   compile(

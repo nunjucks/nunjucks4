@@ -860,7 +860,7 @@ export class EnvironmentBase<IsAsync extends boolean = boolean>
   lex(
     _source: string,
     _opts: TemplateInfo,
-  ): Iterable<[number, string, string, number, string]> {
+  ): Iterable<[number, number, string, string, number, string]> {
     throw new Error("Not implemented in a slim-mode Environment");
   }
   preprocess(_source: string, _info: TemplateInfo): string {

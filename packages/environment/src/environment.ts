@@ -105,7 +105,7 @@ export class Environment<IsAsync extends boolean = false>
   lex(
     source: string,
     { name = null, filename = null }: TemplateInfo = {},
-  ): Iterable<[number, string, string, number, string]> {
+  ): Iterable<[number, number, string, string, number, string]> {
     // eslint-disable-next-line no-useless-catch
     try {
       return this.lexer.tokeniter(source, { name, filename });

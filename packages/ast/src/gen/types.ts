@@ -134,6 +134,7 @@ export type UnaryExpr = Not | Neg | Pos;
 export interface Position {
   line: number;
   column: number;
+  pos: number;
 }
 export interface SourceLocation {
   start: Position;

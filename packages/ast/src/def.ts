@@ -3,7 +3,10 @@ import { defaults, geq } from "./shared";
 
 const { def, or } = Type;
 
-def("Position").field("line", geq(1)).field("column", geq(0));
+def("Position")
+  .field("line", geq(1))
+  .field("column", geq(0))
+  .field("pos", geq(0));
 
 def("SourceLocation")
   .field("start", def("Position"))
