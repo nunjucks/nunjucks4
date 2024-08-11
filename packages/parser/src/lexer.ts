@@ -68,6 +68,8 @@ export const TOKEN_VARIABLE_START = "variable_start";
 export const TOKEN_VARIABLE_END = "variable_end";
 export const TOKEN_RAW_START = "raw_start";
 export const TOKEN_RAW_END = "raw_end";
+export const TOKEN_VERBATIM_START = "verbatim_start";
+export const TOKEN_VERBATIM_END = "verbatim_end";
 export const TOKEN_COMMENT = "comment";
 export const TOKEN_COMMENT_START = "comment_start";
 export const TOKEN_COMMENT_END = "comment_end";
@@ -126,6 +128,8 @@ export type TokenType =
   | typeof TOKEN_VARIABLE_END
   | typeof TOKEN_RAW_START
   | typeof TOKEN_RAW_END
+  | typeof TOKEN_VERBATIM_START
+  | typeof TOKEN_VERBATIM_END
   | typeof TOKEN_COMMENT
   | typeof TOKEN_COMMENT_START
   | typeof TOKEN_COMMENT_END
@@ -676,9 +680,14 @@ export class Lexer {
       `(?<raw_start>${blockStartRe}(\\-|\\+|)\\s*raw\\s*`,
       `(?:\\-${blockEndRe}\\s*|${blockEndRe}))`,
     ].join("");
+    const rootVerbatimRe = [
+      `(?<verbatim_start>${blockStartRe}(\\-|\\+|)\\s*verbatim\\s*`,
+      `(?:\\-${blockEndRe}\\s*|${blockEndRe}))`,
+    ].join("");
 
     const rootPartsRe = [
       rootRawRe,
+      rootVerbatimRe,
       ...rootTagRules.map(([n, r]) => `(?<${n}>${r}(\\-|\\+|))`),
     ].join("|");
 
@@ -745,6 +754,21 @@ export class Lexer {
         ),
         rule(c("(.)"), [new Failure("Missing end of raw directive")]),
       ],
+      // verbatim block (alias for raw)
+      [TOKEN_VERBATIM_START]: [
+        rule(
+          c(
+            [
+              `(.*?)((?:${blockStartRe}(\\-|\\+|))\\s*endverbatim\\s*`,
+              `(?:\\+${blockEndRe}|\\-${blockEndRe}\\s*`,
+              `|${blockEndRe}${blockSuffixRe}))`,
+            ].join(""),
+          ),
+          optionalLStrip([TOKEN_DATA, TOKEN_VERBATIM_END]),
+          "#pop",
+        ),
+        rule(c("(.)"), [new Failure("Missing end of verbatim directive")]),
+      ],
       // line statements
       [TOKEN_LINESTATEMENT_START]: [
         rule(c("\\s*(\\n|$)"), TOKEN_LINESTATEMENT_END, "#pop"),
@@ -802,6 +826,11 @@ export class Lexer {
         token = TOKEN_BLOCK_END;
         // we are not interested in those tokens in the parser
       } else if (token === TOKEN_RAW_START || token === TOKEN_RAW_END) {
+        continue;
+      } else if (
+        token === TOKEN_VERBATIM_START ||
+        token === TOKEN_VERBATIM_END
+      ) {
         continue;
       } else if (token === TOKEN_DATA) {
         value = this._normalizeNewlines(valueStr);
