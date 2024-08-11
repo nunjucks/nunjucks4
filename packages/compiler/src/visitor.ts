@@ -24,7 +24,7 @@ import {
   VAR_LOAD_UNDEFINED,
 } from "./idtracking";
 import n = namedTypes;
-import toConst from "./const";
+import toConst, { Impossible } from "./const";
 
 const OPERATORS = {
   eq: "==",
@@ -819,7 +819,9 @@ export class CodeGenerator<IsAsync extends boolean> {
                   return true;
                 }
               });
-              args.push(self.wrapChildPre(itemNodes, decls, frame));
+              itemNodes.forEach((itemNode) => {
+                args.push(self.wrapChildPre(itemNode, decls, frame));
+              });
             }
           }
           const callee = memberExpr(`${frame.buffer}.push`);
@@ -843,8 +845,12 @@ export class CodeGenerator<IsAsync extends boolean> {
                 }
               });
               innerNodes.push(
-                b.expressionStatement(
-                  b.yieldExpression(self.wrapChildPre(itemNodes, decls, frame)),
+                ...itemNodes.map((itemNode) =>
+                  b.expressionStatement(
+                    b.yieldExpression(
+                      self.wrapChildPre(itemNode, decls, frame),
+                    ),
+                  ),
                 ),
               );
             }
@@ -1977,18 +1983,29 @@ export class CodeGenerator<IsAsync extends boolean> {
 
   outputChildToConst(node: t.Expr, frame: Frame<IsAsync>) {
     let val = toConst(frame.evalCtx, node);
-    if (frame.evalCtx.autoescape) {
-      val = escape(runtimeStr(val));
-    }
     if (t.TemplateData.check(node)) {
+      if (frame.evalCtx.autoescape) {
+        val = escape(val);
+      }
       return `${val}`;
     }
-    // TODO: implement finalize
-    return runtimeStr(val);
+    const finalize = this._makeFinalize();
+
+    // If the finalize function requires runtime context,
+    // we cannot convert expressions to constants at compile-time
+    if (!finalize.toConst) throw new Impossible();
+
+    val = finalize.toConst(val);
+
+    if (frame.evalCtx.autoescape) {
+      val = escape(val);
+    }
+
+    return `${val}`;
   }
 
   wrapChildPre(
-    argument: n.Node[],
+    argument: n.Node,
     decls: n.VariableDeclaration[],
     frame: Frame<IsAsync>,
   ) {
@@ -1997,10 +2014,11 @@ export class CodeGenerator<IsAsync extends boolean> {
       : frame.evalCtx.autoescape
         ? runtimeExpr("escape")
         : runtimeExpr("str");
-    return b.callExpression(
-      callee,
-      argument.map((arg) => forceExpression(arg, decls)),
-    );
+    const finalize = this._makeFinalize();
+    if (finalize.src) {
+      argument = finalize.src(forceExpression(argument, decls));
+    }
+    return b.callExpression(callee, [forceExpression(argument, decls)]);
   }
 
   makeComparison(
@@ -2408,4 +2426,54 @@ export class CodeGenerator<IsAsync extends boolean> {
 
     return statements;
   }
+  _finalize: FinalizeInfo | null = null;
+
+  /**
+   * The default finalize function if the environment isn't
+   * configured with one. Or, if the environment has one, this is
+   * called on that function's output for constants.
+   */
+  _defaultFinalize(value: any): any {
+    return runtimeStr(value);
+  }
+
+  /**
+   * Build the finalize function to be used on constants and at
+   * runtime. Cached so it's only created once for all output nodes.
+   */
+  _makeFinalize(): FinalizeInfo {
+    if (this._finalize !== null) {
+      return this._finalize;
+    }
+    const defaultFinalize = this._defaultFinalize.bind(this);
+    let toConst = defaultFinalize;
+    let src: null | ((value: n.Expression) => n.Expression) = null;
+    const env = this.environment;
+    if (env.finalize) {
+      const envFinalize = env.getattr(env, "finalize");
+      src = (arg: any) =>
+        ast.expression`context.call(env.getattr(env, "finalize"), [%%arg%%])`({
+          arg,
+        });
+      // If the finalize function is passed runtime context, values
+      // cannot be converted to const at compile time
+      if (
+        envFinalize.__nunjucksPassArg === "context" ||
+        envFinalize.__nunjucksPassArg === "evalContext"
+      ) {
+        toConst = null;
+      } else {
+        toConst = (value: any) => defaultFinalize(envFinalize(value));
+      }
+    }
+    this._finalize = { src, toConst };
+    return this._finalize;
+  }
 }
+
+type FinalizeInfo = {
+  /** A function to finalize constant data at compile time. */
+  toConst: ((this: void, value: any) => string) | null;
+  /** Source code to output around nodes to be evaluated at runtime. */
+  src: null | ((value: n.Expression) => n.Expression);
+};

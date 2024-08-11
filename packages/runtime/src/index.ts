@@ -32,4 +32,6 @@ export type {
   ITemplateInfo,
   RenderFunc,
   Callback,
+  NunjucksFunction,
+  NunjucksFunctionProperties,
 } from "./types";

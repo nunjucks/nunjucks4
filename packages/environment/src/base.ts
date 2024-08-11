@@ -21,7 +21,12 @@ import {
   TemplatesNotFound,
   isTemplate,
 } from "@nunjucks/runtime";
-import type { Callback, IEnvironment } from "@nunjucks/runtime";
+import type {
+  Callback,
+  IEnvironment,
+  NunjucksFunction,
+  NunjucksFunctionProperties,
+} from "@nunjucks/runtime";
 import type { types } from "@nunjucks/ast";
 
 import {
@@ -113,6 +118,7 @@ export interface EnvironmentBaseOptions<IsAsync extends boolean = boolean> {
   tests?: Record<string, Test>;
   globals?: Record<string, any>;
   undef?: typeof _undef;
+  finalize?: NunjucksFunction<(value: any) => any> | undefined;
 }
 
 /**
@@ -159,6 +165,8 @@ export class EnvironmentBase<IsAsync extends boolean = boolean>
 
   cache: Record<PropertyKey, Template<IsAsync> | undefined> | null;
 
+  finalize?: NunjucksFunction<(value: any) => any>;
+
   constructor(
     loader: Loader | LegacyLoader<IsAsync>,
     opts?: EnvironmentBaseOptions<IsAsync>,
@@ -174,7 +182,8 @@ export class EnvironmentBase<IsAsync extends boolean = boolean>
   constructor(optsOrLoaders: any, options?: EnvironmentBaseOptions<IsAsync>) {
     super();
 
-    const opts: Required<EnvironmentBaseOptions<IsAsync>> = {
+    const opts: Required<Omit<EnvironmentBaseOptions<IsAsync>, "finalize">> &
+      Pick<EnvironmentBaseOptions<IsAsync>, "finalize"> = {
       autoescape: false,
       async: false as any,
       loaders: [],
@@ -182,6 +191,7 @@ export class EnvironmentBase<IsAsync extends boolean = boolean>
       tests: DEFAULT_TESTS,
       globals: {},
       undef: _undef,
+      finalize: undefined,
     };
     if (Array.isArray(optsOrLoaders)) {
       for (const loader of optsOrLoaders) {
@@ -227,6 +237,7 @@ export class EnvironmentBase<IsAsync extends boolean = boolean>
     const {
       autoescape = false,
       async,
+      finalize,
       loaders = [],
       filters = DEFAULT_FILTERS,
       tests = DEFAULT_TESTS,
@@ -242,6 +253,7 @@ export class EnvironmentBase<IsAsync extends boolean = boolean>
     this.globals = Object.assign({}, DEFAULT_NAMESPACE, globals);
     this.undef = undef;
     this.cache = null;
+    this.finalize = finalize;
   }
 
   isAsync(): this is EnvironmentBase<true> {
@@ -327,15 +339,21 @@ export class EnvironmentBase<IsAsync extends boolean = boolean>
   }
   getitem(obj: any, argument: any): any {
     const ret = this._getitem(obj, argument);
-    return typeof ret === "function" || ret instanceof Function
-      ? ret.bind(obj)
-      : ret;
+    if (
+      !isUndefinedInstance(ret) &&
+      (typeof ret === "function" || ret instanceof Function)
+    ) {
+      // Preserve nunjucksFunction properties, if present
+      const njfuncProps: NunjucksFunctionProperties = {};
+      if (ret.__nunjucksArgs) njfuncProps.__nunjucksArgs = ret.__nunjucksArgs;
+      if (ret.__nunjucksPassArg)
+        njfuncProps.__nunjucksPassArg = ret.__nunjucksPassArg;
+      return Object.assign(ret.bind(obj), njfuncProps);
+    }
+    return ret;
   }
   getattr(obj: any, argument: string): any {
-    const ret = this._getitem(obj, argument);
-    return typeof ret === "function" || ret instanceof Function
-      ? ret.bind(obj)
-      : ret;
+    return this.getitem(obj, argument);
   }
   _filterTestCommon(
     name: string | Undefined,

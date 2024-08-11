@@ -5,6 +5,28 @@ import { types } from "@nunjucks/ast";
 type Filter = (...args: any[]) => any;
 type Test = (...args: any[]) => boolean;
 
+export interface NunjuckArgsInfo {
+  varNames: string[];
+  varargs: boolean;
+  kwargs: boolean;
+}
+
+declare global {
+  interface Function {
+    __nunjucksPassArg?: "context" | "evalContext" | "environment";
+    __nunjucksArgs?: NunjuckArgsInfo;
+  }
+}
+
+export type NunjucksFunctionProperties = {
+  __nunjucksPassArg?: "context" | "evalContext" | "environment";
+  __nunjucksArgs?: NunjuckArgsInfo;
+};
+
+export type NunjucksFunction<
+  T extends (...args: any[]) => any = (...args: any[]) => any,
+> = T & NunjucksFunctionProperties;
+
 export interface ITemplateInfo {
   name?: string | null;
   filename?: string | null;
@@ -31,6 +53,7 @@ export interface IEnvironment<IsAsync extends boolean = boolean> {
   filters: Record<string, Filter>;
   tests: Record<string, Test>;
   globals: Record<string, any>;
+  finalize?: NunjucksFunction<(value: any) => any>;
   undef: {
     (opts?: UndefinedOpts): Undefined;
     (

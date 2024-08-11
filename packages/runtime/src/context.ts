@@ -1,13 +1,6 @@
 import { KeyError } from "./exceptions";
-import {
-  NunjucksFunction,
-  isVarargs,
-  isKwargs,
-  hasOwn,
-  concat,
-  call,
-} from "./utils";
-import type { IfAsync, IEnvironment } from "./types";
+import { isVarargs, isKwargs, hasOwn, concat, call } from "./utils";
+import type { IfAsync, IEnvironment, NunjucksFunction } from "./types";
 
 import { Macro } from "./macro";
 import { MISSING, Undefined } from "./undef";

@@ -24,24 +24,6 @@ export function identity<T>(val: T): T {
   return val;
 }
 
-export interface NunjuckArgsInfo {
-  varNames: string[];
-  varargs: boolean;
-  kwargs: boolean;
-}
-
-declare global {
-  interface Function {
-    __nunjucksPassArg?: "context" | "evalContext" | "environment";
-    __nunjucksArgs?: NunjuckArgsInfo;
-  }
-}
-
-export type NunjucksFunction = ((...args: any[]) => any) & {
-  __nunjucksPassArg?: "context" | "evalContext" | "environment";
-  __nunjucksArgs?: NunjuckArgsInfo;
-};
-
 export function isVarargs(o: unknown): o is any[] & { __isVarargs: true } {
   return Array.isArray(o) && hasOwn(o, "__isVarargs") && !!o.__isVarargs;
 }
