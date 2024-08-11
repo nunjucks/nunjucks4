@@ -1145,6 +1145,48 @@ const format = nunjucksFunction(["value"], { kwargs: true, varargs: true })(
   },
 );
 
+/**
+ * Format the value like a 'human-readable' file size (i.e. 13 kB,
+ * 4.1 MB, 102 Bytes, etc).  Per default decimal prefixes are used (Mega,
+ * Giga, etc.), if the second parameter is set to `true` the binary
+ * prefixes are used (Mebi, Gibi).
+ */
+const filesizeformat = nunjucksFunction(["value", "binary"])(
+  function filesizeformat(
+    value: string | number,
+    binary: boolean = false,
+  ): string {
+    const bytes = Number(value);
+    const base = binary ? 1024 : 1000;
+    const prefixes = [
+      binary ? "KiB" : "kB",
+      binary ? "MiB" : "MB",
+      binary ? "GiB" : "GB",
+      binary ? "TiB" : "TB",
+      binary ? "PiB" : "PB",
+      binary ? "EiB" : "EB",
+      binary ? "ZiB" : "ZB",
+      binary ? "YiB" : "YB",
+    ];
+    if (bytes === 1) {
+      return "1 Byte";
+    } else if (bytes < base) {
+      return `${bytes.toFixed(0)} Bytes`;
+    } else {
+      let unit = base;
+      for (const [i, prefix] of prefixes.entries()) {
+        unit = Math.pow(base, i + 2);
+        if (bytes < unit) {
+          return `${((base * bytes) / unit).toFixed(1)} ${prefix}`;
+        }
+      }
+      unit = Math.pow(base, prefixes.length + 1);
+      const prefix = prefixes[prefixes.length - 1];
+      return `${((base * bytes) / unit).toFixed(1)} ${prefix}`;
+    }
+  },
+);
+
 export default {
   abs,
   // attr,
@@ -1157,6 +1199,7 @@ export default {
   dictsort,
   e: escape,
   escape,
+  filesizeformat,
   first,
   float,
   forceescape,

@@ -129,7 +129,7 @@ describe("filters", () => {
     expect(tmpl.render({ foo })).toBe("just a small example link to a webpage");
   });
 
-  it.skip("filesizeformat", () => {
+  it("filesizeformat", () => {
     const tmpl = env.fromString(
       [
         "{{ 100|filesizeformat }}",
