@@ -281,7 +281,7 @@ describe("filters", () => {
     expect(tmpl.render({ obj })).toBe("[1, 2, 3, 4, 5]");
   });
 
-  it.skip("title", () => {
+  it("title", () => {
     let tmpl;
     tmpl = env.fromString(`{{ "foo bar"|title }}`);
     expect(tmpl.render()).toBe("Foo Bar");

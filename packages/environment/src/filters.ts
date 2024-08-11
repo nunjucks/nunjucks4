@@ -952,6 +952,15 @@ export function urlencode(
   }
 }
 
+const _wordBeginningSplitRe = /([-\s({\\[<]+)/g;
+
+export function title(s: string): string {
+  return s
+    .split(_wordBeginningSplitRe)
+    .map((i) => (!i ? i : i[0].toUpperCase() + i.substring(1).toLowerCase()))
+    .join("");
+}
+
 // For the jinja regexp, see
 // https://github.com/mitsuhiko/jinja2/blob/f15b814dcba6aa12bc74d1f7d0c881d55f7126be/jinja2/utils.py#L20-L23
 const puncRe = /^(?:\(|<|&lt;)?(.*?)(?:\.|,|\)|\n|&gt;)?$/;
@@ -1231,7 +1240,7 @@ export default {
   string,
   striptags,
   sum,
-  // title,
+  title,
   trim,
   // truncate,
   // unique,
