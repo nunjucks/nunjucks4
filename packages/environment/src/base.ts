@@ -26,6 +26,7 @@ import type {
   IEnvironment,
   NunjucksFunction,
   NunjucksFunctionProperties,
+  EnvironmentPolicies,
 } from "@nunjucks/runtime";
 import type { types } from "@nunjucks/ast";
 
@@ -110,6 +111,15 @@ export interface TemplateInfo {
 
 type LoaderType = typeof AsyncLoader | typeof SyncLoader;
 
+export const defaultPolicies: EnvironmentPolicies = {
+  "compiler.ascii_str": true,
+  "urlize.rel": "noopener",
+  "urlize.target": null,
+  "urlize.extra_schemes": null,
+  "truncate.leeway": 5,
+  "json.stringify_function": null,
+};
+
 export interface EnvironmentBaseOptions<IsAsync extends boolean = boolean> {
   async?: IsAsync;
   loaders?: (IsAsync extends true ? AsyncLoader | SyncLoader : SyncLoader)[];
@@ -119,6 +129,7 @@ export interface EnvironmentBaseOptions<IsAsync extends boolean = boolean> {
   globals?: Record<string, any>;
   undef?: typeof _undef;
   finalize?: NunjucksFunction<(value: any) => any> | undefined;
+  policies?: Partial<EnvironmentPolicies>;
 }
 
 /**
@@ -140,6 +151,7 @@ export class EnvironmentBase<IsAsync extends boolean = boolean>
   undef: typeof _undef;
   contextClass: typeof Context = Context;
   templateClass: typeof Template = Template;
+  policies: EnvironmentPolicies;
 
   /**
    * if this environment is sandboxed.  Modifying this variable won't make
@@ -192,6 +204,7 @@ export class EnvironmentBase<IsAsync extends boolean = boolean>
       globals: {},
       undef: _undef,
       finalize: undefined,
+      policies: {},
     };
     if (Array.isArray(optsOrLoaders)) {
       for (const loader of optsOrLoaders) {
@@ -243,6 +256,7 @@ export class EnvironmentBase<IsAsync extends boolean = boolean>
       tests = DEFAULT_TESTS,
       globals = {},
       undef = _undef,
+      policies,
     } = opts;
     this.async = !!async as IsAsync;
     this.loaders = loaders;
@@ -254,6 +268,7 @@ export class EnvironmentBase<IsAsync extends boolean = boolean>
     this.undef = undef;
     this.cache = null;
     this.finalize = finalize;
+    this.policies = { ...defaultPolicies, ...policies };
   }
 
   isAsync(): this is EnvironmentBase<true> {

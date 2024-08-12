@@ -1196,6 +1196,57 @@ const filesizeformat = nunjucksFunction(["value", "binary"])(
   },
 );
 
+/**
+ * Return a truncated copy of the string. The length is specified
+ * with the first parameter which defaults to ``255``. If the second
+ * parameter is ``true`` the filter will cut the text at length. Otherwise
+ * it will discard the last word. If the text was in fact
+ * truncated it will append an ellipsis sign (``"..."``). If you want a
+ * different ellipsis sign than ``"..."`` you can specify it using the
+ * third parameter. Strings that only exceed the length by the tolerance
+ * margin given in the fourth parameter will not be truncated.
+ *
+ * The default leeway is 5 and can be reconfigured by setting the
+ * truncate.leeway policy on the Environment.
+ *
+ * @example
+ *
+ * ```jinja
+ *  {{ "foo bar baz qux"|truncate(9) }}
+ *      -> "foo..."
+ *  {{ "foo bar baz qux"|truncate(9, true) }}
+ *      -> "foo ba..."
+ *  {{ "foo bar baz qux"|truncate(11) }}
+ *      -> "foo bar baz qux"
+ *  {{ "foo bar baz qux"|truncate(11, false, '...', 0) }}
+ *      -> "foo bar..."
+ * ```
+ */
+export const truncate = nunjucksFunction(
+  ["s", "length", "killwords", "end", "leeway"],
+  { passArg: "environment" },
+)(function truncate(
+  env: Environment,
+  s: string,
+  length: number = 255,
+  killwords: boolean = false,
+  end: string = "...",
+  leeway: number | null = null,
+) {
+  if (leeway === null) leeway = env.policies["truncate.leeway"];
+  if (length < end.length)
+    throw new Error(`expected length >= ${end.length}, got ${length}`);
+  if (leeway < 0) throw new Error(`expected leeway >= 0, got ${leeway}`);
+
+  if (s.length <= length + leeway) return s;
+  let truncated = s.substring(0, length - end.length);
+  if (!killwords) {
+    const index = truncated.lastIndexOf(" ");
+    if (index > -1) truncated = truncated.substring(0, index);
+  }
+  return truncated + end;
+});
+
 export default {
   abs,
   // attr,
@@ -1242,7 +1293,7 @@ export default {
   sum,
   title,
   trim,
-  // truncate,
+  truncate,
   // unique,
   upper,
   urlencode,

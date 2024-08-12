@@ -34,4 +34,5 @@ export type {
   Callback,
   NunjucksFunction,
   NunjucksFunctionProperties,
+  EnvironmentPolicies,
 } from "./types";

@@ -307,22 +307,22 @@ describe("filters", () => {
     expect(tmpl.render()).toBe("Foo <Bar>");
   });
 
-  describe.skip("truncate", () => {
+  describe("truncate", () => {
     const data = "foobar baz bar".repeat(1000);
 
     it("basic", () => {
       const tmpl = env.fromString("{{ data | truncate(15) }}");
-      expect(tmpl.render({ data })).toBe("foobar baz b...");
+      expect(tmpl.render({ data })).toBe("foobar baz...");
     });
 
     it("end", () => {
       const tmpl = env.fromString("{{ data | truncate(15, end='>>>') }}");
-      expect(tmpl.render({ data })).toBe("foobar baz b>>>");
+      expect(tmpl.render({ data })).toBe("foobar baz>>>");
     });
 
     it("killwords", () => {
       const tmpl = env.fromString("{{ data | truncate(15, true, '>>>') }}");
-      expect(tmpl.render({ data })).toBe("foobar baz>>>");
+      expect(tmpl.render({ data })).toBe("foobar baz b>>>");
     });
     it("short string", () => {
       const tmpl = env.fromString(

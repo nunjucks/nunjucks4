@@ -46,6 +46,15 @@ export type RenderFunc<IsAsync extends boolean> = IsAsync extends true
       context: Context<false>,
     ) => Generator<string>;
 
+export interface EnvironmentPolicies {
+  "compiler.ascii_str": boolean;
+  "urlize.rel": string;
+  "urlize.target": string | null;
+  "urlize.extra_schemes": string[] | null;
+  "truncate.leeway": number;
+  "json.stringify_function": ((arg: any) => string) | null;
+}
+
 export interface IEnvironment<IsAsync extends boolean = boolean> {
   autoescape: boolean | ((templateName?: string | null) => boolean);
   missing: Record<never, never>;
@@ -54,6 +63,7 @@ export interface IEnvironment<IsAsync extends boolean = boolean> {
   tests: Record<string, Test>;
   globals: Record<string, any>;
   finalize?: NunjucksFunction<(value: any) => any>;
+  policies: EnvironmentPolicies;
   undef: {
     (opts?: UndefinedOpts): Undefined;
     (
