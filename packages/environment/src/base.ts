@@ -353,21 +353,37 @@ export class EnvironmentBase<IsAsync extends boolean = boolean>
     return this.undef({ obj, name: argument });
   }
   getitem(obj: any, argument: any): any {
-    const ret = this._getitem(obj, argument);
-    if (
-      !isUndefinedInstance(ret) &&
-      (typeof ret === "function" || ret instanceof Function)
-    ) {
-      // Preserve nunjucksFunction properties, if present
-      const njfuncProps: NunjucksFunctionProperties = {};
-      if (ret.__nunjucksArgs) njfuncProps.__nunjucksArgs = ret.__nunjucksArgs;
-      if (ret.__nunjucksPassArg)
-        njfuncProps.__nunjucksPassArg = ret.__nunjucksPassArg;
-      return Object.assign(ret.bind(obj), njfuncProps);
+    if (this.isAsync()) {
+      return (async () => await this._getitem(obj, argument))().then((ret) =>
+        this._bindNunjucksFunction(ret, obj),
+      );
     }
-    return ret;
+    const ret = this._getitem(obj, argument);
+    return this._bindNunjucksFunction(ret, obj);
   }
-  getattr(obj: any, argument: string): any {
+  _bindNunjucksFunction<T, A extends any[], R>(
+    obj: (this: T, ...args: A) => R,
+    thisArg: T,
+  ): (...args: A) => R;
+  _bindNunjucksFunction<T, AX, R>(
+    obj: (this: T, ...args: AX[]) => R,
+    thisArg: T,
+    ...bindArgs: AX[]
+  ): (...args: AX[]) => R {
+    if (
+      isUndefinedInstance(obj) ||
+      (typeof obj !== "function" && !((obj as any) instanceof Function))
+    ) {
+      return obj;
+    }
+    const njfuncProps: NunjucksFunctionProperties = {};
+    if (obj.__nunjucksArgs) njfuncProps.__nunjucksArgs = obj.__nunjucksArgs;
+    if (obj.__nunjucksPassArg)
+      njfuncProps.__nunjucksPassArg = obj.__nunjucksPassArg;
+
+    return Object.assign(obj.bind(thisArg, ...bindArgs), njfuncProps);
+  }
+  getattr(obj: any, argument: string | number): any {
     return this.getitem(obj, argument);
   }
   _filterTestCommon(

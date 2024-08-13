@@ -65,7 +65,7 @@ const ignoreCase: {
     : value;
 };
 
-function makeAttrGetter(
+function syncMakeAttrGetter(
   environment: Environment,
   attribute: string | number | null,
   options: { postprocess?: null | ((val: any) => any); default?: any } = {},
@@ -86,11 +86,32 @@ function makeAttrGetter(
   };
 }
 
-function makeMultiAttrGetter(
+function asyncMakeAttrGetter(
   environment: Environment,
   attribute: string | number | null,
   options: { postprocess?: null | ((val: any) => any); default?: any } = {},
-): (value: any) => any {
+): (value: any) => Promise<any> {
+  const parts = _prepareAttributeParts(attribute);
+
+  return async (item: any): Promise<any> => {
+    for (const part of parts) {
+      item = await environment.getitem(item, part);
+      if (isUndefinedInstance(item) && typeof options.default !== "undefined") {
+        item = options.default;
+      }
+      if (typeof options.postprocess === "function") {
+        item = await options.postprocess(item);
+      }
+    }
+    return item;
+  };
+}
+
+function syncMakeMultiAttrGetter(
+  environment: Environment,
+  attribute: string | number | null,
+  options: { postprocess?: null | ((val: any) => any); default?: any } = {},
+): (value: any) => any[] {
   const split: (string | number | null)[] =
     typeof attribute === "string" ? attribute.split(",") : [attribute];
   const parts = split.map((item) => _prepareAttributeParts(item));
@@ -108,6 +129,29 @@ function makeMultiAttrGetter(
     });
 }
 
+function asyncMakeMultiAttrGetter(
+  environment: Environment,
+  attribute: string | number | null,
+  options: { postprocess?: null | ((val: any) => any); default?: any } = {},
+): (value: any) => Promise<any[]> {
+  const split: (string | number | null)[] =
+    typeof attribute === "string" ? attribute.split(",") : [attribute];
+  const parts = split.map((item) => _prepareAttributeParts(item));
+
+  return async (item: any): Promise<any[]> =>
+    Promise.all(
+      parts.map(async (attributePart) => {
+        let partItem = item;
+        for (const part of attributePart) {
+          partItem = await environment.getitem(partItem, part);
+        }
+        if (typeof options.postprocess === "function") {
+          partItem = options.postprocess(partItem);
+        }
+        return partItem;
+      }),
+    );
+}
 export function* batch<V>(
   value: Iterable<V>,
   linecount: number,
@@ -270,7 +314,7 @@ function syncJoin(
   let arr = syncList(value);
 
   if (attribute !== null) {
-    arr = arr.map(makeAttrGetter(evalCtx.environment, attribute));
+    arr = arr.map(syncMakeAttrGetter(evalCtx.environment, attribute));
   }
 
   if (!evalCtx.autoescape) {
@@ -305,7 +349,7 @@ async function asyncJoin(
 ): Promise<string> {
   const arr = await asyncList(value);
   if (attribute !== null) {
-    const attrGetter = makeAttrGetter(evalCtx.environment, attribute);
+    const attrGetter = asyncMakeAttrGetter(evalCtx.environment, attribute);
     for (let i = 0; i < arr.length; i++) {
       arr[i] = await attrGetter(arr[i]);
     }
@@ -646,7 +690,7 @@ function syncSum(
     arr.push(item);
   }
   if (attribute !== null) {
-    arr = arr.map(makeAttrGetter(environment, attribute));
+    arr = arr.map(syncMakeAttrGetter(environment, attribute));
   }
   return arr.reduce((prev, curr) => prev + curr, start);
 }
@@ -657,11 +701,17 @@ async function asyncSum(
   attribute: string | number | null = null,
   start = 0,
 ): Promise<number> {
-  const arr: any[] = [];
+  let arr: any[] = [];
   for await (const item of iterable) {
     arr.push(item);
   }
-  return syncSum(environment, arr, attribute, start);
+  if (attribute !== null) {
+    arr = arr.map(asyncMakeAttrGetter(environment, attribute));
+  }
+  return await arr.reduce(
+    async (prev, curr) => (await prev) + (await curr),
+    start,
+  );
 }
 
 export const sum: {
@@ -688,26 +738,6 @@ export const sum: {
   ),
 );
 
-function doSort<V>(
-  environment: Environment,
-  value: V[],
-  reverse: boolean = false,
-  caseSensitive: boolean = false,
-  attribute: string | number | null = null,
-): V[] {
-  const keyFunc = makeMultiAttrGetter(environment, attribute, {
-    postprocess: caseSensitive ? null : ignoreCase,
-  });
-  const arr = [...value];
-  arr.sort((a, b) => {
-    const cmpA = keyFunc(a);
-    const cmpB = keyFunc(b);
-    return cmpA > cmpB ? 1 : cmpA === cmpB ? 0 : -1;
-  });
-  if (reverse) arr.reverse();
-  return arr;
-}
-
 function syncSort(
   environment: Environment,
   value: unknown,
@@ -716,8 +746,16 @@ function syncSort(
   attribute: string | number | null = null,
 ): unknown[] | string {
   const arr = syncList(value);
-  const ret = doSort(environment, arr, reverse, caseSensitive, attribute);
-  return isString(value) ? copySafeness(value, ret.join("")) : ret;
+  const keyFunc = syncMakeMultiAttrGetter(environment, attribute, {
+    postprocess: caseSensitive ? null : ignoreCase,
+  });
+  arr.sort((a, b) => {
+    const cmpA = keyFunc(a);
+    const cmpB = keyFunc(b);
+    return cmpA > cmpB ? 1 : cmpA === cmpB ? 0 : -1;
+  });
+  if (reverse) arr.reverse();
+  return isString(value) ? copySafeness(value, arr.join("")) : arr;
 }
 
 async function asyncSort(
@@ -728,8 +766,17 @@ async function asyncSort(
   attribute: string | number | null = null,
 ): Promise<unknown[] | string> {
   const arr = await asyncList(value);
-  const ret = doSort(environment, arr, reverse, caseSensitive, attribute);
-  return isString(value) ? ret.join("") : ret;
+  const keyFunc = asyncMakeMultiAttrGetter(environment, attribute, {
+    postprocess: caseSensitive ? null : ignoreCase,
+  });
+  const sortTransform: [unknown, any][] = await Promise.all(
+    arr.map<Promise<[unknown, any]>>(async (el) => [el, await keyFunc(el)]),
+  );
+  const ret = sortTransform
+    .sort(([, a], [, b]) => (a > b ? 1 : a === b ? 0 : -1))
+    .map(([val]) => val);
+  if (reverse) ret.reverse();
+  return isString(value) ? copySafeness(value, ret.join("")) : ret;
 }
 
 export const sort: {
@@ -810,7 +857,7 @@ function prepareMap(
         `Unexpected keyword argument '${kwargKeys[0]}'`,
       );
     }
-    return makeAttrGetter(context.environment, attribute, {
+    return syncMakeAttrGetter(context.environment, attribute, {
       default: default_,
     });
   } else {

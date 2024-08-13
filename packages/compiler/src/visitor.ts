@@ -2446,13 +2446,17 @@ export class CodeGenerator<IsAsync extends boolean> {
       return this._finalize;
     }
     const defaultFinalize = this._defaultFinalize.bind(this);
-    let toConst = defaultFinalize;
+    let toConst: ((value: any) => any) | null = defaultFinalize;
     let src: null | ((value: n.Expression) => n.Expression) = null;
     const env = this.environment;
     if (env.finalize) {
       const envFinalize = env.getattr(env, "finalize");
+      const getFinalize = this.awaitIfAsync(
+        ast.expression`env.getattr(env, "finalize")`(),
+      );
       src = (arg: any) =>
-        ast.expression`context.call(env.getattr(env, "finalize"), [%%arg%%])`({
+        ast.expression`context.call(%%finalize%%), [%%arg%%])`({
+          finalize: getFinalize,
           arg,
         });
       // If the finalize function is passed runtime context, values
