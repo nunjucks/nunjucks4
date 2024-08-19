@@ -27,6 +27,7 @@ import type {
   NunjucksFunction,
   NunjucksFunctionProperties,
   EnvironmentPolicies,
+  LookupOption,
 } from "@nunjucks/runtime";
 import type { types } from "@nunjucks/ast";
 
@@ -130,6 +131,7 @@ export interface EnvironmentBaseOptions<IsAsync extends boolean = boolean> {
   undef?: typeof _undef;
   finalize?: NunjucksFunction<(value: any) => any> | undefined;
   policies?: Partial<EnvironmentPolicies>;
+  lookup?: LookupOption<typeof this> | undefined;
 }
 
 /**
@@ -152,6 +154,7 @@ export class EnvironmentBase<IsAsync extends boolean = boolean>
   contextClass: typeof Context = Context;
   templateClass: typeof Template = Template;
   policies: EnvironmentPolicies;
+  lookup: LookupOption<typeof this> | undefined;
 
   /**
    * if this environment is sandboxed.  Modifying this variable won't make
@@ -194,8 +197,10 @@ export class EnvironmentBase<IsAsync extends boolean = boolean>
   constructor(optsOrLoaders: any, options?: EnvironmentBaseOptions<IsAsync>) {
     super();
 
-    const opts: Required<Omit<EnvironmentBaseOptions<IsAsync>, "finalize">> &
-      Pick<EnvironmentBaseOptions<IsAsync>, "finalize"> = {
+    const opts: Required<
+      Omit<EnvironmentBaseOptions<IsAsync>, "finalize" | "lookup">
+    > &
+      Pick<EnvironmentBaseOptions<IsAsync>, "finalize" | "lookup"> = {
       autoescape: false,
       async: false as any,
       loaders: [],
@@ -205,6 +210,7 @@ export class EnvironmentBase<IsAsync extends boolean = boolean>
       undef: _undef,
       finalize: undefined,
       policies: {},
+      lookup: undefined,
     };
     if (Array.isArray(optsOrLoaders)) {
       for (const loader of optsOrLoaders) {
@@ -257,6 +263,7 @@ export class EnvironmentBase<IsAsync extends boolean = boolean>
       globals = {},
       undef = _undef,
       policies,
+      lookup,
     } = opts;
     this.async = !!async as IsAsync;
     this.loaders = loaders;
@@ -269,6 +276,7 @@ export class EnvironmentBase<IsAsync extends boolean = boolean>
     this.cache = null;
     this.finalize = finalize;
     this.policies = { ...defaultPolicies, ...policies };
+    this.lookup = lookup;
   }
 
   isAsync(): this is EnvironmentBase<true> {
@@ -354,11 +362,16 @@ export class EnvironmentBase<IsAsync extends boolean = boolean>
   }
   getitem(obj: any, argument: any): any {
     if (this.isAsync()) {
-      return (async () => await this._getitem(obj, argument))().then((ret) =>
+      return (async () =>
+        await (this.lookup
+          ? this.lookup(obj, argument, (o, arg) => this._getitem(o, arg))
+          : this._getitem(obj, argument)))().then((ret: any) =>
         this._bindNunjucksFunction(ret, obj),
       );
     }
-    const ret = this._getitem(obj, argument);
+    const ret = this.lookup
+      ? this.lookup(obj, argument, (o, arg) => this._getitem(o, arg))
+      : this._getitem(obj, argument);
     return this._bindNunjucksFunction(ret, obj);
   }
   _bindNunjucksFunction<T, A extends any[], R>(

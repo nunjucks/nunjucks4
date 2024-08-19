@@ -55,6 +55,18 @@ export interface EnvironmentPolicies {
   "json.stringify_function": ((arg: any) => string) | null;
 }
 
+export type Lookup<E extends IEnvironment> = (
+  this: E,
+  val: any,
+  argument: any,
+) => any;
+export type LookupOption<E extends IEnvironment> = (
+  this: E,
+  val: any,
+  argument: any,
+  original: Lookup<E>,
+) => any;
+
 export interface IEnvironment<IsAsync extends boolean = boolean> {
   autoescape: boolean | ((templateName?: string | null) => boolean);
   missing: Record<never, never>;
@@ -64,6 +76,7 @@ export interface IEnvironment<IsAsync extends boolean = boolean> {
   globals: Record<string, any>;
   finalize?: NunjucksFunction<(value: any) => any>;
   policies: EnvironmentPolicies;
+  lookup: LookupOption<typeof this> | undefined;
   undef: {
     (opts?: UndefinedOpts): Undefined;
     (

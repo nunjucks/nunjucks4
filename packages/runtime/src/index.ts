@@ -35,4 +35,5 @@ export type {
   NunjucksFunction,
   NunjucksFunctionProperties,
   EnvironmentPolicies,
+  LookupOption,
 } from "./types";
