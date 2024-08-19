@@ -13,7 +13,7 @@ function* syncGen<T>(iter: Iterable<T>): Generator<T, void, unknown> {
 }
 
 describe("filters in async environment", () => {
-  let env: Environment;
+  let env: Environment<boolean>;
 
   beforeEach(() => {
     env = new Environment({ async: true });
@@ -123,5 +123,52 @@ describe("filters in async environment", () => {
       const tmpl = env.fromString('{{ none|map("upper")|list }}');
       expect(await tmpl.render()).toBe("[]");
     });
+  });
+
+  describe("select", () => {
+    it("test argument", async () => {
+      const tmpl = env.fromString('{{ items()|select("odd")|join("|") }}');
+      const items = () => asyncGen([1, 2, 3, 4, 5]);
+      expect(await tmpl.render({ items })).toBe("1|3|5");
+    });
+
+    it("simple", async () => {
+      const items = () => asyncGen([null, false, 0, 1, 2, 3, 4, 5]);
+      const tmpl = env.fromString('{{ items()|select|join("|") }}');
+      expect(await tmpl.render({ items })).toBe("1|2|3|4|5");
+    });
+  });
+
+  describe("reject", () => {
+    it("test argument", async () => {
+      const tmpl = env.fromString('{{ items()|reject("odd")|join("|") }}');
+      const items = () => asyncGen([1, 2, 3, 4, 5]);
+      expect(await tmpl.render({ items })).toBe("2|4");
+    });
+
+    it("simple", async () => {
+      const items = () => asyncGen([null, false, 0, 1, 2, 3, 4, 5]);
+      const tmpl = env.fromString('{{ items()|reject|join("|") }}');
+      expect(await tmpl.render({ items })).toBe("null|false|0");
+    });
+  });
+
+  it("selectattr", async () => {
+    class User {
+      constructor(
+        public name: string,
+        public isActive: boolean,
+      ) {}
+    }
+    const users = () =>
+      asyncGen([
+        new User("john", true),
+        new User("jane", true),
+        new User("mike", false),
+      ]);
+    const tmpl = env.fromString(
+      '{{ users()|selectattr("isActive")|map(attribute="name")|join("|") }}',
+    );
+    expect(await tmpl.render({ users })).toBe("john|jane");
   });
 });

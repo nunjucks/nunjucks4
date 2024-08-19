@@ -844,7 +844,7 @@ describe("filters", () => {
     });
   });
 
-  describe.skip("select", () => {
+  describe("select", () => {
     it("simple", () => {
       const tmpl = env.fromString(
         '{{ [1, 2, 3, 4, 5]|select("odd")|join("|") }}',
@@ -860,7 +860,7 @@ describe("filters", () => {
     });
   });
 
-  describe.skip("reject", () => {
+  describe("reject", () => {
     it("simple", () => {
       const tmpl = env.fromString(
         '{{ [1, 2, 3, 4, 5]|reject("odd")|join("|") }}',
@@ -876,7 +876,7 @@ describe("filters", () => {
     });
   });
 
-  describe.skip("selectattr", () => {
+  describe("selectattr", () => {
     it("simple", () => {
       class User {
         constructor(
@@ -890,7 +890,7 @@ describe("filters", () => {
         new User("mike", false),
       ];
       const tmpl = env.fromString(
-        '{{ users|selectattr("is_active")|map(attribute="name")|join("|") }}',
+        '{{ users|selectattr("isActive")|map(attribute="name")|join("|") }}',
       );
       expect(tmpl.render({ users })).toBe("john|jane");
     });
@@ -914,7 +914,7 @@ describe("filters", () => {
     });
   });
 
-  describe.skip("rejectattr", () => {
+  describe("rejectattr", () => {
     it("simple", () => {
       class User {
         constructor(
@@ -928,7 +928,7 @@ describe("filters", () => {
         new User("mike", false),
       ];
       const tmpl = env.fromString(
-        '{{ users|rejectattr("is_active")|map(attribute="name")|join("|") }}',
+        '{{ users|rejectattr("isActive")|map(attribute="name")|join("|") }}',
       );
       expect(tmpl.render({ users })).toBe("mike");
     });

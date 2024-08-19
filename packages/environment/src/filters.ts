@@ -1294,6 +1294,190 @@ export const truncate = nunjucksFunction(
   return truncated + end;
 });
 
+function prepareSelectOrRejectSync(
+  context: Context<false>,
+  args: any[],
+  kwargs: Record<string, any>,
+  modfunc: (arg: any) => any,
+  lookupAttr: boolean,
+): (arg: any) => any {
+  let off = 0;
+  let transfunc = <V>(x: V): V => x;
+  if (lookupAttr) {
+    if (!args.length)
+      throw new FilterArgumentError("Missing parameter for attribute name");
+    transfunc = syncMakeAttrGetter(context.environment, args[0]);
+    off = 1;
+  }
+  let func = (x: unknown): boolean => !!x;
+  if (args.length > off) {
+    const name = `${args[off]}`;
+    func = (item: any): any =>
+      context.environment.callTest(name, item, {
+        args: args.slice(off + 1),
+        kwargs,
+        context,
+      });
+  }
+  return (item: unknown) => modfunc(func(transfunc(item)));
+}
+
+function prepareSelectOrRejectAsync(
+  context: Context<true>,
+  args: any[],
+  kwargs: Record<string, any>,
+  modfunc: (arg: any) => any,
+  lookupAttr: boolean,
+): (arg: any) => Promise<any> {
+  let off = 0;
+  let transfunc = async <V>(x: V): Promise<V> => await Promise.resolve(x);
+  if (lookupAttr) {
+    if (!args.length)
+      throw new FilterArgumentError("Missing parameter for attribute name");
+    transfunc = asyncMakeAttrGetter(context.environment, args[0]);
+    off = 1;
+  }
+  let func = (x: unknown): Promise<boolean> => Promise.resolve(!!x);
+  if (args.length > off) {
+    const name = `${args[off]}`;
+    func = async (item: any): Promise<any> =>
+      await context.environment.callTest(name, item, {
+        args: args.slice(off + 1),
+        kwargs,
+        context,
+      });
+  }
+  return async (item: unknown) =>
+    await modfunc(await func(await transfunc(item)));
+}
+
+function* selectOrRejectSync<V = unknown>(
+  context: Context<false>,
+  value: Iterable<V>,
+  args: any[],
+  kwargs: Record<string, any>,
+  modfunc: (arg: any) => any,
+  lookupAttr: boolean,
+): Iterator<V> {
+  if (value) {
+    const func = prepareSelectOrRejectSync(
+      context,
+      args,
+      kwargs,
+      modfunc,
+      lookupAttr,
+    );
+    for (const item of value) {
+      if (func(item)) yield item;
+    }
+  }
+}
+
+async function* selectOrRejectAsync<V = unknown>(
+  context: Context<true>,
+  value: Iterable<V>,
+  args: any[],
+  kwargs: Record<string, any>,
+  modfunc: (arg: any) => any,
+  lookupAttr: boolean,
+): AsyncIterator<V> {
+  if (value) {
+    const func = prepareSelectOrRejectAsync(
+      context,
+      args,
+      kwargs,
+      modfunc,
+      lookupAttr,
+    );
+    for await (const item of value) {
+      if (await func(item)) yield item;
+    }
+  }
+}
+
+type SelectReject = {
+  <V = unknown>(
+    context: Context<false>,
+    value: Iterable<V>,
+    kwargs?: Record<string, any>,
+    ...args: any[]
+  ): Iterator<V>;
+  <V = unknown>(
+    context: Context<true>,
+    value: Iterable<V> | AsyncIterable<V>,
+    kwargs?: Record<string, any>,
+    ...args: any[]
+  ): AsyncIterator<V>;
+};
+
+export const select: SelectReject = nunjucksFunction(["value"], {
+  varargs: true,
+  kwargs: true,
+  passArg: "context",
+})(function select(
+  context: Context<boolean>,
+  value: any,
+  kwargs: Record<string, any> = {},
+  ...args: any[]
+): any {
+  if (context.isAsync()) {
+    return selectOrRejectAsync(context, value, args, kwargs, (x) => !!x, false);
+  } else if (context.isSync()) {
+    return selectOrRejectSync(context, value, args, kwargs, (x) => !!x, false);
+  } else throw new Error("unreachable");
+});
+
+export const reject: SelectReject = nunjucksFunction(["value"], {
+  varargs: true,
+  kwargs: true,
+  passArg: "context",
+})(function select(
+  context: Context<boolean>,
+  value: any,
+  kwargs: Record<string, any> = {},
+  ...args: any[]
+): any {
+  if (context.isAsync()) {
+    return selectOrRejectAsync(context, value, args, kwargs, (x) => !x, false);
+  } else if (context.isSync()) {
+    return selectOrRejectSync(context, value, args, kwargs, (x) => !x, false);
+  } else throw new Error("unreachable");
+});
+
+export const selectattr: SelectReject = nunjucksFunction(["value"], {
+  varargs: true,
+  kwargs: true,
+  passArg: "context",
+})(function selectattr(
+  context: Context<boolean>,
+  value: any,
+  kwargs: Record<string, any> = {},
+  ...args: any[]
+): any {
+  if (context.isAsync()) {
+    return selectOrRejectAsync(context, value, args, kwargs, (x) => !!x, true);
+  } else if (context.isSync()) {
+    return selectOrRejectSync(context, value, args, kwargs, (x) => !!x, true);
+  } else throw new Error("unreachable");
+});
+
+export const rejectattr: SelectReject = nunjucksFunction(["value"], {
+  varargs: true,
+  kwargs: true,
+  passArg: "context",
+})(function rejectattr(
+  context: Context<boolean>,
+  value: any,
+  kwargs: Record<string, any> = {},
+  ...args: any[]
+): any {
+  if (context.isAsync()) {
+    return selectOrRejectAsync(context, value, args, kwargs, (x) => !x, true);
+  } else if (context.isSync()) {
+    return selectOrRejectSync(context, value, args, kwargs, (x) => !x, true);
+  } else throw new Error("unreachable");
+});
+
 export default {
   abs,
   // attr,
@@ -1325,14 +1509,14 @@ export default {
   // max,
   // pprint,
   // random,
-  // reject,
-  // rejectattr,
+  reject,
+  rejectattr,
   replace,
   reverse,
   round,
   safe,
-  // select,
-  // selectattr,
+  select,
+  selectattr,
   slice,
   sort,
   string,
