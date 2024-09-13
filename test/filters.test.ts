@@ -952,9 +952,53 @@ describe("filters", () => {
     });
   });
 
-  it.skip("tojson", () => {
-    const tmpl = env.fromString("{{ x | tojson }}");
-    expect(tmpl.render({ x: { foo: "bar" } })).toBe('{"foo": "bar"}');
+  describe("tojson", () => {
+    it("primitive value", () => {
+      const tmpl = env.fromString("{{ x | tojson }}");
+      expect(tmpl.render({ x: "string" })).toBe('"string"');
+      expect(tmpl.render({ x: 0 })).toBe("0");
+      expect(tmpl.render({ x: -1 })).toBe("-1");
+      expect(tmpl.render({ x: -1 })).toBe("-1");
+      expect(tmpl.render({ x: true })).toBe("true");
+      expect(tmpl.render({ x: false })).toBe("false");
+      expect(tmpl.render({ x: null })).toBe("null");
+      expect(tmpl.render({ x: undefined })).toBe("undefined");
+      expect(tmpl.render({ x: BigInt("9007199254740991") })).toBe(
+        '"9007199254740991"',
+      );
+      expect(tmpl.render({ x: Symbol("symbol") })).toBe('"Symbol(symbol)"');
+    });
+
+    it("object value", () => {
+      const tmpl = env.fromString("{{ x | tojson }}");
+      expect(tmpl.render({ x: { foo: "bar" } })).toBe('{"foo":"bar"}');
+      expect(tmpl.render({ x: ["foo", "bar"] })).toBe('["foo","bar"]');
+      expect(tmpl.render({ x: /\b/ })).toBe("{}");
+      expect(tmpl.render({ x: new Error("<error />") })).toBe("{}");
+      expect(tmpl.render({ x: new Date("2021-02-28T23:15:00.000Z") })).toBe(
+        '"2021-02-28T23:15:00.000Z"',
+      );
+    });
+
+    it("escape", () => {
+      const tmpl = env.fromString("{{ x | tojson }}");
+      expect(tmpl.render({ x: "\"ba&r'" })).toBe('"\\"ba\\u0026r\\u0027"');
+      expect(tmpl.render({ x: "<bar>" })).toBe('"\\u003cbar\\u003e"');
+      expect(tmpl.render({ x: { "<foo>": "</bar>" } })).toBe(
+        '{"\\u003cfoo\\u003e":"\\u003c/bar\\u003e"}',
+      );
+      expect(tmpl.render({ x: ["<foo>", "<bar>"] })).toBe(
+        '["\\u003cfoo\\u003e","\\u003cbar\\u003e"]',
+      );
+    });
+
+    it("indent: 2", () => {
+      const tmpl = env.fromString("{{ x | tojson(2) }}");
+      expect(tmpl.render({ x: { foo: "bar" } })).toBe('{\n  "foo": "bar"\n}');
+      expect(tmpl.render({ x: ["foo", "bar"] })).toBe(
+        '[\n  "foo",\n  "bar"\n]',
+      );
+    });
   });
 
   it.skip("wordwrap", () => {
