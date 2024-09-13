@@ -1478,6 +1478,25 @@ export const rejectattr: SelectReject = nunjucksFunction(["value"], {
   } else throw new Error("unreachable");
 });
 
+export function tojson(o: unknown, indent = 0): string {
+  if (o === undefined) {
+    return "undefined";
+  }
+
+  return markSafe(
+    JSON.stringify(
+      o,
+      (_, v) =>
+        typeof v === "bigint" || typeof v === "symbol" ? v.toString() : v,
+      indent,
+    )
+      .replace(/</g, "\\u003c")
+      .replace(/>/g, "\\u003e")
+      .replace(/&/g, "\\u0026")
+      .replace(/'/g, "\\u0027"),
+  );
+}
+
 export default {
   abs,
   // attr,
@@ -1532,5 +1551,5 @@ export default {
   wordcount,
   // wordwrap,
   xmlattr,
-  // tosjon,
+  tojson,
 };
