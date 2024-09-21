@@ -1006,12 +1006,93 @@ describe("filters", () => {
     });
   });
 
-  it.skip("wordwrap", () => {
-    const s = "Hello!\nThis is nunjucks saying something.";
-    const tmpl = env.fromString("{{ s | wordwrap(25) }}");
-    expect(tmpl.render({ s })).toBe(
-      "Hello!\nThis is nunjucks saying\nsomething.",
-    );
+  describe("wordwrap", () => {
+    it("basic", () => {
+      const tmpl = env.fromString("{{ s | wordwrap(25) }}");
+      expect(
+        tmpl.render({ s: "Hello!\nThis is nunjucks saying something." }),
+      ).toBe("Hello!\nThis is nunjucks saying s\nomething.");
+      expect(
+        tmpl.render({ s: "Hello!\n\n This is nunjucks saying something." }),
+      ).toBe("Hello!\n\nThis is nunjucks saying s\nomething.");
+      expect(
+        tmpl.render({
+          s: "lived long on the alms-basket of words. … for thou art not so long by the head as honorificabilitudinitatibus: thou art easier swallowed than a flap-dragon.",
+        }),
+      ).toBe(
+        `lived long on the alms-ba
+sket of words. … for thou
+art not so long by the he
+ad as honorificabilitudin
+itatibus: thou art easier
+swallowed than a flap-dra
+gon.`,
+      );
+    });
+
+    it("no breakLongWords", () => {
+      const tmpl = env.fromString(
+        "{{ s | wordwrap(width=25, breakLongWords=false) }}",
+      );
+      expect(
+        tmpl.render({ s: "Hello!\nThis is nunjucks saying something." }),
+      ).toBe("Hello!\nThis is nunjucks saying\nsomething.");
+      expect(
+        tmpl.render({ s: "Hello!\n\n This is nunjucks saying something." }),
+      ).toBe("Hello!\n\nThis is nunjucks saying\nsomething.");
+      expect(
+        tmpl.render({
+          s: "lived long on the alms-basket of words. … for thou art not so long by the head as honorificabilitudinitatibus: thou art easier swallowed than a flap-dragon.",
+        }),
+      ).toBe(
+        `lived long on the alms-
+basket of words. … for
+thou art not so long by
+the head as
+honorificabilitudinitatibus:
+thou art easier swallowed
+than a flap-dragon.`,
+      );
+    });
+
+    it("no breakOnHyphens (& no breakOnHyphens)", () => {
+      let tmpl = env.fromString("{{ s | wordwrap(25, breakOnHyphens=false) }}");
+      expect(
+        tmpl.render({ s: "Hello!\nThis is nunjucks saying something." }),
+      ).toBe("Hello!\nThis is nunjucks saying\nsomething.");
+      expect(
+        tmpl.render({
+          s: "lived long on the alms-basket of words. … for thou art not so long by the head as honorificabilitudinitatibus: thou art easier swallowed than a flap-dragon.",
+        }),
+      ).toBe(
+        `lived long on the
+alms-basket of words. …
+for thou art not so long
+by the head as
+honorificabilitudinitatibus:
+thou art easier swallowed
+than a flap-dragon.`,
+      );
+      tmpl = env.fromString(
+        "{{ s | wordwrap(25, breakLongWords=false, breakOnHyphens=false) }}",
+      );
+      expect(
+        tmpl.render({ s: "Hello!\nThis is nunjucks saying something." }),
+      ).toBe("Hello!\nThis is nunjucks saying\nsomething.");
+      expect(
+        tmpl.render({
+          s: "lived long on the alms-basket of words. … for thou art not so long by the head as honorificabilitudinitatibus: thou art easier swallowed than a flap-dragon.",
+        }),
+      ).toBe(
+        `lived long on the
+alms-basket of words. …
+for thou art not so long
+by the head as
+honorificabilitudinitatibus:
+thou art easier swallowed
+than a flap-dragon.`,
+      );
+    });
   });
 
   describe("filter undefined", () => {
