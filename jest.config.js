@@ -24,5 +24,9 @@ module.exports = {
   transformIgnorePatterns: ["<rootDir>/node_modules/(?!character-entities)"],
   moduleNameMapper: {
     "^@nunjucks/(.*)$": "<rootDir>/packages/$1/src/index.ts",
+    nunjucks: "<rootDir>/packages/core/src/index.ts",
   },
+  collectCoverage: true,
+  collectCoverageFrom: ["packages/**/src/**/*.ts"],
+  coverageReporters: ["lcov", "json-summary"],
 };
