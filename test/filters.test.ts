@@ -993,7 +993,12 @@ describe("filters", () => {
     });
 
     it("indent: 2", () => {
-      const tmpl = env.fromString("{{ x | tojson(2) }}");
+      let tmpl = env.fromString("{{ x | tojson(2) }}");
+      expect(tmpl.render({ x: { foo: "bar" } })).toBe('{\n  "foo": "bar"\n}');
+      expect(tmpl.render({ x: ["foo", "bar"] })).toBe(
+        '[\n  "foo",\n  "bar"\n]',
+      );
+      tmpl = env.fromString("{{ x | tojson(indent=2) }}");
       expect(tmpl.render({ x: { foo: "bar" } })).toBe('{\n  "foo": "bar"\n}');
       expect(tmpl.render({ x: ["foo", "bar"] })).toBe(
         '[\n  "foo",\n  "bar"\n]',
