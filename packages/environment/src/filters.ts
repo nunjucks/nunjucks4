@@ -1478,7 +1478,16 @@ export const rejectattr: SelectReject = nunjucksFunction(["value"], {
   } else throw new Error("unreachable");
 });
 
-export function tojson(o: unknown, indent = 0): string {
+/**
+ * Return JSON string representation of the object.
+ *
+ * @param o Object to convert to JSON string.
+ * @param indent Number of spaces, or a string, to indent by.
+ */
+export const tojson = nunjucksFunction(["o", "indent"])(function tojson(
+  o: unknown,
+  indent: number = 0,
+): string {
   if (o === undefined) {
     return "undefined";
   }
@@ -1495,7 +1504,7 @@ export function tojson(o: unknown, indent = 0): string {
       .replace(/&/g, "\\u0026")
       .replace(/'/g, "\\u0027"),
   );
-}
+});
 
 export default {
   abs,
