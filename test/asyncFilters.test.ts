@@ -1,6 +1,16 @@
 import { Environment } from "@nunjucks/environment";
-import { markSafe } from "@nunjucks/runtime";
+import { markSafe, str } from "@nunjucks/runtime";
 import { describe, expect, it } from "@jest/globals";
+
+class Magic {
+  value: any;
+  constructor(value: any) {
+    this.value = value;
+  }
+  toString() {
+    return str(this.value);
+  }
+}
 
 async function* asyncGen<T>(
   iter: Iterable<T>,
@@ -170,5 +180,28 @@ describe("filters in async environment", () => {
       '{{ users()|selectattr("isActive")|map(attribute="name")|join("|") }}',
     );
     expect(await tmpl.render({ users })).toBe("john|jane");
+  });
+
+  describe("unique", () => {
+    it("basic", async () => {
+      const items = () => asyncGen(["b", "A", "a", "b"]);
+      const tmpl = env.fromString("{{ items()|unique|join }}");
+      expect(await tmpl.render({ items })).toBe("bA");
+    });
+
+    it("case sensitive", async () => {
+      const items = () => asyncGen("bAab");
+      const tmpl = env.fromString("{{ items()|unique(true)|join }}");
+      expect(await tmpl.render({ items })).toBe("bAa");
+    });
+
+    it("attribute", async () => {
+      const items = () =>
+        asyncGen([3, 2, 4, 1, 2].map((val) => new Magic(val)));
+      const tmpl = env.fromString(
+        "{{ items()|unique(attribute='value')|join }}",
+      );
+      expect(await tmpl.render({ items })).toBe("3241");
+    });
   });
 });

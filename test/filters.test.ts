@@ -562,17 +562,17 @@ describe("filters", () => {
     });
   });
 
-  describe.skip("unique", () => {
+  describe("unique", () => {
     it("basic", () => {
-      const tmpl = env.fromString('{{ "".join(["b", "A", "a", "b"]|unique) }}');
+      const tmpl = env.fromString('{{ ["b", "A", "a", "b"]|unique|join }}');
       expect(tmpl.render()).toBe("bA");
     });
+
     it("case sensitive", () => {
-      const tmpl = env.fromString(
-        '{{ "".join(["b", "A", "a", "b"]|unique(true)) }}',
-      );
+      const tmpl = env.fromString('{{ "bAab"|unique(true)|join }}');
       expect(tmpl.render()).toBe("bAa");
     });
+
     it("attribute", () => {
       const items = [3, 2, 4, 1, 2].map((val) => new Magic(val));
       const tmpl = env.fromString("{{ items|unique(attribute='value')|join }}");
