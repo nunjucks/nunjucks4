@@ -963,6 +963,62 @@ export const map: {
   });
 });
 
+function doMinMax<V>(
+  environment: Environment,
+  value: Iterable<V>,
+  caseSensitive: boolean,
+  attribute: string | number | null,
+  min: boolean,
+): V {
+  const arr = [...value];
+  if (!arr.length) return "" as V;
+  const keyFunc = syncMakeMultiAttrGetter(environment, attribute, {
+    postprocess: caseSensitive ? null : ignoreCase,
+  });
+  return arr
+    .slice(1)
+    .reduce(
+      (a, b) => (keyFunc(a) > keyFunc(b) ? (min ? b : a) : min ? a : b),
+      arr[0],
+    );
+}
+
+/**
+ * Return the smallest item from the sequence.
+ *
+ * @param value The iterable to get minimum item from.
+ * @param case_sensitive Treat upper and lower case strings as distinct.
+ * @param attribute Get the object with the min value of this attribute.
+ */
+export const min = nunjucksFunction(["value", "case_sensitive", "attribute"], {
+  passArg: "environment",
+})(function min<V>(
+  environment: Environment,
+  value: Iterable<V>,
+  caseSensitive: boolean = false,
+  attribute: string | number | null = null,
+): V {
+  return doMinMax(environment, value, caseSensitive, attribute, true);
+});
+
+/**
+ * Return the largest item from the sequence.
+ *
+ * @param value The iterable to get minimum item from.
+ * @param case_sensitive Treat upper and lower case strings as distinct.
+ * @param attribute Get the object with the max value of this attribute.
+ */
+export const max = nunjucksFunction(["value", "case_sensitive", "attribute"], {
+  passArg: "environment",
+})(function max<V>(
+  environment: Environment,
+  value: Iterable<V>,
+  caseSensitive: boolean = false,
+  attribute: string | number | null = null,
+): V {
+  return doMinMax(environment, value, caseSensitive, attribute, false);
+});
+
 export function upper(str: unknown): string {
   str = normalize(str, "");
   return `${str}`.toUpperCase();
@@ -1524,8 +1580,8 @@ export default {
   lower,
   items,
   map,
-  // min,
-  // max,
+  min,
+  max,
   // pprint,
   // random,
   reject,
