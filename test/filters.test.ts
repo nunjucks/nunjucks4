@@ -580,7 +580,7 @@ describe("filters", () => {
     });
   });
 
-  describe.skip("min", () => {
+  describe("min", () => {
     it("basic", () => {
       const tmpl = env.fromString('{{ ["a", "B"]|min }}');
       expect(tmpl.render()).toBe("a");
@@ -600,7 +600,7 @@ describe("filters", () => {
     });
   });
 
-  describe.skip("max", () => {
+  describe("max", () => {
     it("basic", () => {
       const tmpl = env.fromString('{{ ["a", "B"]|max }}');
       expect(tmpl.render()).toBe("B");
