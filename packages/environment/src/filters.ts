@@ -1562,6 +1562,87 @@ export const tojson = nunjucksFunction(["o", "indent"])(function tojson(
   );
 });
 
+function syncUnique(
+  evalCtx: EvalContext,
+  value: unknown,
+  caseSensitive: boolean = false,
+  attribute: string | number | null = null,
+): unknown[] {
+  let arr = syncList(value);
+
+  if (attribute !== null) {
+    arr = arr.map(syncMakeAttrGetter(evalCtx.environment, attribute));
+  }
+
+  const res: unknown[] = [];
+
+  for (const item of arr) {
+    if (
+      !res.some((x) =>
+        caseSensitive ? x === item : ignoreCase(x) === ignoreCase(item),
+      )
+    )
+      res.push(item);
+  }
+
+  return res;
+}
+
+async function asyncUnique(
+  evalCtx: EvalContext,
+  value: unknown,
+  caseSensitive: boolean = false,
+  attribute: string | number | null = null,
+): Promise<unknown[]> {
+  const arr = await asyncList(value);
+
+  if (attribute !== null) {
+    const attrGetter = asyncMakeAttrGetter(evalCtx.environment, attribute);
+    for (let i = 0; i < arr.length; i++) {
+      arr[i] = await attrGetter(arr[i]);
+    }
+  }
+  return syncUnique(evalCtx, arr, caseSensitive);
+}
+
+const doUnique: {
+  (
+    evalCtx: EvalContext<true>,
+    value: unknown,
+    caseSensitive: boolean,
+    attribute: string | number | null,
+  ): Promise<unknown>;
+  (
+    evalCtx: EvalContext<false>,
+    value: unknown,
+    caseSensitive: boolean,
+    attribute: string | number | null,
+  ): unknown;
+} = (
+  evalCtx: EvalContext,
+  value: unknown,
+  caseSensitive: boolean = false,
+  attribute: string | number | null = null,
+): any => {
+  return evalCtx.isAsync()
+    ? asyncUnique(evalCtx, value, caseSensitive, attribute)
+    : syncUnique(evalCtx, value, caseSensitive, attribute);
+};
+
+/**
+ * Returns a list of unique items from the given iterable.
+ *
+ * @param value The iterable to get unique items from.
+ * @param case_sensitive Treat upper and lower case strings as distinct.
+ * @param attribute Filter objects with unique values for this attribute.
+ */
+export const unique = nunjucksFunction(
+  ["value", "case_sensitive", "attribute"],
+  {
+    passArg: "evalContext",
+  },
+)(doUnique);
+
 export default {
   abs,
   // attr,
@@ -1609,7 +1690,7 @@ export default {
   title,
   trim,
   truncate,
-  // unique,
+  unique,
   upper,
   urlencode,
   urlize,
