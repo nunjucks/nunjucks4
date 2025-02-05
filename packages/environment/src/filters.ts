@@ -1643,6 +1643,77 @@ export const unique = nunjucksFunction(
   },
 )(doUnique);
 
+/**
+ * Wrap a string to the given width. Existing newlines are treated as paragraphs
+ * to be wrapped separately.
+ *
+ * @param s Original text to wrap.
+ * @param width Maximum length of wrapped lines.
+ * @param breakLongWords If a word is longer than `width`, break it across lines.
+ * @param wrapString String to join each wrapped line. Defaults to `\n`.
+ * Only supports space and newline characters.
+ * @param breakOnHyphens If a word contains hyphens, it may be split across lines.
+ * If disabled, `breakLongWords` will be disabled too.
+ */
+export const wordwrap = nunjucksFunction(
+  ["s", "width", "breakLongWords", "wrapString", "breakOnHyphens"],
+  {
+    passArg: "evalContext",
+  },
+)(function wordwrap(
+  evalContext: EvalContext,
+  s: string,
+  width: number = 79,
+  breakLongWords: boolean = true,
+  /**
+   * @warning Only support space and newline
+   */
+  wrapString: string = "\n",
+  breakOnHyphens: boolean = true,
+): string {
+  // If breaking on hyphens is disabled, disable breaking long words too
+  if (breakOnHyphens === false) {
+    breakLongWords = false;
+  }
+
+  const re = new RegExp(
+    breakLongWords
+      ? `\\S.{1,${width - 1}}`
+      : breakOnHyphens
+        ? `\\S.{1,${width - 1}}(?:-|\\s+|$)`
+        : `\\S.{1,${width - 1}}(?:\\s+|$)`,
+    "g",
+  );
+
+  const shouldEscape = evalContext.autoescape && !isMarkup(s);
+
+  s = s
+    .split("\n")
+    .map((line) => line.trim())
+    .map((line) => {
+      const { length } = line;
+
+      if (length <= width) {
+        return line;
+      }
+
+      return line
+        .replace(re, (match, offset) => {
+          if (offset + match.length === length) {
+            return match;
+          }
+
+          return `${match}${wrapString}`;
+        })
+        .split(wrapString);
+    })
+    .flat()
+    .map((line) => line.trim())
+    .join(wrapString);
+
+  return shouldEscape ? markSafe(escape(s)) : s;
+});
+
 export default {
   abs,
   // attr,
@@ -1695,7 +1766,7 @@ export default {
   urlencode,
   urlize,
   wordcount,
-  // wordwrap,
+  wordwrap,
   xmlattr,
   tojson,
 };
