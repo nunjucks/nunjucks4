@@ -54,7 +54,7 @@
     "compile": "tshy && tsup && tsup --minify",
     "prepublishOnly": "yarn run build",
     "compile:cjs": "tshy",
-    "compile:esm": "tsc --outDir dist/esm --target es2021"
+    "compile:esm": "tsc --outDir dist/esm --target es2021 && echo '{\"type\": \"module\"}' > dist/esm/package.json"
   },
   "devDependencies": {
     "rimraf": "~3.0.2",

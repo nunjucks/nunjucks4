@@ -4,39 +4,7 @@
   "sideEffects": false,
   "main": "./dist/cjs/index.js",
   "types": "./dist/types/index.d.ts",
-  "exports": {
-    ".": {
-      "types": "./dist/types/index.d.ts",
-      "import": "./dist/esm/index.js",
-      "require": "./dist/cjs/index.js",
-      "default": "./dist/esm/index.js"
-    },
-    "./package.json": "./package.json",
-    "./browser": {
-      "require": {
-        "source": "./src/browser.ts",
-        "types": "./dist/types/browser.d.ts",
-        "default": "./dist/cjs/browser.js"
-      },
-      "import": {
-        "source": "./src/browser.ts",
-        "types": "./dist/types/browser.d.ts",
-        "default": "./dist/esm/browser.js"
-      }
-    },
-    "./precompiled": {
-      "require": {
-        "types": "./dist/types/precompiled.d.ts",
-        "default": "./dist/cjs/precompiled.js"
-      },
-      "import": {
-        "source": "./src/precompiled.ts",
-        "types": "./dist/types/precompiled.d.ts",
-        "default": "./dist/esm/precompiled.js"
-      }
-    }
-  },
-  "module": "./dist/esm/index.js",
+  "module": "./dist/esm/index.mjs",
   "publishConfig": {
     "access": "public"
   },
@@ -63,7 +31,7 @@
     "compile": "yarn run compile:cjs && yarn run compile:esm",
     "prepublishOnly": "yarn run build",
     "compile:cjs": "tsc --outDir dist/cjs --module commonjs --moduleResolution node",
-    "compile:esm": "tsc --outDir dist/esm --module esnext --moduleResolution node --target es2021"
+    "compile:esm": "tsc --outDir dist/esm --module esnext --moduleResolution node --target es2021 && echo '{\"type\": \"module\"}' > dist/esm/package.json"
   },
   "dependencies": {
     "@nunjucks/runtime": "workspace:*",

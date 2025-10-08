@@ -4,26 +4,6 @@
   "sideEffects": false,
   "main": "./dist/cjs/index.js",
   "types": "./dist/types/index.d.ts",
-  "exports": {
-    ".": {
-      "types": "./dist/types/index.d.ts",
-      "import": "./dist/esm/index.js",
-      "require": "./dist/cjs/index.js",
-      "default": "./dist/esm/index.js"
-    },
-    "./package.json": "./package.json",
-    "./slim": {
-      "require": {
-        "types": "./dist/types/slim.d.ts",
-        "default": "./dist/cjs/slim.js"
-      },
-      "import": {
-        "source": "./src/slim.ts",
-        "types": "./dist/types/slim.d.ts",
-        "default": "./dist/esm/slim.js"
-      }
-    }
-  },
   "module": "./dist/esm/index.js",
   "publishConfig": {
     "access": "public"
@@ -49,7 +29,7 @@
     "compile": "yarn run compile:cjs && yarn run compile:esm",
     "prepublishOnly": "yarn run build",
     "compile:cjs": "tsc --outDir dist/cjs --module commonjs --moduleResolution node",
-    "compile:esm": "tsc --outDir dist/esm --module esnext --moduleResolution node --target es2021"
+    "compile:esm": "tsc --outDir dist/esm --module esnext --moduleResolution node --target es2021 && echo '{\"type\": \"module\"}' > dist/esm/package.json"
   },
   "dependencies": {
     "@nunjucks/ast": "workspace:*",
